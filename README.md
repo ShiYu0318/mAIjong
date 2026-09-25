@@ -1,1 +1,1 @@
-# mAIjong
+# mAIjong 麥醬
