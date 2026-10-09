@@ -55,3 +55,6 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM"]
 python_version = "3.12"
 packages = ["engine"]
 strict = true
+
+[tool.coverage.run]
+omit = ["engine/cli.py"]
