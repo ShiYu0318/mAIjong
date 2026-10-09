@@ -17,7 +17,7 @@ def _csv(value: str) -> list[str]:
 @dataclass(frozen=True)
 class Settings:
     database_url: str = f"sqlite:///{DATA_DIR / 'maijong.db'}"
-    secret_key: str = "dev-secret-change-me"
+    secret_key: str = "dev-only-secret-key-change-me-in-production"
     redis_url: str | None = None
     cors_origins: list[str] = field(default_factory=lambda: ["http://localhost:3000"])
     debug: bool = False
