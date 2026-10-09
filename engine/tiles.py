@@ -117,13 +117,21 @@ def parse(text: str) -> list[int]:
     suit_offset = {"m": 0, "s": 9, "p": 18}
     by_name = {v: k for k, v in TILE_NAMES.items()}
     out: list[int] = []
-    for token in text.split():
-        if token[-1] in suit_offset:
-            off = suit_offset[token[-1]]
-            out.extend(off + int(d) - 1 for d in token[:-1])
+    pending: list[int] = []  # digits waiting for their suit letter (may span spaces)
+    for ch in text:
+        if ch.isspace():
+            continue
+        if ch.isdigit():
+            pending.append(int(ch))
+        elif ch in suit_offset:
+            if not pending:
+                raise ValueError(f"suit {ch!r} without digits in {text!r}")
+            out.extend(suit_offset[ch] + d - 1 for d in pending)
+            pending = []
+        elif ch in by_name:
+            out.append(by_name[ch])
         else:
-            for ch in token:
-                if ch not in by_name:
-                    raise ValueError(f"unknown tile {ch!r} in {token!r}")
-                out.append(by_name[ch])
+            raise ValueError(f"unknown tile {ch!r} in {text!r}")
+    if pending:
+        raise ValueError(f"digits without a suit in {text!r}")
     return out
