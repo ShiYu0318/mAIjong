@@ -11,7 +11,6 @@ docs/
 *.md
 !/README.md
 .claude/
-CLAUDE.md
 
 # Python
 __pycache__/
