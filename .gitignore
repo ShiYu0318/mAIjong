@@ -31,7 +31,7 @@ out/
 *.tsbuildinfo
 
 # Runtime data
-data/
+/data/
 checkpoints/
 runs/
 wandb/
