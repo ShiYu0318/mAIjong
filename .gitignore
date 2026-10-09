@@ -1,2 +1,39 @@
+# OS
 .DS_Store
+
+# Secrets
 .env
+.env.*
+!.env.example
+
+# Local-only files (never commit)
+docs/
+.claude/
+CLAUDE.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Runtime data
+data/
+checkpoints/
+runs/
+wandb/
+*.db
+*.sqlite3
