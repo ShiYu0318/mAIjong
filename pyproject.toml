@@ -17,6 +17,7 @@ backend = [
     "pyjwt>=2.8",
     "bcrypt>=4.1",
     "httpx>=0.27",
+    "psycopg[binary]>=3.2",
 ]
 ai = [
     "numpy>=1.26",
