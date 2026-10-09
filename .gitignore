@@ -6,8 +6,10 @@
 .env.*
 !.env.example
 
-# Local-only files (never commit)
+# Local-only files
 docs/
+*.md
+!/README.md
 .claude/
 CLAUDE.md
 
