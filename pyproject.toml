@@ -57,6 +57,7 @@ python_version = "3.12"
 packages = ["engine", "backend"]
 strict = true
 exclude = ["backend/migrations"]
+plugins = ["pydantic.mypy"]
 
 [tool.coverage.run]
 omit = ["engine/cli.py"]

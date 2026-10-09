@@ -7,21 +7,35 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import get_settings
-from backend.db import init_db
-from backend.routers import auth
+from backend.db import init_db, session_factory
+from backend.persistence import save_hand
+from backend.routers import auth, rooms
+from backend.ws import game_ws
+from backend.ws.hub import Room, RoomManager
+from engine.game import GameState
 
 API_PREFIX = "/api/v1"
 
 
+def _save_hand(room: Room, g: GameState, hand_index: int, seats: list[Any],
+               decisions: dict[int, dict[str, Any]]) -> None:
+    with session_factory()() as db:
+        save_hand(db, g, room_id=room.id, hand_index=hand_index, seats=seats,
+                  decisions=decisions, is_public=room.config.public)
+
+
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     init_db()
+    app.state.rooms = RoomManager(save_hook=_save_hand)
     yield
+    await app.state.rooms.shutdown()
 
 
 def create_app() -> FastAPI:
@@ -35,6 +49,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(auth.router, prefix=API_PREFIX)
+    app.include_router(rooms.router, prefix=API_PREFIX)
+    app.include_router(game_ws.router)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
