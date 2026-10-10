@@ -39,6 +39,7 @@ class ConfigIn(BaseModel):
     next_hand_delay: float = Field(4.0, ge=0, le=30)
     quick_wait: float = Field(30.0, ge=0, le=120)
     public: bool = False
+    tutor: bool = False
 
     def to_config(self) -> RoomConfig:
         if len(self.bot_levels) != 4 or any(
