@@ -8,21 +8,23 @@ from engine.game import GameState, Phase, acting_players, get_legal_actions
 from engine.hand import MeldType
 
 
-def masked_state(s: GameState, seat: int | None) -> dict[str, Any]:
-    """seat=None gives a spectator view (no concealed tiles at all)."""
+def masked_state(s: GameState, seat: int | None, reveal_all: bool = False) -> dict[str, Any]:
+    """seat=None gives a spectator view (no concealed tiles at all); reveal_all shows every
+    hand (replays)."""
     players = []
     for p in range(4):
         own = seat == p
         melds = []
         for m in s.melds[p]:
-            hidden = m.type is MeldType.AN_KONG and not own and s.phase is not Phase.ENDED
+            hidden = (m.type is MeldType.AN_KONG and not own and not reveal_all
+                      and s.phase is not Phase.ENDED)
             melds.append({
                 "type": m.type.value,
                 "tiles": [None] * 4 if hidden else list(m.tiles),
                 "called": None if hidden else m.called,
                 "from_player": m.from_player,
             })
-        reveal = own or s.phase is Phase.ENDED
+        reveal = own or reveal_all or s.phase is Phase.ENDED
         players.append({
             "seat": p,
             "seat_wind": s.seat_wind(p),

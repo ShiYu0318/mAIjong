@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config import get_settings
 from backend.db import init_db, session_factory
 from backend.persistence import save_hand
-from backend.routers import auth, rooms, tutor
+from backend.routers import auth, games, rooms, tutor
 from backend.ws import game_ws
 from backend.ws.hub import Room, RoomManager
 from engine.game import GameState
@@ -24,10 +24,10 @@ API_PREFIX = "/api/v1"
 
 
 def _save_hand(room: Room, g: GameState, hand_index: int, seats: list[Any],
-               decisions: dict[int, dict[str, Any]]) -> None:
+               decisions: dict[int, dict[str, Any]], actions: list[list[int]]) -> None:
     with session_factory()() as db:
         save_hand(db, g, room_id=room.id, hand_index=hand_index, seats=seats,
-                  decisions=decisions, is_public=room.config.public)
+                  decisions=decisions, actions=actions, is_public=room.config.public)
 
 
 @asynccontextmanager
@@ -51,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix=API_PREFIX)
     app.include_router(rooms.router, prefix=API_PREFIX)
     app.include_router(tutor.router, prefix=API_PREFIX)
+    app.include_router(games.router, prefix=API_PREFIX)
     app.include_router(game_ws.router)
 
     @app.get("/healthz")
