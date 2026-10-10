@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from engine.shanten import shanten, uke_ire
+from engine.shanten import shanten, shanten_after_discards, uke_ire
 
 
 def is_tenpai(hand_34: list[int], n_melds: int) -> bool:
@@ -19,13 +19,4 @@ def waiting_tiles(hand_34: list[int], n_melds: int) -> list[int]:
 
 def tenpai_discards(hand_34: list[int], n_melds: int) -> list[int]:
     """Tiles of a 3n+2 hand whose discard leaves the hand tenpai."""
-    counts = list(hand_34)
-    out: list[int] = []
-    for t in range(34):
-        if not counts[t]:
-            continue
-        counts[t] -= 1
-        if shanten(counts, n_melds) == 0:
-            out.append(t)
-        counts[t] += 1
-    return out
+    return [t for t, sh in shanten_after_discards(hand_34, n_melds).items() if sh == 0]

@@ -1,7 +1,9 @@
-"""Rule-based agent: minimise shanten, maximise effective tiles.
+"""Rule-based agent: minimise shanten, maximise effective tiles, avoid dangerous tiles.
 
 Each candidate action gets a score; the action is sampled from softmax(score / T),
-so the temperature controls difficulty (SPEC 04.4).
+so the temperature controls difficulty (SPEC 04.4). When an opponent has declared a
+ready hand (or the wall is nearly exhausted) the agent weighs deal-in danger more the
+further it is from tenpai, folding with far-off hands.
 """
 
 from __future__ import annotations
@@ -9,10 +11,11 @@ from __future__ import annotations
 import math
 import random
 
+from ai.danger import tile_danger
 from engine import tiles
 from engine.actions import Action, ActionType
 from engine.game import GameState, Phase
-from engine.shanten import shanten, uke_ire
+from engine.shanten import discard_table, shanten
 
 _CHI_OFFSETS = {
     ActionType.CHI_LOW: (-2, -1),
@@ -31,10 +34,6 @@ def _visible_counts(state: GameState, seat: int) -> list[int]:
             for t in m.tiles:
                 seen[t] += 1
     return seen
-
-
-def _live_ukeire(counts: list[int], n_melds: int, seen: list[int]) -> int:
-    return sum(4 - seen[t] for t in uke_ire(counts, n_melds))
 
 
 def _best_discard_shanten(counts: list[int], n_melds: int) -> int:
@@ -61,8 +60,19 @@ class RuleAgent:
         seen = _visible_counts(state, seat)
         out: dict[Action, float] = {}
         if state.phase is Phase.DISCARD:
+            table = discard_table(counts, n_melds)
+            current = min(sh for sh, _ in table.values())
+            # defence weight: 0 while pushing, large when far from tenpai under threat
+            fold = 0.0
+            if any(state.declared_ting[p] for p in range(4) if p != seat):
+                fold = {0: 4.0, 1: 12.0}.get(current, 40.0)
+            elif state.drawable() < 24:
+                fold = 2.0 if current <= 1 else 6.0
             for a in legal:
-                out[a] = self._turn_score(a, counts, n_melds, seen, state, seat)
+                score = self._turn_score(a, counts, n_melds, seen, table)
+                if fold and a.type in (ActionType.DISCARD, ActionType.TING) and a.tile is not None:
+                    score -= fold * tile_danger(state, seat, a.tile, seen)
+                out[a] = score
         else:
             base = shanten(counts, n_melds)
             for a in legal:
@@ -71,7 +81,7 @@ class RuleAgent:
 
     def _turn_score(
         self, a: Action, counts: list[int], n_melds: int, seen: list[int],
-        state: GameState, seat: int,
+        table: dict[int, tuple[int, list[int]]],
     ) -> float:
         if a.type is ActionType.HU:
             return 1000.0
@@ -81,13 +91,11 @@ class RuleAgent:
             concealed = c[a.tile] == 4
             c[a.tile] -= 4 if concealed else 1  # added kong upgrades an existing pon
             sh = shanten(c, n_melds + 1 if concealed else n_melds)
-            before = _best_discard_shanten(list(counts), n_melds)
+            before = min(s for s, _ in table.values())
             return 50.0 if sh <= before else -50.0
         assert a.tile is not None
-        counts[a.tile] -= 1
-        sh = shanten(counts, n_melds)
-        live = _live_ukeire(counts, n_melds, seen)
-        counts[a.tile] += 1
+        sh, uke = table[a.tile]
+        live = sum(4 - seen[t] for t in uke)
         score = -10.0 * sh + 0.1 * live
         # mild preference for discarding isolated honours / terminals early
         if tiles.is_honor(a.tile):
