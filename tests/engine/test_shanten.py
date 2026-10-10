@@ -94,3 +94,20 @@ def test_matches_reference_on_random_and_near_complete_hands():
         if a != b:
             # only allowed difference: the reference counts an impossible 5th-tile wait
             assert a == b + 1 and 4 in cnt, (a, b, tiles.names(tiles.from_counts(cnt)))
+
+
+def test_discard_table_matches_direct_computation():
+    from engine.shanten import discard_table, shanten_after_discards
+
+    rng = random.Random(5)
+    wall = [t for t in range(34) for _ in range(4)]
+    for size, n_melds in [(17, 0), (14, 1), (11, 2), (8, 3), (5, 4), (2, 5)]:
+        for _ in range(40):
+            hand = tiles.to_counts(rng.sample(wall, size))
+            table = discard_table(hand, n_melds)
+            quick = shanten_after_discards(hand, n_melds)
+            for d, (sh, uke) in table.items():
+                after = list(hand)
+                after[d] -= 1
+                assert sh == shanten(after, n_melds) == quick[d]
+                assert uke == uke_ire(after, n_melds)
