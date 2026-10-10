@@ -1,0 +1,497 @@
+[
+ {
+  "id": "one_away-01",
+  "title": "一向聽：打哪張進張最多（1）",
+  "seed": 1695438112,
+  "step": 14,
+  "seat": 1,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 42 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-02",
+  "title": "一向聽：打哪張進張最多（2）",
+  "seed": 1041552250,
+  "step": 30,
+  "seat": 1,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 12 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-03",
+  "title": "一向聽：打哪張進張最多（3）",
+  "seed": 1128100257,
+  "step": 22,
+  "seat": 1,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 15 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-04",
+  "title": "一向聽：打哪張進張最多（4）",
+  "seed": 1703434203,
+  "step": 22,
+  "seat": 1,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 14 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-05",
+  "title": "一向聽：打哪張進張最多（5）",
+  "seed": 606199906,
+  "step": 25,
+  "seat": 0,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 16 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-06",
+  "title": "一向聽：打哪張進張最多（6）",
+  "seed": 155550046,
+  "step": 13,
+  "seat": 1,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 11 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-07",
+  "title": "一向聽：打哪張進張最多（7）",
+  "seed": 2028738006,
+  "step": 38,
+  "seat": 2,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 16 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-08",
+  "title": "一向聽：打哪張進張最多（8）",
+  "seed": 615615210,
+  "step": 15,
+  "seat": 1,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 19 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-09",
+  "title": "一向聽：打哪張進張最多（9）",
+  "seed": 979612449,
+  "step": 25,
+  "seat": 1,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 18 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-10",
+  "title": "一向聽：打哪張進張最多（10）",
+  "seed": 1787351181,
+  "step": 19,
+  "seat": 0,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 15 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-11",
+  "title": "一向聽：打哪張進張最多（11）",
+  "seed": 199783301,
+  "step": 28,
+  "seat": 0,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 22 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-12",
+  "title": "一向聽：打哪張進張最多（12）",
+  "seed": 916036277,
+  "step": 23,
+  "seat": 0,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 16 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-13",
+  "title": "一向聽：打哪張進張最多（13）",
+  "seed": 114593719,
+  "step": 28,
+  "seat": 0,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 17 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-14",
+  "title": "一向聽：打哪張進張最多（14）",
+  "seed": 1940799487,
+  "step": 14,
+  "seat": 3,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 24 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "one_away-15",
+  "title": "一向聽：打哪張進張最多（15）",
+  "seed": 1895627948,
+  "step": 18,
+  "seat": 0,
+  "category": "one_away",
+  "description": "一向聽，最好的打法有 16 張進張。找找看是哪一張。"
+ },
+ {
+  "id": "ready_choice-01",
+  "title": "聽牌選擇：聽哪裡比較好（1）",
+  "seed": 1114130004,
+  "step": 35,
+  "seat": 2,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-02",
+  "title": "聽牌選擇：聽哪裡比較好（2）",
+  "seed": 1560535398,
+  "step": 16,
+  "seat": 3,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-03",
+  "title": "聽牌選擇：聽哪裡比較好（3）",
+  "seed": 210561009,
+  "step": 42,
+  "seat": 2,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-04",
+  "title": "聽牌選擇：聽哪裡比較好（4）",
+  "seed": 17254630,
+  "step": 8,
+  "seat": 0,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-05",
+  "title": "聽牌選擇：聽哪裡比較好（5）",
+  "seed": 599356940,
+  "step": 13,
+  "seat": 1,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-06",
+  "title": "聽牌選擇：聽哪裡比較好（6）",
+  "seed": 773449992,
+  "step": 64,
+  "seat": 1,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-07",
+  "title": "聽牌選擇：聽哪裡比較好（7）",
+  "seed": 1492844882,
+  "step": 50,
+  "seat": 2,
+  "category": "ready_choice",
+  "description": "有 3 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-08",
+  "title": "聽牌選擇：聽哪裡比較好（8）",
+  "seed": 1915733923,
+  "step": 28,
+  "seat": 1,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-09",
+  "title": "聽牌選擇：聽哪裡比較好（9）",
+  "seed": 766648872,
+  "step": 36,
+  "seat": 3,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-10",
+  "title": "聽牌選擇：聽哪裡比較好（10）",
+  "seed": 1111462884,
+  "step": 30,
+  "seat": 0,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-11",
+  "title": "聽牌選擇：聽哪裡比較好（11）",
+  "seed": 773565944,
+  "step": 57,
+  "seat": 2,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-12",
+  "title": "聽牌選擇：聽哪裡比較好（12）",
+  "seed": 560181421,
+  "step": 51,
+  "seat": 3,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-13",
+  "title": "聽牌選擇：聽哪裡比較好（13）",
+  "seed": 259606117,
+  "step": 17,
+  "seat": 0,
+  "category": "ready_choice",
+  "description": "有 3 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-14",
+  "title": "聽牌選擇：聽哪裡比較好（14）",
+  "seed": 1989958949,
+  "step": 52,
+  "seat": 3,
+  "category": "ready_choice",
+  "description": "有 3 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "ready_choice-15",
+  "title": "聽牌選擇：聽哪裡比較好（15）",
+  "seed": 730049739,
+  "step": 41,
+  "seat": 1,
+  "category": "ready_choice",
+  "description": "有 2 種打法都能聽牌，聽的牌和台數不同，選哪一個？"
+ },
+ {
+  "id": "defense-01",
+  "title": "防守：對手已宣告聽牌（1）",
+  "seed": 923368332,
+  "step": 29,
+  "seat": 2,
+  "category": "defense",
+  "description": "有對手已經宣告聽牌，你離聽牌還有距離。這一張要怎麼打才不會放槍？"
+ },
+ {
+  "id": "defense-02",
+  "title": "防守：對手已宣告聽牌（2）",
+  "seed": 1248499963,
+  "step": 5,
+  "seat": 1,
+  "category": "defense",
+  "description": "有對手已經宣告聽牌，你離聽牌還有距離。這一張要怎麼打才不會放槍？"
+ },
+ {
+  "id": "defense-03",
+  "title": "防守：對手已宣告聽牌（3）",
+  "seed": 131788885,
+  "step": 49,
+  "seat": 0,
+  "category": "defense",
+  "description": "有對手已經宣告聽牌，你離聽牌還有距離。這一張要怎麼打才不會放槍？"
+ },
+ {
+  "id": "defense-04",
+  "title": "防守：對手已宣告聽牌（4）",
+  "seed": 623782527,
+  "step": 29,
+  "seat": 1,
+  "category": "defense",
+  "description": "有對手已經宣告聽牌，你離聽牌還有距離。這一張要怎麼打才不會放槍？"
+ },
+ {
+  "id": "defense-05",
+  "title": "防守：對手已宣告聽牌（5）",
+  "seed": 157516163,
+  "step": 34,
+  "seat": 2,
+  "category": "defense",
+  "description": "有對手已經宣告聽牌，你離聽牌還有距離。這一張要怎麼打才不會放槍？"
+ },
+ {
+  "id": "defense-06",
+  "title": "防守：對手已宣告聽牌（6）",
+  "seed": 13342258,
+  "step": 26,
+  "seat": 3,
+  "category": "defense",
+  "description": "有對手已經宣告聽牌，你離聽牌還有距離。這一張要怎麼打才不會放槍？"
+ },
+ {
+  "id": "defense-07",
+  "title": "防守：對手已宣告聽牌（7）",
+  "seed": 1773381238,
+  "step": 28,
+  "seat": 2,
+  "category": "defense",
+  "description": "有對手已經宣告聽牌，你離聽牌還有距離。這一張要怎麼打才不會放槍？"
+ },
+ {
+  "id": "defense-08",
+  "title": "防守：對手已宣告聽牌（8）",
+  "seed": 2051440534,
+  "step": 33,
+  "seat": 3,
+  "category": "defense",
+  "description": "有對手已經宣告聽牌，你離聽牌還有距離。這一張要怎麼打才不會放槍？"
+ },
+ {
+  "id": "defense-09",
+  "title": "防守：對手已宣告聽牌（9）",
+  "seed": 1623893716,
+  "step": 43,
+  "seat": 2,
+  "category": "defense",
+  "description": "有對手已經宣告聽牌，你離聽牌還有距離。這一張要怎麼打才不會放槍？"
+ },
+ {
+  "id": "defense-10",
+  "title": "防守：對手已宣告聽牌（10）",
+  "seed": 619598987,
+  "step": 38,
+  "seat": 1,
+  "category": "defense",
+  "description": "有對手已經宣告聽牌，你離聽牌還有距離。這一張要怎麼打才不會放槍？"
+ },
+ {
+  "id": "call-01",
+  "title": "吃碰判斷：要不要叫牌（1）",
+  "seed": 731833846,
+  "step": 5,
+  "seat": 1,
+  "category": "call",
+  "description": "對手打出 3筒，你可以吃。要叫嗎？"
+ },
+ {
+  "id": "call-02",
+  "title": "吃碰判斷：要不要叫牌（2）",
+  "seed": 1248920918,
+  "step": 13,
+  "seat": 1,
+  "category": "call",
+  "description": "對手打出 7條，你可以吃。要叫嗎？"
+ },
+ {
+  "id": "call-03",
+  "title": "吃碰判斷：要不要叫牌（3）",
+  "seed": 397327100,
+  "step": 12,
+  "seat": 3,
+  "category": "call",
+  "description": "對手打出 2萬，你可以吃。要叫嗎？"
+ },
+ {
+  "id": "call-04",
+  "title": "吃碰判斷：要不要叫牌（4）",
+  "seed": 1368519506,
+  "step": 8,
+  "seat": 3,
+  "category": "call",
+  "description": "對手打出 中，你可以碰。要叫嗎？"
+ },
+ {
+  "id": "call-05",
+  "title": "吃碰判斷：要不要叫牌（5）",
+  "seed": 248564740,
+  "step": 15,
+  "seat": 3,
+  "category": "call",
+  "description": "對手打出 北，你可以碰。要叫嗎？"
+ },
+ {
+  "id": "call-06",
+  "title": "吃碰判斷：要不要叫牌（6）",
+  "seed": 916086056,
+  "step": 25,
+  "seat": 3,
+  "category": "call",
+  "description": "對手打出 2萬，你可以碰。要叫嗎？"
+ },
+ {
+  "id": "call-07",
+  "title": "吃碰判斷：要不要叫牌（7）",
+  "seed": 1309631541,
+  "step": 15,
+  "seat": 2,
+  "category": "call",
+  "description": "對手打出 8筒，你可以吃。要叫嗎？"
+ },
+ {
+  "id": "call-08",
+  "title": "吃碰判斷：要不要叫牌（8）",
+  "seed": 1728685598,
+  "step": 15,
+  "seat": 3,
+  "category": "call",
+  "description": "對手打出 8筒，你可以吃。要叫嗎？"
+ },
+ {
+  "id": "call-09",
+  "title": "吃碰判斷：要不要叫牌（9）",
+  "seed": 2095895364,
+  "step": 19,
+  "seat": 1,
+  "category": "call",
+  "description": "對手打出 9筒，你可以碰。要叫嗎？"
+ },
+ {
+  "id": "call-10",
+  "title": "吃碰判斷：要不要叫牌（10）",
+  "seed": 113802007,
+  "step": 30,
+  "seat": 3,
+  "category": "call",
+  "description": "對手打出 7條，你可以吃。要叫嗎？"
+ },
+ {
+  "id": "early-01",
+  "title": "早巡整理：先丟哪張（1）",
+  "seed": 1504060861,
+  "step": 0,
+  "seat": 0,
+  "category": "early",
+  "description": "剛開局，手牌很散。先丟哪一張最不吃虧？"
+ },
+ {
+  "id": "early-02",
+  "title": "早巡整理：先丟哪張（2）",
+  "seed": 181162775,
+  "step": 3,
+  "seat": 3,
+  "category": "early",
+  "description": "剛開局，手牌很散。先丟哪一張最不吃虧？"
+ },
+ {
+  "id": "early-03",
+  "title": "早巡整理：先丟哪張（3）",
+  "seed": 1404388611,
+  "step": 2,
+  "seat": 2,
+  "category": "early",
+  "description": "剛開局，手牌很散。先丟哪一張最不吃虧？"
+ },
+ {
+  "id": "early-04",
+  "title": "早巡整理：先丟哪張（4）",
+  "seed": 1686731348,
+  "step": 2,
+  "seat": 1,
+  "category": "early",
+  "description": "剛開局，手牌很散。先丟哪一張最不吃虧？"
+ },
+ {
+  "id": "early-05",
+  "title": "早巡整理：先丟哪張（5）",
+  "seed": 1265543671,
+  "step": 0,
+  "seat": 0,
+  "category": "early",
+  "description": "剛開局，手牌很散。先丟哪一張最不吃虧？"
+ }
+]
