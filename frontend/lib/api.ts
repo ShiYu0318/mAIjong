@@ -78,7 +78,7 @@ export const rooms = {
 /** Seat tickets are kept per room so a refresh reconnects to the same seat. */
 export function saveTicket(roomId: string, j: JoinResult) {
   try {
-    sessionStorage.setItem(`maijong.ticket.${roomId}`, JSON.stringify({ seat: j.seat, token: j.ws_token }));
+    localStorage.setItem(`maijong.ticket.${roomId}`, JSON.stringify({ seat: j.seat, token: j.ws_token }));
   } catch {
     /* ignore */
   }
@@ -86,7 +86,7 @@ export function saveTicket(roomId: string, j: JoinResult) {
 
 export function loadTicket(roomId: string): { seat: number; token: string } | null {
   try {
-    const raw = sessionStorage.getItem(`maijong.ticket.${roomId}`);
+    const raw = localStorage.getItem(`maijong.ticket.${roomId}`);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
