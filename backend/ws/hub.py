@@ -20,7 +20,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from ai.agents import Agent, RuleAgent, create_agent
+from ai.agents import LEVEL_NAMES, Agent, RuleAgent, create_agent
 from backend.config import get_settings
 from backend.ws.view import legal_actions_payload, masked_state, visible_event
 from engine.actions import Action, encode_action
@@ -111,7 +111,7 @@ class Room:
         self.decisions: dict[int, dict[str, Any]] = {}
         for i, lvl in enumerate(config.bot_levels):
             if lvl is not None:
-                self.seats[i] = Seat(i, name=f"Bot Lv{lvl}", bot_level=lvl,
+                self.seats[i] = Seat(i, name=bot_name(i, lvl), bot_level=lvl,
                                      agent=create_agent(lvl))
 
     # ------------------------------------------------------------ seating
@@ -220,7 +220,7 @@ class Room:
         for i in range(4):
             if self.seats[i] is None:
                 lvl = get_settings().default_bot_level
-                self.seats[i] = Seat(i, name=f"Bot Lv{lvl}", bot_level=lvl,
+                self.seats[i] = Seat(i, name=bot_name(i, lvl), bot_level=lvl,
                                      agent=create_agent(lvl))
                 self.config.bot_levels[i] = lvl
                 await self._broadcast("SEAT_BOT_FILL", {"seat": i, "level": lvl})
@@ -230,6 +230,7 @@ class Room:
             rules=ScoringRules(cfg.base_points, cfg.tai_points, cfg.tai_cap),
         )
         self.status = "IN_GAME"
+        await self._broadcast("ROOM_STATE", self.public())
         await self._broadcast("GAME_START", {
             "seats": [s.public() for s in self.seats if s],
             "dealer": self.match.dealer, "round_wind": self.match.round_wind,
@@ -435,6 +436,7 @@ class Room:
             except Exception:  # persistence must not break play
                 log.exception("failed to save hand %s", g.game_id)
         self.match = finish_hand(m, g)
+        await self._broadcast("ROOM_STATE", self.public())
         if self.match.finished:
             self.status = "GAME_END"
             await self._broadcast("GAME_END", {
@@ -502,6 +504,13 @@ class Room:
     async def close(self) -> None:
         for t in list(self.tasks):
             t.cancel()
+
+
+_SEAT_NUMERALS = "一二三四"
+
+
+def bot_name(seat: int, level: int) -> str:
+    return f"電腦{_SEAT_NUMERALS[seat]}號（{LEVEL_NAMES.get(level, '')}）"
 
 
 def _aid(a: Action) -> int:
