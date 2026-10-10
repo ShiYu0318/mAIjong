@@ -200,3 +200,50 @@ export const games = {
     api<Annotation>(`/games/${id}/annotations`, { method: "POST", json: { seq, note } }),
   mine: (userId: string) => api<GameSummary[]>(`/users/${userId}/games`),
 };
+
+export interface AgentStats {
+  agent: string;
+  win_rate: number;
+  self_draw_rate: number;
+  deal_in_rate: number;
+  avg_score: number;
+  avg_tai_on_win: number;
+  win_share?: number;
+  p_value?: number;
+}
+
+export interface LabJob {
+  id: string;
+  kind: string;
+  status: "QUEUED" | "RUNNING" | "DONE" | "FAILED" | "STOPPED";
+  config: Record<string, unknown>;
+  metrics: {
+    progress?: number;
+    done?: number;
+    error?: string;
+    summary?: { hands: number; draw_rate: number; seats: (AgentStats & { hands: number })[] };
+    agents?: AgentStats[];
+  };
+  created_at: string;
+  finished_at: string | null;
+}
+
+export type MetricPoint = { step: number; time: number } & Record<string, number>;
+
+export const lab = {
+  agents: () => api<string[]>("/lab/agents"),
+  jobs: () => api<LabJob[]>("/lab/jobs"),
+  job: (id: string) => api<LabJob>(`/lab/jobs/${id}`),
+  simulate: (seats: string[], n_games: number, seed: number) =>
+    api<{ job_id: string }>("/lab/simulate", { method: "POST", json: { seats, n_games, seed } }),
+  compare: (agents: string[], n_games: number) =>
+    api<{ job_id: string }>("/lab/compare", { method: "POST", json: { agents, n_games } }),
+  train: (kind: string, config: Record<string, unknown>) =>
+    api<{ job_id: string }>("/lab/training", { method: "POST", json: { kind, config } }),
+  training: (id: string) => api<LabJob & { series: MetricPoint[] }>(`/lab/training/${id}`),
+  stop: (id: string) => api<LabJob>(`/lab/training/${id}/stop`, { method: "POST" }),
+  resume: (id: string) => api<LabJob>(`/lab/training/${id}/resume`, { method: "POST" }),
+  replays: (q: Record<string, string>) =>
+    api<{ id: string; seats: GameSummary["seats"]; result: import("./protocol").HandResult; created_at: string }[]>(
+      `/lab/replays?${new URLSearchParams(q).toString()}`),
+};
