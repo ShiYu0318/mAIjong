@@ -247,3 +247,77 @@ export const lab = {
     api<{ id: string; seats: GameSummary["seats"]; result: import("./protocol").HandResult; created_at: string }[]>(
       `/lab/replays?${new URLSearchParams(q).toString()}`),
 };
+
+export interface UserInfo {
+  id: string;
+  username: string;
+  email: string;
+  elo_human: number;
+  games_played: number;
+}
+
+export const account = {
+  register: (username: string, email: string, password: string) =>
+    api<{ token: string; user: UserInfo }>("/auth/register", { method: "POST", json: { username, email, password } }),
+  login: (email: string, password: string) =>
+    api<{ token: string; user: UserInfo }>("/auth/login", { method: "POST", json: { email, password } }),
+  me: () => api<UserInfo>("/auth/me"),
+};
+
+export interface AgentInfo {
+  id: string;
+  name: string;
+  version: number;
+  elo: number;
+  games_played: number;
+  status: string;
+  owner: string | null;
+  owner_id: string | null;
+  description: string;
+  validation: { passed: boolean; errors: string[]; decisions?: number; max_decision_s?: number } | null;
+  created_at: string;
+  elo_history?: { elo: number; placement: number; at: string }[];
+}
+
+export interface BoardRow {
+  rank: number;
+  id: string;
+  name: string;
+  version?: number;
+  author: string;
+  elo: number;
+  games: number;
+  first_rate: number;
+  avg_place: number | null;
+}
+
+export interface SeasonInfo {
+  id: number;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+}
+
+export const agentsApi = {
+  list: (all = false) => api<AgentInfo[]>(`/agents?limit=100${all ? "&status_=ALL" : ""}`),
+  get: (id: string) => api<AgentInfo>(`/agents/${id}`),
+  submit: (file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return api<AgentInfo>("/agents/submit", { method: "POST", body });
+  },
+  remove: (id: string) => fetch(`${API_URL}/api/v1/agents/${id}`, {
+    method: "DELETE", headers: { Authorization: `Bearer ${authToken()}` },
+  }),
+};
+
+export const competition = {
+  leaderboard: (season: string, kind: "agent" | "human") =>
+    api<{ season: SeasonInfo; rows: BoardRow[] }>(`/leaderboard?season=${season}&kind=${kind}`),
+  seasons: () => api<SeasonInfo[]>("/seasons"),
+  challenge: (agent_id: string, opponent_id: string, n_games: number) =>
+    api<{ id: string; status: string }>("/challenges", { method: "POST", json: { agent_id, opponent_id, n_games } }),
+  getChallenge: (id: string) =>
+    api<{ id: string; status: string; result: { total_score?: Record<string, number>; first_places?: Record<string, number>; winner?: string; error?: string } }>(`/challenges/${id}`),
+  joinHumanArena: () => api<JoinResult>("/arena/human/join", { method: "POST" }),
+};

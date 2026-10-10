@@ -174,7 +174,7 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.max_grad_norm)
                 opt.step()
-                stats.append((float(pg), float(vf), float(ent)))
+                stats.append((float(pg.detach()), float(vf.detach()), float(ent.detach())))
 
         var_y = float(flat["ret"].var())
         explained = 1 - float((flat["ret"] - flat["val"]).var()) / var_y if var_y > 0 else 0.0
