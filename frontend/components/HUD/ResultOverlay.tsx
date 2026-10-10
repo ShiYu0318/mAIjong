@@ -9,6 +9,7 @@ export function ResultOverlay({ names }: { names: string[] }) {
   const drawn = useGame((s) => s.drawn);
   const gameEnd = useGame((s) => s.gameEnd);
   const dismiss = useGame((s) => s.dismissResult);
+  const gameId = useGame((s) => s.view?.game_id);
   if (!win && !drawn && !gameEnd) return null;
 
   return (
@@ -85,7 +86,14 @@ export function ResultOverlay({ names }: { names: string[] }) {
           </div>
         ) : (
           <div className="mt-6 flex items-center justify-between text-sm text-mist">
-            <span>下一手即將開始。</span>
+            <span>
+              下一手即將開始。
+              {gameId && (
+                <a href={`/replay/${gameId}`} target="_blank" rel="noreferrer" className="ml-3 text-ivory underline">
+                  看這手錄影
+                </a>
+              )}
+            </span>
             <button onClick={dismiss} className="rounded-md border border-ivory/30 px-3 py-1.5 text-ivory hover:bg-ivory/10">
               看牌桌
             </button>

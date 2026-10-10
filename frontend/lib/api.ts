@@ -163,3 +163,40 @@ export async function startGuidedGame(name?: string): Promise<string> {
   await rooms.start(r.room_id);
   return r.room_id;
 }
+
+export interface ReplayFrame {
+  index: number;
+  actor: number | null;
+  action: { action_type: string; tile: number | null } | null;
+  events: Record<string, unknown>[];
+  view: import("./protocol").GameView;
+  decision: { agent: string; timeout: boolean; scores: Record<string, number>; chosen: number } | null;
+}
+
+export interface GameSummary {
+  id: string;
+  room_id: string | null;
+  round_wind: number;
+  hand_index: number;
+  dealer_streak: number;
+  seats: ({ seat: number; name: string; is_bot: boolean; user_id: string | null } | null)[];
+  result: import("./protocol").HandResult;
+  is_public: boolean;
+  created_at: string;
+}
+
+export interface Annotation {
+  id: number;
+  seq: number;
+  note: string;
+  user: string;
+}
+
+export const games = {
+  frames: (id: string) => api<{ meta: Record<string, unknown>; frames: ReplayFrame[]; game: GameSummary }>(`/games/${id}/frames`),
+  replayUrl: (id: string) => api<{ url: string }>(`/games/${id}/replay`),
+  annotations: (id: string) => api<Annotation[]>(`/games/${id}/annotations`),
+  annotate: (id: string, seq: number, note: string) =>
+    api<Annotation>(`/games/${id}/annotations`, { method: "POST", json: { seq, note } }),
+  mine: (userId: string) => api<GameSummary[]>(`/users/${userId}/games`),
+};
