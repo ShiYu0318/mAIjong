@@ -240,8 +240,16 @@ function drawMyHand(stage: Container, tex: Textures, p: PlayerView, sc: Scene, W
   });
 }
 
-export function TableCanvas() {
+/** A fixed view to render instead of the live game store (replays). */
+export interface StaticTable {
+  view: GameView;
+  names: string[];
+}
+
+export function TableCanvas({ fixed }: { fixed?: StaticTable } = {}) {
   const host = useRef<HTMLDivElement>(null);
+  const fixedRef = useRef<StaticTable | undefined>(fixed);
+  fixedRef.current = fixed;
   const appRef = useRef<Application | null>(null);
   const texRef = useRef<Textures | null>(null);
   const view = useGame((s) => s.view);
@@ -284,6 +292,12 @@ export function TableCanvas() {
     const app = appRef.current;
     const tex = texRef.current;
     const st = useGame.getState();
+    const f = fixedRef.current;
+    if (app && tex && f) {
+      render(app, tex, { view: f.view, selected: null, discardable: new Set(), names: f.names,
+        onTile: () => undefined });
+      return;
+    }
     if (!app || !tex || !st.view) return;
     const discardable = new Set<number>(
       st.legal.filter((a) => a.action_type === "DISCARD" || a.action_type === "TING")
@@ -311,7 +325,7 @@ export function TableCanvas() {
 
   useEffect(() => {
     redraw();
-  }, [view, selected, legal, room]);
+  }, [view, selected, legal, room, fixed]);
 
   return <div ref={host} className="absolute inset-0" aria-label="牌桌" role="img" />;
 }
