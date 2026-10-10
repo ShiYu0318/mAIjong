@@ -1,0 +1,35 @@
+name: Publish SDK
+
+on:
+  push:
+    tags: ["sdk-v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Build maijong-engine
+        run: uv build packages/maijong-engine --wheel --out-dir dist  # wheel only: it vendors ../../engine
+      - name: Build maijong-sdk
+        run: uv build sdk --out-dir dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # PyPI trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
