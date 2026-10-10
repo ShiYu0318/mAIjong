@@ -31,18 +31,21 @@ class PPOConfig:
     updates: int = 200
     mini_batch: int = 512
     n_epochs: int = 4
-    lr: float = 3e-4
+    lr: float = 1e-4
     lr_min: float = 1e-5
-    clip_eps: float = 0.2
-    entropy_start: float = 0.01
-    entropy_end: float = 0.001
+    clip_eps: float = 0.1
+    entropy_start: float = 0.003
+    entropy_end: float = 0.0005
+    value_warmup: int = 10  # first updates train only the value head
+    kl_coeff: float = 0.5  # KL(init || policy) anchor, decays to 10% by the end
+    rule_share: float = 0.5  # share of rule-agent opponents in self-play
     vf_coeff: float = 0.5
     gamma: float = 0.99
     gae_lambda: float = 0.95
     max_grad_norm: float = 0.5
     snapshot_every: int = 10
     eval_every: int = 20
-    eval_hands: int = 100
+    eval_hands: int = 200
     hierarchical: bool = True
     seed: int = 0
     extra: dict[str, Any] = field(default_factory=dict)
@@ -74,7 +77,13 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
         state = torch.load(init, map_location="cpu", weights_only=False)["state_dict"]
         model.load_state_dict(state)
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
-    league = League(model_config, seed=cfg.seed)
+    reference: ActorCritic | None = None
+    if init is not None:
+        reference = ActorCritic(**model_config)
+        reference.load_state_dict(model.state_dict())
+        reference.eval()
+    value_params = {id(p) for p in model.value.parameters()}
+    league = League(model_config, rule_share=cfg.rule_share, seed=cfg.seed)
     league.add(model)
     logger = MetricsLogger(run, {"kind": "ppo", **cfg.__dict__, "init": str(init)})
 
@@ -86,7 +95,7 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
         obs.append(o)
         masks.append(info["legal_mask"])
 
-    last_eval: dict[str, float] = {}
+    best_eval: dict[str, float] = {}
     t0 = time.time()
     episodes, wins, rewards_sum = 0, 0, 0.0
     for update in range(1, cfg.updates + 1):
@@ -95,6 +104,8 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
         for g in opt.param_groups:
             g["lr"] = lr
         ent_coeff = cfg.entropy_start + (cfg.entropy_end - cfg.entropy_start) * frac
+        kl_coeff = cfg.kl_coeff * (1 - 0.9 * frac)
+        warmup = update <= cfg.value_warmup
 
         keys = ("tiles", "scalars", "mask", "act", "logp", "val", "rew", "done")
         buf: dict[str, list[Any]] = {k: [] for k in keys}
@@ -155,7 +166,7 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
         flat["adv"] = (flat["adv"] - flat["adv"].mean()) / (flat["adv"].std() + 1e-8)
         n = len(flat["act"])
         model.train()
-        stats: list[tuple[float, float, float]] = []
+        stats: list[tuple[float, float, float, float]] = []
         for _ in range(cfg.n_epochs):
             perm = torch.randperm(n)
             for i in range(0, n, cfg.mini_batch):
@@ -169,12 +180,27 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
                 v_clip = flat["val"][b] + (v - flat["val"][b]).clamp(-cfg.clip_eps, cfg.clip_eps)
                 vf = torch.max((v - flat["ret"][b]) ** 2, (v_clip - flat["ret"][b]) ** 2).mean()
                 ent = masked_entropy(logp_all, flat["mask"][b]).mean()
-                loss = pg + cfg.vf_coeff * vf - ent_coeff * ent
+                kl = torch.zeros(())
+                if reference is not None:
+                    m = flat["mask"][b]
+                    with torch.no_grad():
+                        ref_logp, _ = reference(flat["tiles"][b], flat["scalars"][b], m)
+                    diff = torch.where(m, ref_logp - logp_all, torch.zeros_like(logp_all))
+                    kl = (ref_logp.exp() * m * diff).sum(dim=1).mean()
+                if warmup:
+                    loss = cfg.vf_coeff * vf
+                else:
+                    loss = pg + cfg.vf_coeff * vf - ent_coeff * ent + kl_coeff * kl
                 opt.zero_grad()
                 loss.backward()
+                if warmup:  # keep the policy (and shared encoder) fixed
+                    for prm in model.parameters():
+                        if id(prm) not in value_params:
+                            prm.grad = None
                 torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.max_grad_norm)
                 opt.step()
-                stats.append((float(pg.detach()), float(vf.detach()), float(ent.detach())))
+                stats.append((float(pg.detach()), float(vf.detach()), float(ent.detach()),
+                              float(kl.detach())))
 
         var_y = float(flat["ret"].var())
         explained = 1 - float((flat["ret"] - flat["val"]).var()) / var_y if var_y > 0 else 0.0
@@ -182,6 +208,7 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
             "policy_loss": float(np.mean([x[0] for x in stats])),
             "value_loss": float(np.mean([x[1] for x in stats])),
             "entropy": float(np.mean([x[2] for x in stats])),
+            "kl_to_init": float(np.mean([x[3] for x in stats])),
             "explained_variance": explained, "lr": lr,
             "episodes": float(episodes), "train_win_rate": wins / max(1, episodes),
             "mean_step_reward": rewards_sum / max(1, update * T * cfg.n_envs),
@@ -191,12 +218,15 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
             league.add(model)
         if update % cfg.eval_every == 0 or update == cfg.updates:
             res = evaluate(_snapshot_factory(model, model_config), "rule", cfg.eval_hands)
-            last_eval = res.as_dict()
-            metrics.update(last_eval)
-            save_checkpoint(out, model, "ppo", model_config, update=update, **last_eval)
+            current = res.as_dict()
+            metrics.update(current)
+            key = (current["eval_win_rate"], current["eval_avg_score"])
+            if not best_eval or key > (best_eval["eval_win_rate"], best_eval["eval_avg_score"]):
+                best_eval = {**current, "update": float(update)}
+                save_checkpoint(out, model, "ppo", model_config, update=update, **current)
         logger.log(update, **metrics)
     logger.close()
-    return last_eval
+    return best_eval
 
 
 def main() -> None:
@@ -208,10 +238,16 @@ def main() -> None:
     ap.add_argument("--envs", type=int, default=8)
     ap.add_argument("--rollout", type=int, default=256)
     ap.add_argument("--eval-every", type=int, default=20)
+    ap.add_argument("--eval-hands", type=int, default=200)
+    ap.add_argument("--lr", type=float, default=1e-4)
+    ap.add_argument("--kl", type=float, default=0.5, help="KL anchor to the --init policy")
+    ap.add_argument("--warmup", type=int, default=10, help="value-only updates first")
+    ap.add_argument("--rule-share", type=float, default=0.5)
     ap.add_argument("--run", default=f"ppo-{int(time.time())}")
     args = ap.parse_args()
     cfg = PPOConfig(n_envs=args.envs, rollout_steps=args.rollout, updates=args.updates,
-                    eval_every=args.eval_every)
+                    eval_every=args.eval_every, eval_hands=args.eval_hands, lr=args.lr,
+                    kl_coeff=args.kl, value_warmup=args.warmup, rule_share=args.rule_share)
     print(train_ppo(cfg, args.out, args.init, args.run))
 
 
