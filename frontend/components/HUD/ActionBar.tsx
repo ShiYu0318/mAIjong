@@ -37,10 +37,10 @@ export function ActionBar() {
     <div className="flex flex-wrap items-center justify-end gap-2" role="group" aria-label="可執行的動作">
       <HintButton />
       {discardPhase && selected === null && !hu && kongs.length === 0 && (
-        <p className="text-sm text-mist">點一張牌選取，再點一次打出。</p>
+        <p className="text-sm text-mist">點一張牌選取，再點一次打出（鍵盤：← → 選牌、Enter 打出）。</p>
       )}
       {chis.map((a) => (
-        <button key={a.action_type} onClick={() => act(a)} className={`${base} flex items-center gap-1 bg-ivory/90 text-ink hover:bg-ivory`}>
+        <button key={a.action_type} onClick={() => act(a)} aria-keyshortcuts="C" className={`${base} flex items-center gap-1 bg-ivory/90 text-ink hover:bg-ivory`}>
           吃
           {lastTile !== null && CHI_OFFSETS[a.action_type].map((o) => (
             <TileImage key={o} id={lastTile + o} width={20} />
@@ -48,32 +48,32 @@ export function ActionBar() {
         </button>
       ))}
       {pon && (
-        <button onClick={() => act(pon)} className={`${base} bg-ivory/90 text-ink hover:bg-ivory`}>
+        <button onClick={() => act(pon)} aria-keyshortcuts="P" className={`${base} bg-ivory/90 text-ink hover:bg-ivory`}>
           碰 {lastTile !== null ? tileName(lastTile) : ""}
         </button>
       )}
       {kongs.map((a) => (
-        <button key={a.tile} onClick={() => act(a)} className={`${base} bg-ivory/90 text-ink hover:bg-ivory`}>
+        <button key={a.tile} onClick={() => act(a)} aria-keyshortcuts="K" className={`${base} bg-ivory/90 text-ink hover:bg-ivory`}>
           槓 {tileName(a.tile as number)}
         </button>
       ))}
       {ting && (
-        <button onClick={() => act(ting)} className={`${base} bg-jade text-ivory hover:brightness-110`}>
+        <button onClick={() => act(ting)} aria-keyshortcuts="T" className={`${base} bg-jade text-ivory hover:brightness-110`}>
           打出 {tileName(selected as number)} 並宣告聽牌
         </button>
       )}
       {discard && (
-        <button onClick={() => act(discard)} className={`${base} bg-tong text-ivory hover:brightness-110`}>
+        <button onClick={() => act(discard)} aria-keyshortcuts="Enter" className={`${base} bg-tong text-ivory hover:brightness-110`}>
           打出 {tileName(selected as number)}
         </button>
       )}
       {pass && (
-        <button onClick={() => act(pass)} className={`${base} border border-ivory/40 hover:bg-ivory/10`}>
+        <button onClick={() => act(pass)} aria-keyshortcuts="X" className={`${base} border border-ivory/40 hover:bg-ivory/10`}>
           過
         </button>
       )}
       {hu && (
-        <button onClick={() => act(hu)} className={`${base} bg-zhong px-6 font-display text-2xl text-ivory hover:brightness-110`}>
+        <button onClick={() => act(hu)} aria-keyshortcuts="H" className={`${base} bg-zhong px-6 font-display text-2xl text-ivory hover:brightness-110`}>
           {discardPhase ? "自摸" : "胡"}
         </button>
       )}

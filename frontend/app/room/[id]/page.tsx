@@ -9,6 +9,7 @@ import { CoachNote } from "@/components/HUD/CoachNote";
 import { HintPanel } from "@/components/HUD/HintPanel";
 import { ResultOverlay } from "@/components/HUD/ResultOverlay";
 import { SidePanel } from "@/components/HUD/SidePanel";
+import { HandList, TableAnnouncer, useTableKeys } from "@/components/HUD/TableAccess";
 import { TurnTimer } from "@/components/HUD/TurnTimer";
 import { WaitingRoom } from "@/components/HUD/WaitingRoom";
 import { ApiError, loadTicket, rooms, saveTicket } from "@/lib/api";
@@ -36,6 +37,7 @@ export default function RoomPage() {
   const view = useGame((s) => s.view);
   const seat = useGame((s) => s.seat);
   const error = useGame((s) => s.error);
+  useTableKeys();
 
   useEffect(() => {
     setTicket(loadTicket(id));
@@ -98,6 +100,8 @@ export default function RoomPage() {
       <div className="flex min-h-0 flex-1">
         <section className="relative min-w-0 flex-1">
           <TableCanvas />
+          <HandList />
+          <TableAnnouncer />
           <div className="absolute right-4 bottom-[118px] left-4 z-10">
             <ActionBar />
           </div>

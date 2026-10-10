@@ -28,3 +28,30 @@ test("create a table with AI seats and play several turns", async ({ page }) => 
   }
   expect(await log.count()).toBeGreaterThanOrEqual(8);
 });
+
+test("play with the keyboard only", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "開桌" }).click();
+  await page.waitForURL(/\/room\//);
+  await page.getByRole("button", { name: "開始" }).click();
+  await expect(page.locator("canvas")).toBeVisible({ timeout: 30_000 });
+  const handList = page.getByRole("region", { name: "你的手牌" });
+  const log = page.locator("aside p");
+
+  let discarded = false;
+  for (let i = 0; i < 40 && !discarded; i++) {
+    if (await page.getByRole("button", { name: "過", exact: true }).isVisible().catch(() => false)) {
+      await page.keyboard.press("x");
+    } else if (await page.getByText("點一張牌選取").isVisible().catch(() => false)) {
+      const before = await log.count();
+      await page.keyboard.press("ArrowLeft");
+      await expect(handList.locator("button[aria-pressed=true]")).toHaveCount(1);
+      await page.keyboard.press("Enter");
+      await expect.poll(() => log.count()).toBeGreaterThan(before);
+      discarded = true;
+    }
+    await page.waitForTimeout(500);
+  }
+  expect(discarded).toBe(true);
+  await expect(page.locator("[aria-live=polite]").first()).not.toBeEmpty();
+});
