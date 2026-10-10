@@ -117,6 +117,7 @@ class Room:
         self.decisions: dict[int, dict[str, Any]] = {}
         self.actions: list[list[int]] = []  # [seat, action_id] for exact replay
         self.arena_agents: dict[int, str] = {}  # seat → agents.id (ARENA rooms)
+        self.scenario: dict[str, int] | None = None  # practice: start from (seed, step)
         self.match_end_hook: Any = None
         for i, lvl in enumerate(config.bot_levels):
             if lvl is not None:
@@ -256,7 +257,14 @@ class Room:
 
     async def _new_hand(self) -> None:
         assert self.match is not None
-        self.game = start_hand(self.match, seed=self.rng.randrange(2**62))
+        if self.scenario is not None and self.match.hands_played == 0:
+            from ai.explainability.analysis import _replay_to
+
+            # practice scenario: play on from a recorded self-play position (one hand only)
+            self.game = _replay_to(self.scenario["seed"], self.scenario["step"])
+            self.match.dealer = self.game.dealer
+        else:
+            self.game = start_hand(self.match, seed=self.rng.randrange(2**62))
         self.decisions = {}
         self.actions = []
         self.version += 1
@@ -498,6 +506,8 @@ class Room:
             except Exception:  # persistence must not break play
                 log.exception("failed to save hand %s", g.game_id)
         self.match = finish_hand(m, g)
+        if self.scenario is not None:
+            self.match.finished = True  # practice scenarios are a single hand
         await self._broadcast("ROOM_STATE", self.public())
         if self.match.finished:
             self.status = "GAME_END"
