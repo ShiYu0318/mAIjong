@@ -127,3 +127,28 @@ def test_invalid_action_and_bad_token(client):
 def test_quick_join_fills_with_bots(client):
     j = client.post("/api/v1/rooms/quick/join", json={"name": "Q"}).json()
     assert j["room"]["type"] == "QUICK" and j["seat"] == 0
+
+
+def test_hint_request_returns_ranked_candidates(client):
+    room = create(client, [None, 1, 1, 1])
+    j = client.post(f"/api/v1/rooms/{room['room_id']}/join", json={}).json()
+    with client.websocket_connect(f"/ws/game/{room['room_id']}?token={j['ws_token']}") as ws:
+        ws.receive_json()
+        client.post(f"/api/v1/rooms/{room['room_id']}/start")
+        while True:
+            msg = ws.receive_json()
+            if msg["type"] == "ACTION_REQUEST" and any(
+                    a["action_type"] == "DISCARD" for a in msg["payload"]["legal_actions"]):
+                break
+            if msg["type"] == "ACTION_REQUEST":
+                ws.send_json({"type": "ACTION", "payload": msg["payload"]["legal_actions"][-1]})
+        ws.send_json({"type": "HINT_REQUEST"})
+        while (msg := ws.receive_json())["type"] != "HINT_RESULT":
+            pass
+        cands = msg["payload"]["candidates"]
+        assert cands and "建議打" in msg["payload"]["explanation"]
+        assert [c["shanten_after"] for c in cands] == sorted(c["shanten_after"] for c in cands)
+        ws.send_json({"type": "HINT_REQUEST"})  # immediately again: cooldown
+        while (msg := ws.receive_json())["type"] != "ERROR":
+            pass
+        assert msg["payload"]["code"] == "HINT_COOLDOWN"

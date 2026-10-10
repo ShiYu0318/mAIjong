@@ -21,7 +21,9 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from ai.agents import LEVEL_NAMES, Agent, RuleAgent, create_agent
+from ai.explainability.candidate_scorer import score_all_discards
 from backend.config import get_settings
+from backend.hints.llm_provider import get_provider
 from backend.ws.view import legal_actions_payload, masked_state, visible_event
 from engine.actions import Action, encode_action
 from engine.game import (
@@ -36,6 +38,9 @@ from engine.match import MatchState, finish_hand, new_match, ranks, start_hand
 from engine.score import ScoringRules
 
 log = logging.getLogger("maijong.hub")
+
+HINT_COOLDOWN = 5.0
+HINT_LIMIT_RANKED = 3
 
 
 class Socket(Protocol):
@@ -270,8 +275,36 @@ class Room:
                     await self._send_seat(seat, "ACTION_REQUEST", self._request(seat))
             elif kind == "READY":
                 await self._sync_one(seat, None)
+            elif kind == "HINT_REQUEST":
+                await self._hint(seat)
             else:
                 await self._error(seat, "UNKNOWN_MESSAGE", f"unknown type {kind!r}")
+
+    @property
+    def ranked(self) -> bool:
+        return self.kind in ("QUICK", "ARENA")
+
+    async def _hint(self, seat: int) -> None:
+        st = self.seats[seat]
+        g = self.game
+        if st is None or g is None or g.phase is not Phase.DISCARD or g.turn != seat:
+            await self._error(seat, "HINT_UNAVAILABLE", "只有輪到你打牌時可以使用提示")
+            return
+        now = time.time()
+        if now - st.last_hint_at < HINT_COOLDOWN:
+            await self._error(seat, "HINT_COOLDOWN", "提示冷卻中，請稍候再試")
+            return
+        if self.ranked and st.hints_used >= HINT_LIMIT_RANKED:
+            await self._error(seat, "HINT_LIMIT", "排名對局每場最多使用 3 次提示")
+            return
+        st.last_hint_at = now
+        st.hints_used += 1
+        cands = [c.to_dict() for c in score_all_discards(g, seat)]
+        text = await get_provider().explain(cands)
+        remaining = HINT_LIMIT_RANKED - st.hints_used if self.ranked else None
+        await self._send_seat(seat, "HINT_RESULT", {
+            "candidates": cands, "explanation": text, "remaining": remaining,
+        })
 
     async def _human_action(self, seat: int, payload: dict[str, Any]) -> None:
         if self.game is None or self.status != "IN_GAME":

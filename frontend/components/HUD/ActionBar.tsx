@@ -1,6 +1,7 @@
 "use client";
 
 import { TileImage } from "@/components/Hand/TileImage";
+import { HintButton } from "@/components/HUD/HintPanel";
 import type { Action } from "@/lib/protocol";
 import { tileName } from "@/lib/tiles";
 import { useGame } from "@/store/gameStore";
@@ -34,6 +35,7 @@ export function ActionBar() {
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2" role="group" aria-label="可執行的動作">
+      <HintButton />
       {discardPhase && selected === null && !hu && kongs.length === 0 && (
         <p className="text-sm text-mist">點一張牌選取，再點一次打出。</p>
       )}

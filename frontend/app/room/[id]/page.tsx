@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ActionBar } from "@/components/HUD/ActionBar";
+import { HintPanel } from "@/components/HUD/HintPanel";
 import { ResultOverlay } from "@/components/HUD/ResultOverlay";
 import { SidePanel } from "@/components/HUD/SidePanel";
 import { TurnTimer } from "@/components/HUD/TurnTimer";
@@ -104,6 +105,7 @@ export default function RoomPage() {
               {error}
             </p>
           )}
+          <HintPanel />
           <ResultOverlay names={names} />
         </section>
         <div className="hidden w-72 shrink-0 p-3 lg:block">

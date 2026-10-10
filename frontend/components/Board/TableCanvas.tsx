@@ -94,7 +94,7 @@ function render(app: Application, tex: Textures, sc: Scene) {
     stage.addChild(area);
     drawRiver(area, tex, p, sd, sdH, L, last && last[0] === p.seat ? true : false);
     if (rel !== 0) drawOpponent(area, tex, p, sd * 0.95, L);
-    drawSeatLabel(area, p, sc, L);
+    drawSeatLabel(area, p, sc, L, rel);
   }
 
   drawMyHand(stage, tex, players[me], sc, W, H, handW, handH);
@@ -143,7 +143,7 @@ function drawOpponent(area: Container, tex: Textures, p: PlayerView, w: number, 
   });
 }
 
-function drawSeatLabel(area: Container, p: PlayerView, sc: Scene, L: number) {
+function drawSeatLabel(area: Container, p: PlayerView, sc: Scene, L: number, rel: number) {
   const acting = sc.view.acting.includes(p.seat);
   const dealer = sc.view.dealer === p.seat;
   const name = sc.names[p.seat] ?? "";
@@ -159,8 +159,14 @@ function drawSeatLabel(area: Container, p: PlayerView, sc: Scene, L: number) {
   });
   t.anchor.set(0.5, 1);
   t.y = L * 0.135;
+  // keep the text upright for every seat (the area itself is rotated)
+  t.rotation = (rel * Math.PI) / 2;
+  if (rel % 2 === 1) {
+    t.anchor.set(0.5, 0.5);
+    t.y = L * 0.135 - 8;
+  }
   area.addChild(t);
-  if (acting) {
+  if (acting && rel % 2 === 0) {
     const bar = new Graphics().roundRect(-t.width / 2, L * 0.135 + 2, t.width, 2, 1)
       .fill({ color: COLORS.ivory });
     area.addChild(bar);

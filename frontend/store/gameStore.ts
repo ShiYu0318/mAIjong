@@ -8,6 +8,24 @@ export interface ChatLine {
   at: number;
 }
 
+export interface HintCandidate {
+  tile: number;
+  name: string;
+  shanten_after: number;
+  uke_ire: number[];
+  uke_count: number;
+  danger: number;
+  can_declare: boolean;
+  waits: number[];
+  best_tai: number | null;
+}
+
+export interface Hint {
+  candidates: HintCandidate[];
+  explanation: string;
+  remaining: number | null;
+}
+
 export interface GameEnd {
   final_scores: number[];
   ranks: number[];
@@ -28,6 +46,7 @@ interface GameState {
   win: WinPayload | null;
   drawn: boolean;
   gameEnd: GameEnd | null;
+  hint: Hint | null;
   error: string | null;
   sender: ((msg: object) => void) | null;
   setStatus: (s: Status) => void;
@@ -36,6 +55,8 @@ interface GameState {
   act: (a: Action) => void;
   select: (tile: number | null) => void;
   sendChat: (text: string) => void;
+  requestHint: () => void;
+  closeHint: () => void;
   dismissResult: () => void;
   reset: () => void;
 }
@@ -72,6 +93,7 @@ const initial = {
   win: null,
   drawn: false,
   gameEnd: null,
+  hint: null,
   error: null,
   sender: null,
 };
@@ -85,8 +107,13 @@ export const useGame = create<GameState>((set, get) => ({
   dismissResult: () => set({ win: null, drawn: false }),
   act: (a) => {
     get().sender?.({ type: "ACTION", payload: a });
-    set({ legal: [], deadline: null, selected: null });
+    set({ legal: [], deadline: null, selected: null, hint: null });
   },
+  requestHint: () => {
+    set({ error: null });
+    get().sender?.({ type: "HINT_REQUEST" });
+  },
+  closeHint: () => set({ hint: null }),
   sendChat: (message) => {
     const text = message.trim();
     if (text) get().sender?.({ type: "CHAT", payload: { message: text } });
@@ -149,8 +176,14 @@ export const useGame = create<GameState>((set, get) => ({
       case "PLAYER_RECONNECTED":
         get().sender?.({ type: "READY" });
         break;
+      case "HINT_RESULT":
+        set({ hint: p as unknown as Hint });
+        break;
       case "ERROR":
         set({ error: `${p.message ?? p.code}` });
+        setTimeout(() => {
+          if (get().error === `${p.message ?? p.code}`) set({ error: null });
+        }, 4000);
         break;
     }
   },
