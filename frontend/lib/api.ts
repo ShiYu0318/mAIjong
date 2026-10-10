@@ -63,6 +63,7 @@ export interface RoomConfigInput {
   base_points: number;
   tai_points: number;
   bot_levels: (number | null)[];
+  tutor: boolean;
 }
 
 export const rooms = {
@@ -91,4 +92,74 @@ export function loadTicket(roomId: string): { seat: number; token: string } | nu
   } catch {
     return null;
   }
+}
+
+export interface MeldInput {
+  type: "CHI" | "PON" | "AN_KONG";
+  tiles: number[];
+}
+
+export interface DiscardRow {
+  tile: number;
+  name: string;
+  shanten_after: number;
+  uke_ire: number[];
+  uke_count: number;
+  waits?: number[];
+  best_tai?: number | null;
+  danger?: number;
+}
+
+export interface Analysis {
+  tiles: number;
+  melds: number;
+  shanten: number;
+  discards?: DiscardRow[];
+  uke_ire?: number[];
+  uke_count?: number;
+  waits?: { tile: number; name: string; tai: number | null }[];
+}
+
+export interface QuizPosition {
+  seat: number;
+  hand: number[];
+  last_draw: number | null;
+  melds: { type: string; tiles: number[] }[];
+  flowers: number[];
+  discards: number[][];
+  declared: boolean[];
+  seat_wind: number;
+  round_wind: number;
+  drawable: number;
+}
+
+export interface QuizAnswer {
+  verdict: "best" | "good" | "worse";
+  rank: number;
+  best: DiscardRow;
+  chosen: DiscardRow;
+  candidates: DiscardRow[];
+  explanation: string;
+}
+
+export const tutor = {
+  analyze: (hand: number[], melds: MeldInput[], flowers: number[] = []) =>
+    api<Analysis>("/tutor/analyze", { method: "POST", json: { hand, melds, flowers } }),
+  quiz: (difficulty: number) =>
+    api<{ quiz_token: string; position: QuizPosition }>(`/tutor/quiz?difficulty=${difficulty}`),
+  answer: (quiz_token: string, tile: number) =>
+    api<QuizAnswer>("/tutor/quiz/answer", { method: "POST", json: { quiz_token, tile } }),
+  setProgress: (lessonId: string, status: "STARTED" | "COMPLETED", quiz_score?: number) =>
+    api(`/tutor/progress/${lessonId}`, { method: "PUT", json: { status, quiz_score } }),
+};
+
+/** Start a guided game against beginner AI with coach notes, returning the room id. */
+export async function startGuidedGame(name?: string): Promise<string> {
+  const r = await rooms.create("PRIVATE", {
+    bot_levels: [null, 1, 1, 1], time_limit: null, rounds: 1, tutor: true,
+  });
+  const j = await rooms.join(r.room_id, name, 0);
+  saveTicket(r.room_id, j);
+  await rooms.start(r.room_id);
+  return r.room_id;
 }
