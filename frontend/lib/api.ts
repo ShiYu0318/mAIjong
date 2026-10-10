@@ -321,3 +321,50 @@ export const competition = {
     api<{ id: string; status: string; result: { total_score?: Record<string, number>; first_places?: Record<string, number>; winner?: string; error?: string } }>(`/challenges/${id}`),
   joinHumanArena: () => api<JoinResult>("/arena/human/join", { method: "POST" }),
 };
+
+export interface SpeedState {
+  token: string;
+  hand: number[];
+  drawn: number | null;
+  drawable: number;
+  done: boolean;
+  tenpai: boolean;
+  score: number | null;
+  shanten: number;
+}
+
+export interface DefenseState {
+  token: string;
+  seat: number;
+  hand: number[];
+  drawn: number | null;
+  discards: number[][];
+  melds: { type: string; tiles: (number | null)[] }[][];
+  declared: number[];
+  survived: number;
+  turns: number;
+  done: boolean;
+  dealt_in: boolean;
+  success: boolean;
+  waits?: Record<string, number[]>;
+}
+
+export interface Scenario {
+  id: string;
+  title: string;
+  category: string;
+  seat: number;
+  description: string;
+}
+
+export const practice = {
+  speedStart: () => api<SpeedState>("/practice/speed/start", { method: "POST" }),
+  speedDiscard: (token: string, tile: number) =>
+    api<SpeedState>("/practice/speed/discard", { method: "POST", json: { token, tile } }),
+  defenseStart: () => api<DefenseState>("/practice/defense/start", { method: "POST" }),
+  defenseDiscard: (token: string, tile: number) =>
+    api<DefenseState>("/practice/defense/discard", { method: "POST", json: { token, tile } }),
+  scenarios: () => api<Scenario[]>("/practice/scenarios"),
+  playScenario: (id: string) =>
+    api<JoinResult>(`/practice/scenarios/${id}/play`, { method: "POST" }),
+};

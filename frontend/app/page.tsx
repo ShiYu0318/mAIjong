@@ -91,6 +91,7 @@ export default function Lobby() {
           </p>
           <nav className="mt-3 flex gap-5">
             <Link href="/tutor" className="text-ivory underline underline-offset-4">第一次玩？從 AI 教練開始</Link>
+            <Link href="/practice" className="text-mist underline underline-offset-4 hover:text-ivory">單人練習</Link>
             <Link href="/leaderboard" className="text-mist underline underline-offset-4 hover:text-ivory">排行榜</Link>
             <Link href="/agents" className="text-mist underline underline-offset-4 hover:text-ivory">社群 AI</Link>
             <Link href="/lab" className="text-mist underline underline-offset-4 hover:text-ivory">實驗室</Link>
