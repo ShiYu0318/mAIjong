@@ -15,11 +15,12 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.config import get_settings
+from backend.config import Settings, get_settings
 from backend.db import init_db, session_factory
 from backend.models import Room as RoomRow
 from backend.persistence import save_hand
 from backend.routers import agents, auth, competition, games, lab, practice, rooms, tutor
+from backend.security_middleware import SecurityMiddleware
 from backend.ws import game_ws
 from backend.ws.hub import Room, RoomManager
 from engine.game import GameState
@@ -72,7 +73,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    if settings.secret_key == Settings().secret_key and not settings.debug and \
+            settings.database_url.startswith("postgresql"):
+        logging.getLogger("maijong").warning("SECRET_KEY is the development default; set one")
     app = FastAPI(title="mAIjong", version="0.1.0", lifespan=lifespan)
+    app.add_middleware(SecurityMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

@@ -33,6 +33,7 @@ dev = [
     "ruff>=0.5",
     "mypy>=1.10",
     "numpy>=2.5.3",
+    "pytest-timeout>=2.4.0",
 ]
 
 [build-system]
@@ -44,7 +45,7 @@ packages = ["engine", "ai", "backend", "sdk/maijong_sdk"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q --timeout=300"
 
 [tool.ruff]
 line-length = 100

@@ -11,6 +11,8 @@ def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
     monkeypatch.setenv("REPLAY_DIR", str(tmp_path / "replays"))
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-that-is-long-enough-123")
+    monkeypatch.setenv("RATE_LIMIT_API_PER_MIN", "100000")
+    monkeypatch.setenv("RATE_LIMIT_WS_PER_SEC", "100000")
     from backend import config, db
 
     config.get_settings.cache_clear()

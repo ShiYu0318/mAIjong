@@ -24,6 +24,7 @@ from ai.agents import LEVEL_NAMES, Agent, RuleAgent, create_agent
 from ai.explainability.candidate_scorer import score_all_discards
 from backend.config import get_settings
 from backend.hints.llm_provider import describe_discard, get_provider
+from backend.security_middleware import clean_text
 from backend.ws.view import legal_actions_payload, masked_state, visible_event
 from engine.actions import Action, ActionType, encode_action
 from engine.game import (
@@ -282,7 +283,7 @@ class Room:
             return
         async with self.lock:
             if kind == "CHAT":
-                text = str(payload.get("message", ""))[:200]
+                text = clean_text(str(payload.get("message", "")))
                 if text:
                     await self._broadcast("CHAT", {"seat": seat, "message": text})
             elif kind == "ACTION":

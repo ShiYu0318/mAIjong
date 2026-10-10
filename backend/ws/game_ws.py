@@ -11,6 +11,7 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from backend.security import TokenError, decode_token
+from backend.security_middleware import TokenBucket, _limit
 from backend.ws.hub import RoomManager
 
 router = APIRouter()
@@ -36,10 +37,15 @@ async def game_socket(ws: WebSocket, room_id: str, token: str | None = None) -> 
         return
     await ws.accept()
     await room.connect(seat, ws)
+    bucket = TokenBucket(_limit("RATE_LIMIT_WS_PER_SEC", "20"), 1)  # per socket
     try:
         while True:
             msg: Any = await ws.receive_json()
             if seat is None or not isinstance(msg, dict):
+                continue
+            if not bucket.allow("ws"):
+                await ws.send_json({"type": "ERROR", "payload": {
+                    "code": "RATE_LIMIT", "message": "訊息太頻繁，請稍候"}})
                 continue
             await room.handle(seat, msg)
     except (WebSocketDisconnect, RuntimeError):

@@ -17,6 +17,7 @@ from backend.deps import SessionDep, UserDep
 from backend.models import Game, ReplayAnnotation, User
 from backend.persistence import read_replay, replay_path
 from backend.replay import ReplayError, build_frames
+from backend.security_middleware import clean_text
 
 router = APIRouter(tags=["games"])
 
@@ -98,7 +99,10 @@ def list_annotations(game_id: str, db: SessionDep) -> list[dict[str, Any]]:
 def add_annotation(game_id: str, body: AnnotationIn, db: SessionDep, user: UserDep
                    ) -> dict[str, Any]:
     _game(db, game_id)
-    row = ReplayAnnotation(game_id=game_id, user_id=user.id, seq=body.seq, note=body.note)
+    note = clean_text(body.note, 500)
+    if not note:
+        raise HTTPException(422, "note is empty")
+    row = ReplayAnnotation(game_id=game_id, user_id=user.id, seq=body.seq, note=note)
     db.add(row)
     db.commit()
     return {"id": row.id, "seq": row.seq, "note": row.note, "user": user.username}
