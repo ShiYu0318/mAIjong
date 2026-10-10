@@ -82,9 +82,20 @@ def agent_from_checkpoint(path: str | Path, temperature: float = 0.1,
     return PolicyAgent(model, kind, temperature, seed, name=f"{kind}:{Path(path).name}")
 
 
-def latest_checkpoint(kind: str) -> Path | None:
+MIN_EVAL_WIN_RATE = 0.25  # must at least match a rule agent's share at a table of four
+
+
+def latest_checkpoint(kind: str, min_win_rate: float = MIN_EVAL_WIN_RATE) -> Path | None:
+    """The deployable checkpoint for Lv4 (dqn) / Lv5 (ppo), only if its recorded
+    evaluation against rule agents reaches `min_win_rate`."""
     p = CHECKPOINT_DIR / f"{kind}_latest.pt"
-    return p if p.exists() else None
+    if not p.exists():
+        return None
+    try:
+        meta = torch.load(p, map_location="cpu", weights_only=False)
+    except Exception:
+        return None
+    return p if float(meta.get("eval_win_rate", 0.0)) >= min_win_rate else None
 
 
 __all__ = ["PolicyAgent", "agent_from_checkpoint", "decide_with_temperature",

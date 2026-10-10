@@ -88,7 +88,7 @@ def train_bc(data: dict[str, np.ndarray], out: Path, epochs: int = 50, batch: in
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
         acc = (logp.argmax(dim=1) == a).float().mean()
-        return float(loss), float(acc)
+        return float(loss.detach()), float(acc)
 
     best = {"val_acc": 0.0, "epoch": 0}
     for epoch in range(1, epochs + 1):
@@ -120,12 +120,14 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=None, help="use only the first N hands")
     ap.add_argument("--epochs", type=int, default=50)
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--target-acc", type=float, default=0.6,
+                    help="stop early at this validation accuracy (SPEC: 0.6)")
     ap.add_argument("--run", default=f"bc-{int(time.time())}")
     args = ap.parse_args()
     t0 = time.time()
     data = build_dataset(args.data, args.limit, args.workers)
     print(f"{len(data['actions'])} samples in {time.time() - t0:.0f}s")
-    best = train_bc(data, args.out, epochs=args.epochs, run=args.run)
+    best = train_bc(data, args.out, epochs=args.epochs, run=args.run, target_acc=args.target_acc)
     print(f"best val accuracy {best['val_acc']:.3f} at epoch {best['epoch']} → {args.out}")
 
 

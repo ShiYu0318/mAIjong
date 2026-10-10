@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AccountBar } from "@/components/Account/AccountBar";
 import { TileImage } from "@/components/Hand/TileImage";
 import { ApiError, rooms, saveTicket } from "@/lib/api";
 
@@ -90,9 +91,13 @@ export default function Lobby() {
           </p>
           <nav className="mt-3 flex gap-5">
             <Link href="/tutor" className="text-ivory underline underline-offset-4">第一次玩？從 AI 教練開始</Link>
+            <Link href="/leaderboard" className="text-mist underline underline-offset-4 hover:text-ivory">排行榜</Link>
+            <Link href="/agents" className="text-mist underline underline-offset-4 hover:text-ivory">社群 AI</Link>
             <Link href="/lab" className="text-mist underline underline-offset-4 hover:text-ivory">實驗室</Link>
           </nav>
         </div>
+        <div className="flex flex-col items-end gap-4">
+        <AccountBar />
         <label className="flex flex-col gap-1 text-sm text-mist">
           你的暱稱
           <input
@@ -102,6 +107,7 @@ export default function Lobby() {
             className="w-56 rounded-md border border-felt-line bg-felt-deep px-3 py-2 text-ivory placeholder:text-mist/60"
           />
         </label>
+        </div>
       </header>
 
       <div className="mt-10 flex flex-wrap gap-[3px]" aria-label="平胡牌型範例">
