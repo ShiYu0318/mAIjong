@@ -1,0 +1,28 @@
+[project]
+name = "maijong-sdk"
+version = "1.0.0"
+description = "Build, train and submit Taiwanese 16-tile mahjong agents for the mAIjong platform."
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["maijong-engine>=0.1"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Games/Entertainment :: Board Games",
+]
+
+[project.optional-dependencies]
+rl = ["numpy>=1.26", "gymnasium>=0.29"]
+
+[project.scripts]
+maijong = "maijong_sdk.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["maijong_sdk"]
+
+[tool.uv.sources]
+maijong-engine = { path = "../packages/maijong-engine" }
