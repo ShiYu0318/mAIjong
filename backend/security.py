@@ -56,3 +56,10 @@ def decode_token(token: str, kind: str) -> dict[str, Any]:
     if claims.get("kind") != kind:
         raise TokenError("wrong token kind")
     return claims
+
+
+QUIZ_TOKEN_TTL = timedelta(hours=2)
+
+
+def create_quiz_token(seed: int, step: int, seat: int) -> str:
+    return _encode({"kind": "quiz", "seed": seed, "step": step, "seat": seat}, QUIZ_TOKEN_TTL)

@@ -65,6 +65,23 @@ def template_explain(cands: list[dict[str, Any]], chosen: int | None = None) -> 
     return text
 
 
+def describe_discard(cands: list[dict[str, Any]], chosen: int, who: str, human: bool) -> str:
+    """Coach note after a discard (guided game)."""
+    mine = next((c for c in cands if c["tile"] == chosen), None)
+    if mine is None:
+        return ""
+    if human:
+        if cands and cands[0]["tile"] == chosen:
+            return f"好牌！{template_explain(cands)}"
+        return template_explain(cands, chosen)
+    state = shanten_text(mine["shanten_after"])
+    if mine["shanten_after"] == 0:
+        detail = f"聽 {tile_list(mine['waits'])}"
+    else:
+        detail = f"有效進張 {mine['uke_count']} 張"
+    return f"{who}打出 {mine['name']}：打出後{state}，{detail}。"
+
+
 class HintLLMProvider(Protocol):
     async def explain(self, cands: list[dict[str, Any]], chosen: int | None = None) -> str: ...
 
