@@ -115,6 +115,7 @@ class Room:
         self.tasks: set[asyncio.Task[Any]] = set()
         self.deadline: float | None = None
         self.decisions: dict[int, dict[str, Any]] = {}
+        self.actions: list[list[int]] = []  # [seat, action_id] for exact replay
         for i, lvl in enumerate(config.bot_levels):
             if lvl is not None:
                 self.seats[i] = Seat(i, name=bot_name(i, lvl), bot_level=lvl,
@@ -247,6 +248,7 @@ class Room:
         assert self.match is not None
         self.game = start_hand(self.match, seed=self.rng.randrange(2**62))
         self.decisions = {}
+        self.actions = []
         self.version += 1
         for seat in range(4):
             await self._send_seat(seat, "DEAL", {
@@ -335,6 +337,7 @@ class Room:
             coach = [c.to_dict() for c in score_all_discards(self.game, seat)]
         before = set(acting_players(self.game))
         self.game, events = apply_action(self.game, seat, action)
+        self.actions.append([seat, encode_action(action)])
         if not set(acting_players(self.game)) <= before:
             self.deadline = None  # someone new must act: restart the clock
         if coach is not None and action.tile is not None:
@@ -478,8 +481,10 @@ class Room:
             seats = [s.public() if s else None for s in self.seats]
             hand_index = m.hands_played
             decisions = dict(self.decisions)
+            actions = list(self.actions)
             try:
-                await asyncio.to_thread(self.save_hook, self, g, hand_index, seats, decisions)
+                await asyncio.to_thread(self.save_hook, self, g, hand_index, seats, decisions,
+                                        actions)
             except Exception:  # persistence must not break play
                 log.exception("failed to save hand %s", g.game_id)
         self.match = finish_hand(m, g)
