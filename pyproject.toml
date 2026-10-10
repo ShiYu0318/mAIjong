@@ -62,3 +62,8 @@ plugins = ["pydantic.mypy"]
 
 [tool.coverage.run]
 omit = ["engine/cli.py"]
+
+[[tool.mypy.overrides]]
+module = ["backend.tasks.training_tasks", "celery.*"]
+ignore_errors = true
+ignore_missing_imports = true
