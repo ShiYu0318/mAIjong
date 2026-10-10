@@ -116,12 +116,22 @@ class Room:
         self.deadline: float | None = None
         self.decisions: dict[int, dict[str, Any]] = {}
         self.actions: list[list[int]] = []  # [seat, action_id] for exact replay
+        self.arena_agents: dict[int, str] = {}  # seat → agents.id (ARENA rooms)
+        self.match_end_hook: Any = None
         for i, lvl in enumerate(config.bot_levels):
             if lvl is not None:
                 self.seats[i] = Seat(i, name=bot_name(i, lvl), bot_level=lvl,
                                      agent=create_agent(lvl))
 
     # ------------------------------------------------------------ seating
+    def attach_agent(self, seat: int, agent_row: Any) -> None:
+        """Seat a stored agent (house bot or sandboxed submission)."""
+        from backend.arena import agent_for_room
+
+        self.seats[seat] = Seat(seat, name=agent_row.name, bot_level=3,
+                                agent=agent_for_room(agent_row))
+        self.config.bot_levels[seat] = 3
+
     def seat_of(self, user_id: str | None) -> int | None:
         for s in self.seats:
             if s and user_id and s.user_id == user_id:
@@ -494,6 +504,12 @@ class Room:
             await self._broadcast("GAME_END", {
                 "final_scores": self.match.scores, "ranks": ranks(self.match.scores),
             })
+            if self.match_end_hook is not None:
+                try:
+                    await asyncio.to_thread(self.match_end_hook, self, list(self.match.scores))
+                except Exception:
+                    log.exception("match end hook failed for room %s", self.id)
+            self._close_agents()
             return
         self.status = "ROUND_END"
         self._spawn(self._next_hand_later(self.version))
@@ -553,9 +569,16 @@ class Room:
                 if seat is not None and seat in acting_players(self.game):
                     await self._send(t, "ACTION_REQUEST", self._request(seat))
 
+    def _close_agents(self) -> None:
+        for st in self.seats:
+            closer = getattr(st.agent, "close", None) if st else None
+            if callable(closer):
+                closer()
+
     async def close(self) -> None:
         for t in list(self.tasks):
             t.cancel()
+        self._close_agents()
 
 
 _SEAT_NUMERALS = "一二三四"
