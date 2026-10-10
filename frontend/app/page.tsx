@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { TileImage } from "@/components/Hand/TileImage";
@@ -87,6 +88,9 @@ export default function Lobby() {
           <p className="mt-4 max-w-md text-lg text-mist">
             台灣十六張麻將。和 AI 對手同桌練功，或開一桌邀朋友來打。
           </p>
+          <Link href="/tutor" className="mt-3 inline-block text-ivory underline underline-offset-4">
+            第一次玩？從 AI 教練開始
+          </Link>
         </div>
         <label className="flex flex-col gap-1 text-sm text-mist">
           你的暱稱

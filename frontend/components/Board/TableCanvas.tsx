@@ -149,28 +149,22 @@ function drawSeatLabel(area: Container, p: PlayerView, sc: Scene, L: number, rel
   const name = sc.names[p.seat] ?? "";
   const tags = [dealer ? "莊" : "", p.declared_ting ? "聽" : ""].filter(Boolean).join("・");
   const t = new Text({
-    text: `${WINDS[p.seat_wind]}　${name}　${p.score}${tags ? "　" + tags : ""}`,
+    text: `${acting ? "▶ " : ""}${WINDS[p.seat_wind]}　${name}\n${p.score}${tags ? "　" + tags : ""}`,
     style: {
       fontFamily: "PingFang TC, Noto Sans TC, sans-serif",
       fontSize: 13,
       fill: acting ? COLORS.ivory : COLORS.mist,
       fontWeight: acting ? "700" : "400",
+      align: "center",
+      lineHeight: 18,
     },
   });
-  t.anchor.set(0.5, 1);
-  t.y = L * 0.135;
-  // keep the text upright for every seat (the area itself is rotated)
+  // each seat's label sits in the corner to its right, always upright
+  t.anchor.set(0.5);
+  t.x = L * 0.3;
+  t.y = L * 0.3;
   t.rotation = (rel * Math.PI) / 2;
-  if (rel % 2 === 1) {
-    t.anchor.set(0.5, 0.5);
-    t.y = L * 0.135 - 8;
-  }
   area.addChild(t);
-  if (acting && rel % 2 === 0) {
-    const bar = new Graphics().roundRect(-t.width / 2, L * 0.135 + 2, t.width, 2, 1)
-      .fill({ color: COLORS.ivory });
-    area.addChild(bar);
-  }
 }
 
 function drawCenter(stage: Container, view: GameView, cx: number, cy: number, L: number) {

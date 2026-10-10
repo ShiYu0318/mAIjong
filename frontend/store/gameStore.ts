@@ -26,6 +26,13 @@ export interface Hint {
   remaining: number | null;
 }
 
+export interface CoachNoteData {
+  seat: number;
+  tile: number;
+  text: string;
+  candidates: HintCandidate[];
+}
+
 export interface GameEnd {
   final_scores: number[];
   ranks: number[];
@@ -47,6 +54,7 @@ interface GameState {
   drawn: boolean;
   gameEnd: GameEnd | null;
   hint: Hint | null;
+  coach: CoachNoteData | null;
   error: string | null;
   sender: ((msg: object) => void) | null;
   setStatus: (s: Status) => void;
@@ -94,6 +102,7 @@ const initial = {
   drawn: false,
   gameEnd: null,
   hint: null,
+  coach: null,
   error: null,
   sender: null,
 };
@@ -175,6 +184,9 @@ export const useGame = create<GameState>((set, get) => ({
       case "PLAYER_DISCONNECTED":
       case "PLAYER_RECONNECTED":
         get().sender?.({ type: "READY" });
+        break;
+      case "TUTOR_NOTE":
+        set({ coach: p as unknown as CoachNoteData });
         break;
       case "HINT_RESULT":
         set({ hint: p as unknown as Hint });
