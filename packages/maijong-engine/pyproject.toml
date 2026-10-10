@@ -15,6 +15,3 @@ bypass-selection = true
 
 [tool.hatch.build.targets.wheel.force-include]
 "../../engine" = "engine"
-
-[tool.hatch.build.targets.sdist.force-include]
-"../../engine" = "engine"

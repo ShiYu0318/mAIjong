@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config import get_settings
 from backend.db import init_db, session_factory
 from backend.persistence import save_hand
-from backend.routers import auth, games, lab, rooms, tutor
+from backend.routers import agents, auth, games, lab, rooms, tutor
 from backend.ws import game_ws
 from backend.ws.hub import Room, RoomManager
 from engine.game import GameState
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(tutor.router, prefix=API_PREFIX)
     app.include_router(games.router, prefix=API_PREFIX)
     app.include_router(lab.router, prefix=API_PREFIX)
+    app.include_router(agents.router, prefix=API_PREFIX)
     app.include_router(game_ws.router)
 
     @app.get("/healthz")
