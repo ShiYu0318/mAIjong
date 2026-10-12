@@ -139,3 +139,22 @@ def test_streaming_behaviour_cloning(tmp_path, monkeypatch):
     assert out.exists() and 0 < best["val_acc"] <= 1
     lines = (tmp_path / "runs" / "bc-stream" / "metrics.jsonl").read_text().splitlines()
     assert len(lines) == 3  # one record per streamed chunk
+
+
+def test_potential_shaping_cannot_be_farmed():
+    from ai.reward import REWARD_PRESETS
+
+    cfg = REWARD_PRESETS["potential"]
+    worse = StepData(0, 1, 2, 12, 8)
+    better = StepData(0, 2, 1, 8, 12)
+    # breaking the hand and rebuilding it nets nothing (SPEC shaping would pay twice)
+    assert compute_shaped_reward(worse, [], None, cfg) + compute_shaped_reward(
+        better, [], None, cfg) == pytest.approx(0.0)
+    spec = REWARD_PRESETS["spec"]
+    assert compute_shaped_reward(worse, [], None, spec) + compute_shaped_reward(
+        better, [], None, spec) > 0
+    # the final step pays the actual points, including for an opponent's self-draw
+    final = StepData(0, 1, 1, 10, 10, is_final=True)
+    paid = GameResult(1, 3, None, 0, False, payment=-250)
+    # Φ(before) = -0.05·1 + 0.005·10 = 0 and Φ(end) = 0, so only the -250 points remain
+    assert compute_shaped_reward(final, [], paid, cfg) == pytest.approx(-1.25)

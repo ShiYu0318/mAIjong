@@ -19,6 +19,7 @@ import torch
 from ai.agents.neural_agent import PolicyAgent, save_checkpoint
 from ai.env import MahjongEnv
 from ai.models.ppo_model import ActorCritic
+from ai.reward import REWARD_PRESETS
 from ai.training.evaluate import evaluate
 from ai.training.metrics import MetricsLogger
 from ai.training.self_play import League
@@ -39,6 +40,7 @@ class PPOConfig:
     value_warmup: int = 10  # first updates train only the value head
     kl_coeff: float = 0.5  # KL(init || policy) anchor, decays to 10% by the end
     rule_share: float = 0.5  # share of rule-agent opponents in self-play
+    reward: str = "potential"  # ai.reward.REWARD_PRESETS key
     vf_coeff: float = 0.5
     gamma: float = 0.99
     gae_lambda: float = 0.95
@@ -87,7 +89,9 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
     league.add(model)
     logger = MetricsLogger(run, {"kind": "ppo", **cfg.__dict__, "init": str(init)})
 
-    envs = [MahjongEnv(rotate_seat=True, seed=cfg.seed * 1000 + i) for i in range(cfg.n_envs)]
+    reward_config = REWARD_PRESETS[cfg.reward]
+    envs = [MahjongEnv(rotate_seat=True, seed=cfg.seed * 1000 + i, reward_config=reward_config)
+            for i in range(cfg.n_envs)]
     obs, masks = [], []
     for e in envs:
         e.opponent_agents = league.opponents()
@@ -243,11 +247,14 @@ def main() -> None:
     ap.add_argument("--kl", type=float, default=0.5, help="KL anchor to the --init policy")
     ap.add_argument("--warmup", type=int, default=10, help="value-only updates first")
     ap.add_argument("--rule-share", type=float, default=0.5)
+    ap.add_argument("--reward", choices=["potential", "spec"], default="potential",
+                    help="potential-based shaping + points (default) or the SPEC 05.4 shaping")
     ap.add_argument("--run", default=f"ppo-{int(time.time())}")
     args = ap.parse_args()
     cfg = PPOConfig(n_envs=args.envs, rollout_steps=args.rollout, updates=args.updates,
                     eval_every=args.eval_every, eval_hands=args.eval_hands, lr=args.lr,
-                    kl_coeff=args.kl, value_warmup=args.warmup, rule_share=args.rule_share)
+                    kl_coeff=args.kl, value_warmup=args.warmup, rule_share=args.rule_share,
+                    reward=args.reward)
     print(train_ppo(cfg, args.out, args.init, args.run))
 
 

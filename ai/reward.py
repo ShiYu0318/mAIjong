@@ -15,6 +15,20 @@ DEFAULT_REWARD_CONFIG: dict[str, float] = {
     "exhausted_wall": -0.05,  # hand ends without a winner
     "discount_gamma": 0.99,
     "illegal_penalty": -0.1,  # unmasked illegal action (replaced by a legal one)
+    # extensions (off in the SPEC 05.4 defaults):
+    "potential_shaping": 0.0,  # 1 = symmetric, potential-based shaping (see below)
+    "score_coeff": 0.0,  # × points won or paid at the end of the hand
+}
+
+# SPEC 05.4 shaping only rewards improvements, so breaking a hand apart costs nothing and
+# rebuilding it pays again: a policy can farm shaping reward instead of winning. The
+# "potential" preset makes shaping a potential difference Φ(s') − Φ(s) (penalising
+# regressions, Φ = 0 at the end, which leaves the optimal policy unchanged) and replaces
+# the tai terms with the actual points, which also counts paying for others' self-draws.
+REWARD_PRESETS: dict[str, dict[str, float]] = {
+    "spec": DEFAULT_REWARD_CONFIG,
+    "potential": {**DEFAULT_REWARD_CONFIG, "potential_shaping": 1.0, "score_coeff": 0.005,
+                  "win_tai_coeff": 0.0, "deal_in_penalty": 0.0},
 }
 
 
@@ -36,17 +50,19 @@ class GameResult:
     deal_in: int | None  # seat that dealt in
     deal_in_tai: int
     is_draw: bool
+    payment: int = 0  # points this seat won (+) or paid (−) for the hand
 
     @staticmethod
     def from_result(result: dict[str, Any], seat: int) -> GameResult:
+        payment = int((result.get("payments") or [0, 0, 0, 0])[seat])
         if result["kind"] == "DRAW":
-            return GameResult(None, 0, None, 0, True)
+            return GameResult(None, 0, None, 0, True, payment)
         winner = result["winner"]
         by_payer = {int(k): v for k, v in result.get("tai_by_payer", {}).items()}
         tai = max(by_payer.values(), default=0)
         loser = result.get("loser") if not result.get("self_draw") else None
         deal_in_tai = by_payer.get(seat, 0) if loser == seat else 0
-        return GameResult(winner, tai, loser, deal_in_tai, False)
+        return GameResult(winner, tai, loser, deal_in_tai, False, payment)
 
 
 def compute_shaped_reward(
@@ -56,6 +72,8 @@ def compute_shaped_reward(
     config: dict[str, float] | None = None,
 ) -> float:
     config = config or DEFAULT_REWARD_CONFIG
+    if config.get("potential_shaping"):
+        return _potential_reward(step, final_result, config)
     r = 0.0
     delta_sh = step.shanten_before - step.shanten_after
     if delta_sh > 0:
@@ -76,4 +94,26 @@ def compute_shaped_reward(
         r += config["deal_in_penalty"] * final_result.deal_in_tai
     if final_result.is_draw:
         r += config["exhausted_wall"]
+    return r
+
+
+def _potential(shanten: int, uke_ire: int, config: dict[str, float]) -> float:
+    return (-config["shanten_improve"] * shanten + config["uke_ire_improve"] * uke_ire
+            + config["tenpai_bonus"] * (shanten == 0))
+
+
+def _potential_reward(step: StepData, final_result: GameResult | None,
+                      config: dict[str, float]) -> float:
+    before = _potential(step.shanten_before, step.uke_ire_before, config)
+    after = 0.0 if step.is_final else _potential(step.shanten_after, step.uke_ire_after,
+                                                 config)
+    r = after - before + config["flower_supplement"] * step.own_flowers_gained
+    if step.is_final and final_result is not None:
+        r += config.get("score_coeff", 0.0) * final_result.payment
+        if final_result.winner == step.seat:
+            r += config["win_tai_coeff"] * final_result.tai
+        if final_result.deal_in == step.seat:
+            r += config["deal_in_penalty"] * final_result.deal_in_tai
+        if final_result.is_draw:
+            r += config["exhausted_wall"]
     return r

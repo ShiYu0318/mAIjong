@@ -33,6 +33,7 @@ from ai.agents import Agent
 from ai.agents.sb3_agent import Sb3Agent, load_sb3
 from ai.env import MahjongEnv
 from ai.models.sb3_extractor import MahjongExtractor
+from ai.reward import REWARD_PRESETS
 from ai.simulate import make_agent
 from ai.training.evaluate import evaluate
 from ai.training.metrics import MetricsLogger
@@ -42,8 +43,8 @@ class SelfPlayEnv(MahjongEnv):
     """MahjongEnv whose three opponents are redrawn from a league on every reset."""
 
     def __init__(self, seed: int, rule_share: float = 0.7, cache: int = 4,
-                 snapshot_temperature: float = 0.3) -> None:
-        super().__init__(rotate_seat=True, seed=seed)
+                 snapshot_temperature: float = 0.3, reward: str = "potential") -> None:
+        super().__init__(rotate_seat=True, seed=seed, reward_config=REWARD_PRESETS[reward])
         self.rule_share = rule_share
         self.snapshots: list[str] = []
         self._loaded: OrderedDict[str, Any] = OrderedDict()
@@ -77,8 +78,8 @@ class SelfPlayEnv(MahjongEnv):
         return super().reset(seed=seed, options=options)
 
 
-def _make_env(seed: int, rule_share: float) -> SelfPlayEnv:
-    return SelfPlayEnv(seed, rule_share)
+def _make_env(seed: int, rule_share: float, reward: str = "potential") -> SelfPlayEnv:
+    return SelfPlayEnv(seed, rule_share, reward=reward)
 
 
 class MetricsWriter(KVWriter):
@@ -243,15 +244,16 @@ def build_model(env: VecEnv, lr: float, n_steps: int, batch: int, seed: int,
 def train(steps: int, envs: int, out_dir: Path, run: str, *, bc_data: Path | None = None,
           bc_epochs: int = 8, bc_limit: int | None = None, lr: float = 3e-5,
           n_steps: int = 512, batch: int = 1024, rule_share: float = 0.7,
-          value_warmup: int = 100_000, bc_chunk_hands: int = 0,
+          value_warmup: int = 100_000, bc_chunk_hands: int = 0, reward: str = "potential",
           snapshot_every: int = 100_000, eval_every: int = 100_000, eval_hands: int = 200,
           seed: int = 0, subprocess: bool = True, init: Path | None = None) -> dict[str, float]:
-    factories = [functools.partial(_make_env, seed * 1000 + i, rule_share) for i in range(envs)]
+    factories = [functools.partial(_make_env, seed * 1000 + i, rule_share, reward)
+                 for i in range(envs)]
     vec: VecEnv = SubprocVecEnv(factories) if subprocess and envs > 1 else DummyVecEnv(factories)
     config = {"kind": "sb3_maskable_ppo", "steps": steps, "envs": envs, "lr": lr,
               "n_steps": n_steps, "batch": batch, "rule_share": rule_share,
               "bc_data": str(bc_data) if bc_data else None, "init": str(init) if init else None,
-              "value_warmup": value_warmup}
+              "value_warmup": value_warmup, "reward": reward}
     metrics = MetricsLogger(run, config)
     if init is not None:
         model = MaskablePPO.load(str(init), env=vec, device="cpu", learning_rate=lr)
@@ -294,6 +296,7 @@ def main() -> None:
     ap.add_argument("--n-steps", type=int, default=512, help="rollout length per env")
     ap.add_argument("--batch", type=int, default=1024)
     ap.add_argument("--rule-share", type=float, default=0.7)
+    ap.add_argument("--reward", choices=["potential", "spec"], default="potential")
     ap.add_argument("--value-warmup", type=int, default=100_000,
                     help="steps that train only the value network")
     ap.add_argument("--snapshot-every", type=int, default=100_000)
@@ -305,6 +308,7 @@ def main() -> None:
                  bc_epochs=args.bc_epochs, bc_limit=args.bc_limit, lr=args.lr,
                  n_steps=args.n_steps, batch=args.batch, rule_share=args.rule_share,
                  value_warmup=args.value_warmup, bc_chunk_hands=args.bc_chunk_hands,
+                 reward=args.reward,
                  snapshot_every=args.snapshot_every, eval_every=args.eval_every,
                  eval_hands=args.eval_hands, seed=args.seed, init=args.init)
     print(json.dumps(best, indent=2))
