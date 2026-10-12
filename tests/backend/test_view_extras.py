@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ai.agents import RuleAgent
-from backend.ws.view import discard_flags, discard_waits, masked_state
+from backend.ws.view import discard_flags, discard_waits, masked_state, ready_waits
 from engine import tiles
 from engine.game import Phase, acting_players, apply_action, get_legal_actions, new_game
 from engine.shanten import shanten
@@ -54,3 +54,26 @@ def test_discard_waits_are_real_waits():
                 checked += 1
     assert checked > 0
     assert discard_waits(new_game(seed=2), 1) == {}  # not this seat's discard turn
+
+
+def test_ready_waits_only_in_own_view_and_complete_the_hand():
+    ready = 0
+    for seed in range(12):
+        for s in play(seed):
+            for seat in range(4):
+                waits = ready_waits(s, seat)
+                hand = list(s.hands[seat])
+                if len(hand) % 3 == 2 and waits:
+                    hand.remove(s.last_draw)
+                counts = tiles.to_counts(hand)
+                for w, left in waits:
+                    complete = list(counts)
+                    complete[w] += 1
+                    assert shanten(complete, len(s.melds[seat])) == -1
+                    assert 0 <= left <= 4 - counts[w]
+                ready += bool(waits)
+            view = masked_state(s, 0)
+            assert "waits" in view["players"][0]
+            assert all("waits" not in pl for pl in view["players"][1:])
+    assert ready > 0
+    assert all("waits" not in pl for pl in masked_state(new_game(seed=3), None)["players"])

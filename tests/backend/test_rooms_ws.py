@@ -152,3 +152,24 @@ def test_hint_request_returns_ranked_candidates(client):
         while (msg := ws.receive_json())["type"] != "ERROR":
             pass
         assert msg["payload"]["code"] == "HINT_COOLDOWN"
+
+
+def test_every_request_carries_the_deadline_when_timed(client):
+    token, _ = register(client)
+    room = create(client, [None, 1, 1, 1], token, time_limit=30)
+    j = client.post(f"/api/v1/rooms/{room['room_id']}/join", json={}, headers=auth(token)).json()
+    seen = 0
+    with client.websocket_connect(f"/ws/game/{room['room_id']}?token={j['ws_token']}") as ws:
+        ws.receive_json()
+        client.post(f"/api/v1/rooms/{room['room_id']}/start", headers=auth(token))
+        while seen < 12:
+            msg = ws.receive_json()
+            if msg["type"] in ("WIN_DECLARED", "ROUND_DRAW", "GAME_END"):
+                break
+            if msg["type"] == "ACTION_REQUEST" and msg["payload"]["player"] == j["seat"]:
+                assert msg["payload"]["deadline"] is not None
+                seen += 1
+                legal = msg["payload"]["legal_actions"]
+                pick = next((a for a in legal if a["action_type"] == "PASS"), None) or legal[-1]
+                ws.send_json({"type": "ACTION", "payload": pick})
+    assert seen > 0

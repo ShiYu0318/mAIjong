@@ -129,6 +129,25 @@ function tweenIn(app: Application, mem: Memory, s: Sprite, from: { dx: number; d
   app.ticker.add(step);
 }
 
+const reducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Breathe a frame's opacity until the scene is redrawn (the latest discard). */
+function pulse(app: Application, mem: Memory, gfx: Graphics) {
+  if (reducedMotion()) return;
+  const gen = mem.generation;
+  let t = 0;
+  const step = (ticker: { deltaMS: number }) => {
+    if (mem.generation !== gen || gfx.destroyed) {
+      app.ticker.remove(step);
+      return;
+    }
+    t += ticker.deltaMS / 1000;
+    gfx.alpha = 0.55 + 0.45 * Math.cos(t * Math.PI * 1.25);
+  };
+  app.ticker.add(step);
+}
+
 function outline(c: Container, s: Sprite, color: number, width = 2.5) {
   c.addChild(new Graphics().roundRect(s.x - 1.5, s.y - 1.5, s.width + 3, s.height + 3, 6)
     .stroke({ width, color, alpha: 0.95 }));
@@ -206,8 +225,10 @@ function drawRiver(app: Application, mem: Memory, area: Container, tex: Textures
     area.addChild(s);
     const newest = i === p.discards.length - 1;
     if (newest && lastIsMine) {
-      area.addChild(new Graphics().roundRect(s.x - 2, s.y - 2, w + 4, h + 4, 6)
-        .stroke({ width: 3, color: COLORS.gold, alpha: 0.95 }));
+      const frame = new Graphics().roundRect(s.x - 2, s.y - 2, w + 4, h + 4, 6)
+        .stroke({ width: 3, color: COLORS.gold, alpha: 0.95 });
+      area.addChild(frame);
+      pulse(app, mem, frame);
     } else if (t === highlight) {
       outline(area, s, COLORS.cyan);
     }

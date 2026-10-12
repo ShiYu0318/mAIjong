@@ -81,10 +81,57 @@ function Abs({ x, y, children, className = "" }: { x: number; y: number; childre
   );
 }
 
+type Clock = { left: number; frac: number; mine: boolean };
+
+/** Seconds left for every acting seat: the server deadline for us, and for everyone else
+ * the room's time limit counted from the moment their turn started. */
+function useTurnClock(view: GameView, timeLimit: number | null): Record<number, Clock> {
+  const deadline = useGame((s) => s.deadline);
+  const me = view.you ?? -1;
+  const [now, setNow] = useState(() => Date.now() / 1000);
+  const starts = useRef(new Map<number, number>());
+  const total = useRef<{ deadline: number; total: number } | null>(null);
+  const actingKey = view.phase === "ENDED" ? "" : view.acting.join(",");
+  useEffect(() => {
+    const t0 = Date.now() / 1000;
+    const acting = new Set(actingKey ? actingKey.split(",").map(Number) : []);
+    for (const seat of [...starts.current.keys()]) if (!acting.has(seat)) starts.current.delete(seat);
+    for (const seat of acting) if (!starts.current.has(seat)) starts.current.set(seat, t0);
+    setNow(t0);
+  }, [actingKey]);
+  const ticking = actingKey !== "" && (deadline !== null || timeLimit !== null);
+  useEffect(() => {
+    if (!ticking) return;
+    const id = setInterval(() => setNow(Date.now() / 1000), 250);
+    return () => clearInterval(id);
+  }, [ticking]);
+  const out: Record<number, Clock> = {};
+  if (deadline !== null && view.acting.includes(me)) {
+    if (total.current?.deadline !== deadline) {
+      total.current = { deadline, total: Math.max(1, deadline - Date.now() / 1000) };
+    }
+    const left = Math.max(0, deadline - now);
+    out[me] = { left: Math.ceil(left), frac: Math.min(1, left / total.current.total), mine: true };
+  }
+  if (timeLimit) {
+    for (const [seat, t0] of starts.current) {
+      if (seat === me) continue;
+      const left = Math.max(0, timeLimit - (now - t0));
+      out[seat] = { left: Math.ceil(left), frac: left / timeLimit, mine: false };
+    }
+  }
+  return out;
+}
+
+const ringColor = (c: Clock | undefined) => (c && c.left <= 5 ? "#ff4d6a" : "#38d0ff");
+
 /** Seat panels, the centre compass and call stamps, drawn over the canvas. */
-export function TableHud({ g, view, names }: { g: TableLayout; view: GameView; names: string[] }) {
+export function TableHud({ g, view, names, timeLimit = null, handNo }: {
+  g: TableLayout; view: GameView; names: string[]; timeLimit?: number | null; handNo?: number;
+}) {
   const t = useT();
   const effects = useGame((s) => s.effects);
+  const clocks = useTurnClock(view, timeLimit);
   const me = view.you ?? 0;
   return (
     <div className="pointer-events-none absolute inset-0">
@@ -92,6 +139,7 @@ export function TableHud({ g, view, names }: { g: TableLayout; view: GameView; n
         const rel = relSeat(p.seat, me);
         const pos = seatCorner(rel, g);
         const acting = view.acting.includes(p.seat) && view.phase !== "ENDED";
+        const clock = acting ? clocks[p.seat] : undefined;
         const name = names[p.seat] ?? `#${p.seat + 1}`;
         if (g.compact) {
           return (
@@ -99,7 +147,7 @@ export function TableHud({ g, view, names }: { g: TableLayout; view: GameView; n
               <div className={`flex flex-col items-center rounded-xl px-1 py-0.5 ${acting ? "bg-black/60 ring-2 ring-gold" : "bg-black/40"}`}
                 aria-label={name}>
                 <span className="relative">
-                  <Avatar name={name} size={22} active={acting} />
+                  <Avatar name={name} size={22} active={acting && !clock} progress={clock?.frac} ringColor={ringColor(clock)} />
                   <span className="absolute -top-1 -right-2 rounded bg-ivory px-0.5 text-[10px] leading-tight font-black text-ink">
                     {windName(p.seat_wind)}
                   </span>
@@ -121,12 +169,15 @@ export function TableHud({ g, view, names }: { g: TableLayout; view: GameView; n
           <Abs key={p.seat} x={pos.x} y={pos.y}>
             <div className={`flex w-[168px] items-center gap-2 rounded-2xl px-2 py-1.5 transition-all duration-300 ${
               acting ? "scale-105 bg-black/55 ring-2 ring-gold shadow-[0_0_24px_rgb(255_204_61/0.45)]" : "bg-black/35"}`}>
-              <Avatar name={name} size={34} active={acting} />
+              <Avatar name={name} size={34} active={acting && !clock} progress={clock?.frac} ringColor={ringColor(clock)} />
               <div className="min-w-0 flex-1 leading-tight">
                 <div className="flex items-center gap-1">
                   <span className="rounded-md bg-ivory/90 px-1 text-xs font-black text-ink">{windName(p.seat_wind)}</span>
                   {view.dealer === p.seat && <span className="rounded-md bg-zhong px-1 text-xs font-black">{t("莊")}</span>}
                   {p.declared_ting && <span className="rounded-md bg-pink px-1 text-xs font-black">{t("聽")}</span>}
+                  {clock && !clock.mine && (
+                    <span className={`tabular ml-auto text-xs font-black ${clock.left <= 5 ? "text-zhong" : "text-cyan"}`}>{clock.left}</span>
+                  )}
                 </div>
                 <div className="truncate text-sm font-bold">{name}</div>
                 <div className={`tabular text-xs font-black ${p.score > 0 ? "text-jade" : p.score < 0 ? "text-zhong" : "text-mist"}`}>
@@ -137,7 +188,7 @@ export function TableHud({ g, view, names }: { g: TableLayout; view: GameView; n
           </Abs>
         );
       })}
-      <Compass g={g} view={view} />
+      <Compass g={g} view={view} clocks={clocks} handNo={handNo} />
       {effects.map((e) => {
         const rel = relSeat(e.seat, me);
         const pos = seatStamp(rel, g);
@@ -152,23 +203,20 @@ export function TableHud({ g, view, names }: { g: TableLayout; view: GameView; n
   );
 }
 
-function Compass({ g, view }: { g: TableLayout; view: GameView }) {
+function Compass({ g, view, clocks, handNo }: {
+  g: TableLayout; view: GameView; clocks: Record<number, Clock>; handNo?: number;
+}) {
   const t = useT();
-  const deadline = useGame((s) => s.deadline);
   const me = view.you ?? 0;
   const size = Math.max(96, g.L * 0.2);
-  const [now, setNow] = useState(() => Date.now() / 1000);
-  useEffect(() => {
-    if (deadline === null) return;
-    const id = setInterval(() => setNow(Date.now() / 1000), 250);
-    return () => clearInterval(id);
-  }, [deadline]);
-  const left = deadline === null ? null : Math.max(0, Math.ceil(deadline - now));
+  // our own countdown wins; otherwise show whoever is on the clock
+  const clock = clocks[me] ?? view.acting.map((s) => clocks[s]).find(Boolean);
+  const left = clock?.left ?? null;
   const lastTick = useRef<number | null>(null);
   useEffect(() => {
-    if (left !== null && left <= 5 && left > 0 && lastTick.current !== left) sfx.tick();
+    if (clock?.mine && left !== null && left <= 5 && left > 0 && lastTick.current !== left) sfx.tick();
     lastTick.current = left;
-  }, [left]);
+  }, [left, clock?.mine]);
   const sides = [
     { rel: 0, style: { bottom: 6, left: "50%", transform: "translateX(-50%)" } },
     { rel: 1, style: { right: 6, top: "50%", transform: "translateY(-50%) rotate(-90deg)" } },
@@ -176,6 +224,7 @@ function Compass({ g, view }: { g: TableLayout; view: GameView }) {
     { rel: 3, style: { left: 6, top: "50%", transform: "translateY(-50%) rotate(90deg)" } },
   ];
   const ring = 2 * Math.PI * (size * 0.3);
+  const small = Math.max(10, size * 0.085);
   return (
     <Abs x={g.cx} y={g.cy}>
       <div className="relative rounded-[22%] border border-white/15 shadow-[0_10px_30px_rgb(0_0_0/0.45)]"
@@ -185,31 +234,42 @@ function Compass({ g, view }: { g: TableLayout; view: GameView }) {
           const p = view.players[seat];
           const on = view.acting.includes(seat) && view.phase !== "ENDED";
           return (
-            <span key={rel} className={`absolute font-display font-black transition ${on ? "text-gold drop-shadow-[0_0_8px_rgb(255_204_61/0.9)]" : "text-ivory/45"}`}
-              style={{ ...style, fontSize: size * 0.17 }}>
+            <span key={rel} className={`absolute font-display leading-none font-black transition ${on ? "text-gold drop-shadow-[0_0_8px_rgb(255_204_61/0.9)]" : "text-ivory/45"} ${
+              view.dealer === seat ? "rounded-md px-0.5 ring-2 ring-zhong/80" : ""}`}
+              style={{ ...style, fontSize: size * 0.17 }} title={view.dealer === seat ? t("莊") : undefined}>
               {windName(p.seat_wind)}
             </span>
           );
         })}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {left !== null ? (
+          {left !== null && clock ? (
             <>
               <svg className="absolute -rotate-90" width={size * 0.66} height={size * 0.66} viewBox={`0 0 ${size * 0.66} ${size * 0.66}`} aria-hidden="true">
                 <circle cx={size * 0.33} cy={size * 0.33} r={size * 0.3} fill="none" stroke="rgb(255 255 255 / 0.12)" strokeWidth={4} />
-                <circle cx={size * 0.33} cy={size * 0.33} r={size * 0.3} fill="none" stroke={left <= 5 ? "#ff4d6a" : "#38d0ff"}
-                  strokeWidth={4} strokeLinecap="round"
-                  strokeDasharray={`${ring * Math.min(1, left / 30)} ${ring}`} />
+                <circle cx={size * 0.33} cy={size * 0.33} r={size * 0.3} fill="none" stroke={ringColor(clock)}
+                  strokeWidth={4} strokeLinecap="round" strokeDasharray={`${ring * clock.frac} ${ring}`}
+                  className="transition-[stroke-dasharray] duration-300 ease-linear" />
               </svg>
-              <span className={`tabular font-display font-black ${left <= 5 ? "text-zhong" : "text-ivory"}`}
-                style={{ fontSize: size * 0.26 }} aria-label={t("剩餘 {n} 秒", { n: left })}>{left}</span>
+              <span className={`tabular font-display leading-none font-black ${left <= 5 ? "text-zhong" : "text-ivory"}`}
+                style={{ fontSize: size * 0.24 }} aria-label={t("剩餘 {n} 秒", { n: left })}>{left}</span>
+              <span className="tabular mt-0.5 text-mist" style={{ fontSize: small }}>
+                {t("餘 {n} 張", { n: view.drawable })}
+              </span>
             </>
           ) : (
             <>
               <span className="font-display font-black text-ivory" style={{ fontSize: size * 0.2 }}>{view.drawable}</span>
-              <span className="text-mist" style={{ fontSize: Math.max(10, size * 0.09) }}>{t("剩餘張數")}</span>
+              <span className="text-mist" style={{ fontSize: small }}>{t("剩餘張數")}</span>
             </>
           )}
         </div>
+      </div>
+      <div className="absolute top-full left-1/2 mt-2 -translate-x-1/2 text-center font-black whitespace-nowrap text-ivory/80"
+        style={{ fontSize: small }}>
+        {handNo !== undefined
+          ? t("{wind}風圈・第 {n} 手", { wind: windName(view.round_wind), n: handNo })
+          : t("{wind}風圈", { wind: windName(view.round_wind) })}
+        {view.dealer_streak > 0 && <span className="ml-1 text-gold">{t("連 {n}", { n: view.dealer_streak })}</span>}
       </div>
     </Abs>
   );

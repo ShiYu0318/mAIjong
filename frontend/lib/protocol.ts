@@ -27,6 +27,8 @@ export interface PlayerView {
   tsumogiri?: boolean[];
   score: number;
   declared_ting: boolean;
+  /** own seat only: [wait tile, copies not yet seen] while the hand is ready */
+  waits?: [number, number][];
 }
 
 export interface TaiItem {

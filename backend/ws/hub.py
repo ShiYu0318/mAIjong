@@ -407,6 +407,7 @@ class Room:
             await self._send(target, "STATE_UPDATE", masked_state(g, seat))
         await self._publish_view()
         self._persist()
+        self._arm_deadline()  # before the requests go out, so they carry the deadline
         for seat in acting_players(g):
             st = self.seats[seat]
             if st is not None and not st.bot_controlled:
@@ -423,6 +424,23 @@ class Room:
         }
 
     # ------------------------------------------------------------ bots & timers
+    def _human_waiting(self) -> bool:
+        """Whether a person (not a bot, not a forced ready-hand discard) must act now."""
+        g = self.game
+        if g is None or g.phase is Phase.ENDED:
+            return False
+        for seat in acting_players(g):
+            st = self.seats[seat]
+            if st is None or st.bot_controlled:
+                continue
+            if not (g.declared_ting[seat] and len(get_legal_actions(g, seat)) == 1):
+                return True
+        return False
+
+    def _arm_deadline(self) -> None:
+        if self.config.time_limit and self.deadline is None and self._human_waiting():
+            self.deadline = time.time() + self.config.time_limit
+
     def _schedule_actors(self) -> None:
         g = self.game
         if g is None or g.phase is Phase.ENDED:

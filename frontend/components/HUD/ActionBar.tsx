@@ -34,6 +34,45 @@ function WaitsPreview({ tile }: { tile: number }) {
   );
 }
 
+/** Copies of a tile already visible on the table: every river and exposed meld. */
+function SeenCount({ tile }: { tile: number }) {
+  const t = useT();
+  const view = useGame((s) => s.view);
+  if (!view || tile >= 34) return null;
+  let n = 0;
+  for (const p of view.players) {
+    n += p.discards.filter((x) => x === tile).length;
+    for (const m of p.melds) n += m.tiles.filter((x) => x === tile).length;
+  }
+  return (
+    <span className="panel flex animate-pop-in items-center gap-1.5 px-3 py-2 text-sm font-black">
+      <TileImage id={tile} width={20} />
+      {t("場上已見 {n} 張", { n })}
+    </span>
+  );
+}
+
+/** After declaring ready, the waits and copies left stay on screen (DESIGN.md §10). */
+export function ReadyWaits() {
+  const t = useT();
+  const me = useGame((s) => (s.view && s.view.you !== null ? s.view.players[s.view.you] : null));
+  const ended = useGame((s) => s.view?.phase === "ENDED");
+  if (!me?.declared_ting || !me.waits?.length || ended) return null;
+  const total = me.waits.reduce((n, [, left]) => n + left, 0);
+  return (
+    <div className="panel flex animate-pop-in items-center gap-2 px-3 py-2" role="status" aria-label={t("聽牌中")}>
+      <span className="rounded-md bg-pink px-1.5 text-sm font-black">{t("聽牌中")}</span>
+      {me.waits.map(([w, left]) => (
+        <span key={w} className="flex flex-col items-center">
+          <TileImage id={w} width={24} />
+          <span className={`tabular text-xs font-black ${left === 0 ? "text-zhong" : "text-ivory"}`}>×{left}</span>
+        </span>
+      ))}
+      <span className="text-xs text-mist">{t("共 {n} 張", { n: total })}</span>
+    </div>
+  );
+}
+
 export function ActionBar() {
   const legal = useGame((s) => s.legal);
   const selected = useGame((s) => s.selected);
@@ -58,6 +97,7 @@ export function ActionBar() {
 
   return (
     <div className="flex flex-wrap items-end justify-end gap-3" role="group" aria-label={t("可執行的動作")}>
+      {selected !== null && <SeenCount tile={selected} />}
       {selected !== null && discardPhase && <WaitsPreview tile={selected} />}
       {discardPhase && selected === null && !hu && kongs.length === 0 && (
         <p className="hidden rounded-full bg-black/40 px-4 py-2 text-sm text-ivory-dim sm:block">

@@ -41,6 +41,7 @@ def masked_state(s: GameState, seat: int | None, reveal_all: bool = False) -> di
             "tsumogiri": flags[p],
             "score": s.scores[p],
             "declared_ting": s.declared_ting[p],
+            **({"waits": ready_waits(s, p)} if own and s.phase is not Phase.ENDED else {}),
         })
     return {
         "game_id": s.game_id,
@@ -112,6 +113,20 @@ def discard_waits(s: GameState, seat: int) -> dict[str, list[list[int]]]:
     counts = tiles.to_counts(s.hands[seat])
     n_melds = len(s.melds[seat])
     after = shanten_after_discards(counts, n_melds)
+    seen = _seen_on_table(s, seat)
+    out: dict[str, list[list[int]]] = {}
+    for t in sorted(legal):
+        if t >= 34 or after.get(t) != 0:
+            continue
+        rest = list(counts)
+        rest[t] -= 1
+        waits = waiting_tiles(rest, n_melds)
+        out[str(t)] = [[w, max(0, 4 - rest[w] - seen[w] - (1 if w == t else 0))] for w in waits]
+    return out
+
+
+def _seen_on_table(s: GameState, seat: int) -> list[int]:
+    """Copies of each tile this seat can see outside its own hand: rivers and exposed melds."""
     seen = [0] * 34
     for p in range(4):
         for t in s.discards[p]:
@@ -123,12 +138,18 @@ def discard_waits(s: GameState, seat: int) -> dict[str, list[list[int]]]:
                 for t in m.tiles:
                     if t is not None and t < 34:
                         seen[t] += 1
-    out: dict[str, list[list[int]]] = {}
-    for t in sorted(legal):
-        if t >= 34 or after.get(t) != 0:
-            continue
-        rest = list(counts)
-        rest[t] -= 1
-        waits = waiting_tiles(rest, n_melds)
-        out[str(t)] = [[w, max(0, 4 - rest[w] - seen[w] - (1 if w == t else 0))] for w in waits]
-    return out
+    return seen
+
+
+def ready_waits(s: GameState, seat: int) -> list[list[int]]:
+    """[wait tile, copies not yet seen] while the seat's hand is ready. Holding a fresh
+    draw, the draw is set aside so the list stays put through the seat's own turn."""
+    hand = list(s.hands[seat])
+    if len(hand) % 3 == 2:
+        if s.turn != seat or s.last_draw is None or s.last_draw not in hand:
+            return []
+        hand.remove(s.last_draw)
+    counts = tiles.to_counts(hand)
+    seen = _seen_on_table(s, seat)
+    waits = waiting_tiles(counts, len(s.melds[seat]))
+    return [[w, max(0, 4 - counts[w] - seen[w])] for w in waits]

@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ActionBar } from "@/components/HUD/ActionBar";
+import { ActionBar, ReadyWaits } from "@/components/HUD/ActionBar";
 import { CoachNote } from "@/components/HUD/CoachNote";
 import { HintPanel } from "@/components/HUD/HintPanel";
 import { ResultOverlay } from "@/components/HUD/ResultOverlay";
@@ -106,11 +106,16 @@ export default function RoomPage() {
         <section ref={tableRef} className="relative min-w-0 flex-1 overflow-hidden">
           {layout && <TableFelt g={layout} />}
           <TableCanvas />
-          {layout && view && <TableHud g={layout} view={view} names={names} />}
+          {layout && view && (
+            <TableHud g={layout} view={view} names={names} timeLimit={room.config.time_limit}
+              handNo={(room.match?.hands_played ?? 0) + 1} />
+          )}
           <HandList />
           <TableAnnouncer />
-          <div className="absolute right-4 left-4 z-10" style={{ bottom: (layout?.handH ?? 80) + 40 }}>
-            <ActionBar />
+          <div className="absolute right-4 left-4 z-10 flex items-end justify-between gap-3"
+            style={{ bottom: (layout?.handH ?? 80) + 40 }}>
+            <ReadyWaits />
+            <div className="ml-auto"><ActionBar /></div>
           </div>
           {error && (
             <p role="alert" className="absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-md bg-zhong/90 px-3 py-1.5 text-sm">

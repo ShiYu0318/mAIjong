@@ -322,6 +322,10 @@ const EN: Record<string, string> = {
   "{wind}風圈・第 {n} 手": "{wind} round · hand {n}",
   "牌桌": "Table",
   "{wind}風圈": "{wind} round",
+  "餘 {n} 張": "{n} left",
+  "連 {n}": "streak {n}",
+  "場上已見 {n} 張": "{n} on the table",
+  "聽牌中": "Ready",
   // actions
   "可執行的動作": "Available actions",
   "點一張牌選取，再點一次打出（鍵盤：← → 選牌、Enter 打出）。":
