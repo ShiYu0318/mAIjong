@@ -66,3 +66,20 @@ def test_maskable_ppo_self_play_smoke(tmp_path, monkeypatch):
         p = acting_players(s)[0]
         legal = get_legal_actions(s, p)
         assert agent.act(s, p, legal) in legal
+
+
+def test_value_warmup_keeps_the_policy_fixed(tmp_path):
+    import torch
+    from stable_baselines3.common.vec_env import DummyVecEnv
+
+    from ai.training.sb3_trainer import LeagueCallback, _make_env, build_model
+
+    vec = DummyVecEnv([lambda: _make_env(1, 1.0)])
+    model = build_model(vec, 1e-3, n_steps=32, batch=32, seed=0)
+    pol = model.policy
+    before_pi = [p.detach().clone() for p in pol.action_net.parameters()]
+    before_v = [p.detach().clone() for p in pol.value_net.parameters()]
+    cb = LeagueCallback(tmp_path, 10**9, 10**9, 4, value_warmup=10**9)
+    model.learn(total_timesteps=64, callback=cb)
+    assert all(torch.equal(a, b) for a, b in zip(before_pi, pol.action_net.parameters()))
+    assert not all(torch.equal(a, b) for a, b in zip(before_v, pol.value_net.parameters()))

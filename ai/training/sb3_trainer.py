@@ -40,13 +40,15 @@ from ai.training.metrics import MetricsLogger
 class SelfPlayEnv(MahjongEnv):
     """MahjongEnv whose three opponents are redrawn from a league on every reset."""
 
-    def __init__(self, seed: int, rule_share: float = 0.5, cache: int = 4) -> None:
+    def __init__(self, seed: int, rule_share: float = 0.7, cache: int = 4,
+                 snapshot_temperature: float = 0.3) -> None:
         super().__init__(rotate_seat=True, seed=seed)
         self.rule_share = rule_share
         self.snapshots: list[str] = []
         self._loaded: OrderedDict[str, Any] = OrderedDict()
         self._cache = cache
         self._pick = random.Random(seed)
+        self.snapshot_temperature = snapshot_temperature
 
     def add_snapshot(self, path: str) -> None:
         self.snapshots.append(path)
@@ -57,7 +59,7 @@ class SelfPlayEnv(MahjongEnv):
             while len(self._loaded) > self._cache:
                 self._loaded.popitem(last=False)
         self._loaded.move_to_end(path)
-        return Sb3Agent(model=self._loaded[path], temperature=1.0,
+        return Sb3Agent(model=self._loaded[path], temperature=self.snapshot_temperature,
                         seed=self._pick.randrange(2**31))
 
     def _draw_opponent(self) -> Agent:
@@ -113,8 +115,9 @@ class LeagueCallback(BaseCallback):
     """Snapshots for self-play, periodic evaluation against rule agents, best-model saving."""
 
     def __init__(self, out_dir: Path, snapshot_every: int, eval_every: int, eval_hands: int,
-                 best_name: str = "sb3_best") -> None:
+                 best_name: str = "sb3_best", value_warmup: int = 0) -> None:
         super().__init__()
+        self.value_warmup = value_warmup
         self.out_dir = out_dir
         self.snap_dir = out_dir / "sb3_snapshots"
         self.snapshot_every = snapshot_every
@@ -124,6 +127,17 @@ class LeagueCallback(BaseCallback):
         self.best: dict[str, float] = {}
         self._next_snap = snapshot_every
         self._next_eval = eval_every
+
+    def _policy_params(self) -> list[torch.nn.Parameter]:
+        pol = self.model.policy
+        mods = [pol.pi_features_extractor, pol.mlp_extractor.policy_net, pol.action_net]
+        return [prm for m in mods for prm in m.parameters()]
+
+    def _on_rollout_end(self) -> None:
+        """Before each update: keep the cloned policy fixed while the value head warms up."""
+        frozen = self.num_timesteps < self.value_warmup
+        for prm in self._policy_params():
+            prm.requires_grad_(not frozen)
 
     def _on_step(self) -> bool:
         if self.num_timesteps >= self._next_snap:
@@ -198,25 +212,29 @@ def build_model(env: VecEnv, lr: float, n_steps: int, batch: int, seed: int,
                 use_transformer: bool = False) -> MaskablePPO:
     return MaskablePPO(
         "MultiInputPolicy", env, learning_rate=lr, n_steps=n_steps, batch_size=batch,
-        n_epochs=4, gamma=0.99, gae_lambda=0.95, clip_range=0.1, ent_coef=0.005,
-        vf_coef=0.5, max_grad_norm=0.5, target_kl=0.03, seed=seed, device="cpu", verbose=0,
+        n_epochs=4, gamma=0.99, gae_lambda=0.95, clip_range=0.1, ent_coef=0.001,
+        vf_coef=0.5, max_grad_norm=0.5, target_kl=0.015, seed=seed, device="cpu", verbose=0,
         policy_kwargs={"features_extractor_class": MahjongExtractor,
                        "features_extractor_kwargs": {"use_transformer": use_transformer},
                        "net_arch": {"pi": [], "vf": [128]},
-                       "share_features_extractor": True, "ortho_init": False},
+                       # a separate value encoder keeps value learning from moving the
+                       # cloned policy's features
+                       "share_features_extractor": False, "ortho_init": False},
     )
 
 
 def train(steps: int, envs: int, out_dir: Path, run: str, *, bc_data: Path | None = None,
-          bc_epochs: int = 8, bc_limit: int | None = None, lr: float = 1e-4,
-          n_steps: int = 512, batch: int = 1024, rule_share: float = 0.5,
+          bc_epochs: int = 8, bc_limit: int | None = None, lr: float = 3e-5,
+          n_steps: int = 512, batch: int = 1024, rule_share: float = 0.7,
+          value_warmup: int = 100_000,
           snapshot_every: int = 100_000, eval_every: int = 100_000, eval_hands: int = 200,
           seed: int = 0, subprocess: bool = True, init: Path | None = None) -> dict[str, float]:
     factories = [functools.partial(_make_env, seed * 1000 + i, rule_share) for i in range(envs)]
     vec: VecEnv = SubprocVecEnv(factories) if subprocess and envs > 1 else DummyVecEnv(factories)
     config = {"kind": "sb3_maskable_ppo", "steps": steps, "envs": envs, "lr": lr,
               "n_steps": n_steps, "batch": batch, "rule_share": rule_share,
-              "bc_data": str(bc_data) if bc_data else None, "init": str(init) if init else None}
+              "bc_data": str(bc_data) if bc_data else None, "init": str(init) if init else None,
+              "value_warmup": value_warmup}
     metrics = MetricsLogger(run, config)
     if init is not None:
         model = MaskablePPO.load(str(init), env=vec, device="cpu", learning_rate=lr)
@@ -224,11 +242,13 @@ def train(steps: int, envs: int, out_dir: Path, run: str, *, bc_data: Path | Non
         model = build_model(vec, lr, n_steps, batch, seed)
     model.set_logger(Logger(None, [MetricsWriter(metrics)]))
     out_dir.mkdir(parents=True, exist_ok=True)
-    cb = LeagueCallback(out_dir, snapshot_every, eval_every, eval_hands)
+    cb = LeagueCallback(out_dir, snapshot_every, eval_every, eval_hands,
+                        value_warmup=value_warmup)
     cb.init_callback(model)
     if bc_data is not None:
         acc = behaviour_clone(model, bc_data, bc_epochs, bc_limit)
         metrics.log(0, bc_val_acc=acc)
+        model.save(out_dir / "sb3_bc.zip")  # reuse with --init to skip cloning next time
         cb.run_eval()  # the cloned policy is the first "best"
     t0 = time.time()
     model.learn(total_timesteps=steps, callback=cb, reset_num_timesteps=init is None)
@@ -251,10 +271,12 @@ def main() -> None:
     ap.add_argument("--bc-epochs", type=int, default=8)
     ap.add_argument("--bc-limit", type=int, default=None)
     ap.add_argument("--init", type=Path, default=None, help="continue from a saved zip")
-    ap.add_argument("--lr", type=float, default=1e-4)
+    ap.add_argument("--lr", type=float, default=3e-5)
     ap.add_argument("--n-steps", type=int, default=512, help="rollout length per env")
     ap.add_argument("--batch", type=int, default=1024)
-    ap.add_argument("--rule-share", type=float, default=0.5)
+    ap.add_argument("--rule-share", type=float, default=0.7)
+    ap.add_argument("--value-warmup", type=int, default=100_000,
+                    help="steps that train only the value network")
     ap.add_argument("--snapshot-every", type=int, default=100_000)
     ap.add_argument("--eval-every", type=int, default=100_000)
     ap.add_argument("--eval-hands", type=int, default=200)
@@ -263,6 +285,7 @@ def main() -> None:
     best = train(args.steps, args.envs, args.out_dir, args.run, bc_data=args.bc_data,
                  bc_epochs=args.bc_epochs, bc_limit=args.bc_limit, lr=args.lr,
                  n_steps=args.n_steps, batch=args.batch, rule_share=args.rule_share,
+                 value_warmup=args.value_warmup,
                  snapshot_every=args.snapshot_every, eval_every=args.eval_every,
                  eval_hands=args.eval_hands, seed=args.seed, init=args.init)
     print(json.dumps(best, indent=2))
