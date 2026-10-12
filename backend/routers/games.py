@@ -9,15 +9,16 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from backend.deps import SessionDep, UserDep
 from backend.models import Game, ReplayAnnotation, User
-from backend.persistence import read_replay, replay_path
+from backend.persistence import read_replay
 from backend.replay import ReplayError, build_frames
 from backend.security_middleware import clean_text
+from backend.storage import get_storage
 
 router = APIRouter(tags=["games"])
 
@@ -44,18 +45,22 @@ def get_game(game_id: str, db: SessionDep) -> dict[str, Any]:
 
 @router.get("/games/{game_id}/replay")
 def replay_url(game_id: str, db: SessionDep, request: Request) -> dict[str, str]:
+    """Download link: a presigned MinIO/S3 URL when configured, else the API endpoint."""
     _game(db, game_id)
-    url = str(request.url_for("download_replay", game_id=game_id))
+    url = get_storage().presigned_url(game_id) \
+        or str(request.url_for("download_replay", game_id=game_id))
     return {"url": url}
 
 
 @router.get("/games/{game_id}/replay/download", name="download_replay")
-def download_replay(game_id: str, db: SessionDep) -> FileResponse:
+def download_replay(game_id: str, db: SessionDep) -> Response:
     _game(db, game_id)
-    path = replay_path(game_id)
-    if not path.exists():
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "replay file missing")
-    return FileResponse(path, media_type="application/gzip", filename=f"{game_id}.jsonl.gz")
+    try:
+        data = get_storage().get(game_id)
+    except FileNotFoundError as e:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "replay file missing") from e
+    return Response(data, media_type="application/gzip", headers={
+        "Content-Disposition": f'attachment; filename="{game_id}.jsonl.gz"'})
 
 
 @router.get("/games/{game_id}/frames")

@@ -13,9 +13,10 @@ def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-that-is-long-enough-123")
     monkeypatch.setenv("RATE_LIMIT_API_PER_MIN", "100000")
     monkeypatch.setenv("RATE_LIMIT_WS_PER_SEC", "100000")
-    from backend import config, db
+    from backend import config, db, storage
 
     config.get_settings.cache_clear()
+    storage.get_storage.cache_clear()
     db.get_engine.cache_clear()
     db.session_factory.cache_clear()
     from backend.main import create_app
@@ -24,6 +25,7 @@ def client(tmp_path, monkeypatch) -> Iterator[TestClient]:
         yield c
     db.get_engine().dispose()
     config.get_settings.cache_clear()
+    storage.get_storage.cache_clear()
     db.get_engine.cache_clear()
     db.session_factory.cache_clear()
 
