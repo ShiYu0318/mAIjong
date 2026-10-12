@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { LevelUpShow } from "@/components/Game/LevelUpShow";
 import { Toasts } from "@/components/Game/Toasts";
 import { LocaleSync } from "@/components/I18n/LocaleToggle";
 import { ServiceWorker } from "@/components/Pwa/ServiceWorker";
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ServiceWorker />
         <LocaleSync />
         <Toasts />
+        <LevelUpShow />
       </body>
     </html>
   );

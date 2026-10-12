@@ -16,6 +16,9 @@ interface AccountState {
   profile: Profile | null;
   loaded: boolean;
   lastXp: number;
+  /** set by a LEVEL_UP event; LevelUpShow plays the full-screen moment and clears it */
+  levelUp: { level: number; coins: number } | null;
+  clearLevelUp: () => void;
   load: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   applyProgress: (events: ProgressEvent[]) => void;
@@ -34,6 +37,8 @@ export const useAccount = create<AccountState>((set, get) => ({
   profile: null,
   loaded: false,
   lastXp: 0,
+  levelUp: null,
+  clearLevelUp: () => set({ levelUp: null }),
   load: () => {
     // every visitor gets a (guest) account so levels, missions and coins always work
     loading ??= (async () => {
@@ -75,8 +80,7 @@ export const useAccount = create<AccountState>((set, get) => ({
           break;
         case "LEVEL_UP":
           sfx.levelUp();
-          push({ icon: "⭐", title: translate("升級！等級 {n}", { n: Number(e.level) }),
-            body: translate("+{n} 金幣", { n: Number(e.coins) }) });
+          set({ levelUp: { level: Number(e.level), coins: Number(e.coins) } });
           break;
         case "MISSION_DONE":
           push({ icon: "✅", title: translate("任務完成：{name}", { name: String(e.name) }),

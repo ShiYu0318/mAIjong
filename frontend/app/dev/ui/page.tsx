@@ -3,6 +3,7 @@
 import { Avatar } from "@/components/Game/Avatar";
 import { CoinCounter } from "@/components/Game/CoinCounter";
 import { GameButton } from "@/components/Game/GameButton";
+import { LevelBadge } from "@/components/Game/LevelBadge";
 import { Panel } from "@/components/Game/Panel";
 import { ProgressBar } from "@/components/Game/ProgressBar";
 import { RankBadge } from "@/components/Game/RankBadge";
@@ -11,6 +12,8 @@ import { useToasts } from "@/components/Game/Toasts";
 import { TileImage } from "@/components/Hand/TileImage";
 import { TILE_BACKS, type TileBack } from "@/lib/tilePainter";
 import { useState } from "react";
+import { RANKS } from "@/lib/progression";
+import { useAccount } from "@/store/accountStore";
 
 const HAND = [0, 1, 2, 12, 13, 14, 22, 22, 27, 27, 27, 31, 32, 33, 34, 40];
 
@@ -40,6 +43,9 @@ export default function UiGallery() {
           <GameButton variant="blue" onClick={() => push({ icon: "🏆", title: "成就解鎖：初胡", body: "+200 金幣" })}>
             通知
           </GameButton>
+          <GameButton variant="pink" onClick={() => useAccount.setState({ levelUp: { level: 12, coins: 240 } })}>
+            升級演出
+          </GameButton>
         </div>
       </Panel>
       <Panel title="頭像、等級、段位">
@@ -48,6 +54,13 @@ export default function UiGallery() {
           <Avatar name="電腦一號" size={44} active />
           <Avatar name="alice" size={44} progress={0.2} ringColor="#38d0ff" />
           {[1300, 1500, 1600, 1700, 1800, 1950].map((r) => <RankBadge key={r} rating={r} />)}
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-6">
+          <LevelBadge level={7} xp={130} xpNext={340} />
+          <LevelBadge level={42} xp={900} xpNext={1740} size={72} />
+          {RANKS.map((r) => <Avatar key={r.id} name={r.name} size={44} frame={r.colors} />)}
+          <RankBadge rating={1610} showProgress />
+          <RankBadge rating={1930} showProgress />
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <ProgressBar value={42} max={140} label="經驗值" />

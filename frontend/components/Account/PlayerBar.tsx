@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Game/Avatar";
 import { CoinCounter } from "@/components/Game/CoinCounter";
 import { RankBadge } from "@/components/Game/RankBadge";
+import { rankFor } from "@/lib/progression";
 import { SoundToggle } from "@/components/Game/SoundToggle";
 import { LocaleToggle } from "@/components/I18n/LocaleToggle";
 import { account, ApiError } from "@/lib/api";
@@ -27,14 +28,14 @@ export function PlayerBar({ compact = false }: { compact?: boolean }) {
       {user && (
         <Link href="/profile" className="group flex items-center gap-2 rounded-full bg-black/20 py-1 pr-4 pl-1 hover:bg-black/30"
           aria-label={t("我的檔案")}>
-          <Avatar name={user.username} size={compact ? 32 : 40} progress={xpPct} />
+          <Avatar name={user.username} size={compact ? 32 : 40} progress={xpPct} frame={rankFor(user.elo_human).tier.colors} />
           <span className="hidden leading-tight sm:block">
             <span className="block max-w-36 truncate font-black">{user.username}</span>
             <span className="block text-xs text-gold">Lv.{level}</span>
           </span>
         </Link>
       )}
-      {user && !compact && <span className="hidden sm:inline"><RankBadge rating={user.elo_human} size={24} /></span>}
+      {user && !compact && <span className="hidden sm:inline"><RankBadge rating={user.elo_human} size={24} showProgress /></span>}
       {profile && <CoinCounter value={profile.coins} />}
       <SoundToggle />
       <LocaleToggle />

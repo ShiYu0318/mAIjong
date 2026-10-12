@@ -1,4 +1,4 @@
-/** Generated avatar: colour from the name, first character, optional level ring. */
+/** Generated avatar: colour from the name, first character, optional level ring and rank frame. */
 
 const PALETTE = [
   ["#ff9a5a", "#ff5c7a"], ["#5ea2ff", "#7a5cff"], ["#43e0a3", "#1fa3c9"],
@@ -11,9 +11,13 @@ function hash(s: string): number {
   return h;
 }
 
-type Props = { name: string; size?: number; progress?: number; ringColor?: string; active?: boolean };
+type Props = {
+  name: string; size?: number; progress?: number; ringColor?: string; active?: boolean;
+  /** rank tier colours, drawn as a metallic frame around the face */
+  frame?: [string, string];
+};
 
-export function Avatar({ name, size = 48, progress, ringColor = "#ffcc3d", active }: Props) {
+export function Avatar({ name, size = 48, progress, ringColor = "#ffcc3d", active, frame }: Props) {
   const [a, b] = PALETTE[hash(name) % PALETTE.length];
   const initial = [...(name.trim() || "?")][0];
   const stroke = 4;
@@ -30,8 +34,11 @@ export function Avatar({ name, size = 48, progress, ringColor = "#ffcc3d", activ
         </svg>
       )}
       <span className={`relative flex items-center justify-center rounded-full font-black text-white shadow-lg ${active ? "animate-pulse-glow" : ""}`}
-        style={{ width: size, height: size, background: `linear-gradient(135deg, ${a}, ${b})`, fontSize: size * 0.46,
-          textShadow: "0 2px 0 rgb(0 0 0 / 0.2)" }}>
+        style={{ width: size, height: size, fontSize: size * 0.46, textShadow: "0 2px 0 rgb(0 0 0 / 0.2)",
+          ...(frame
+            ? { border: `${Math.max(2, Math.round(size * 0.07))}px solid transparent`,
+                background: `linear-gradient(135deg, ${a}, ${b}) padding-box, linear-gradient(160deg, ${frame[0]}, ${frame[1]}) border-box` }
+            : { background: `linear-gradient(135deg, ${a}, ${b})` }) }}>
         {initial}
       </span>
     </span>

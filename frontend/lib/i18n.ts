@@ -180,6 +180,8 @@ const EN: Record<string, string> = {
   "課程進度": "Lesson progress",
   "賽季": "Season",
   "距離 {name}": "to {name}",
+  "距離 {name} 還差 {n} 分": "{n} points to {name}",
+  "點一下繼續": "Tap to continue",
   "這一季還沒有紀錄。": "No games this season yet.",
   "速度挑戰": "Speed challenge",
   "重新開始": "Restart",

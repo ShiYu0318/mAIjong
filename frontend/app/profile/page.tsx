@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { PlayerBar } from "@/components/Account/PlayerBar";
 import { Avatar } from "@/components/Game/Avatar";
+import { LevelBadge } from "@/components/Game/LevelBadge";
+import { rankFor } from "@/lib/progression";
 import { CoinIcon } from "@/components/Game/CoinCounter";
 import { Panel } from "@/components/Game/Panel";
 import { ProgressBar } from "@/components/Game/ProgressBar";
@@ -23,10 +25,13 @@ export default function ProfilePage() {
       {!profile ? <p className="mt-10 text-mist">{t("載入中…")}</p> : (
         <>
           <section className="panel mt-6 flex flex-wrap items-center gap-6 p-6">
-            <Avatar name={profile.user.username} size={96} progress={profile.xp / profile.xp_next} />
+            <Avatar name={profile.user.username} size={96} progress={profile.xp / profile.xp_next}
+              frame={rankFor(profile.user.elo_human).tier.colors} />
             <div className="min-w-60 flex-1">
-              <h1 className="font-display text-4xl font-black">{profile.user.username}</h1>
-              <p className="mt-1 font-black text-gold">Lv.{profile.level}</p>
+              <h1 className="flex items-center gap-3 font-display text-4xl font-black">
+                {profile.user.username}
+                <LevelBadge level={profile.level} xp={profile.xp} xpNext={profile.xp_next} size={52} />
+              </h1>
               <ProgressBar value={profile.xp} max={profile.xp_next} className="mt-2 max-w-md" label={t("經驗值")} />
               <p className="mt-1 text-sm text-mist tabular">{profile.xp} / {profile.xp_next} XP</p>
             </div>
@@ -37,7 +42,10 @@ export default function ProfilePage() {
                 <>
                   <ProgressBar value={profile.rank.progress} max={1} className="mt-2 w-40"
                     color="linear-gradient(90deg,#38d0ff,#7a5cff)" label={t("段位進度")} />
-                  <p className="mt-1 text-xs text-mist">{t("距離 {name}", { name: t(profile.rank.next) })}</p>
+                  <p className="mt-1 text-xs text-mist">
+                    {t("距離 {name} 還差 {n} 分", { name: t(profile.rank.next),
+                      n: Math.max(0, Math.ceil((rankFor(profile.user.elo_human).next?.min ?? 0) - profile.user.elo_human)) })}
+                  </p>
                 </>
               )}
             </div>
