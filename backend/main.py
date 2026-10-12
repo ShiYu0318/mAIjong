@@ -41,17 +41,14 @@ def _save_hand(room: Room, g: GameState, hand_index: int, seats: list[Any],
 
 
 async def _arena_loop(interval: float) -> None:
-    """Play a rated arena match every `interval` seconds (P10-1)."""
-    from backend.arena import run_arena_match
-
-    def one() -> None:
-        with session_factory()() as db:
-            run_arena_match(db)
+    """Play a rated arena match every `interval` seconds (P10-1). With Celery configured,
+    the beat schedule in backend.tasks.training_tasks does this instead."""
+    from backend.tasks.training_tasks import run_one_arena_match
 
     while True:
         await asyncio.sleep(interval)
         try:
-            await asyncio.to_thread(one)
+            await asyncio.to_thread(run_one_arena_match)
         except Exception:
             logging.getLogger("maijong.arena").exception("arena match failed")
 
@@ -68,7 +65,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if restored:
         logging.getLogger("maijong").info("restored %d rooms from Redis", restored)
     interval = float(os.environ.get("ARENA_INTERVAL", "0"))
-    arena = asyncio.create_task(_arena_loop(interval)) if interval > 0 else None
+    in_process = interval > 0 and not os.environ.get("CELERY_BROKER_URL")
+    arena = asyncio.create_task(_arena_loop(interval)) if in_process else None
     yield
     if arena is not None:
         arena.cancel()

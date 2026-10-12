@@ -90,3 +90,9 @@ def test_human_arena_updates_human_rating(client):
     assert me["games_played"] == 1 and me["elo_human"] != 1500
     humans = client.get("/api/v1/leaderboard?kind=human").json()["rows"]
     assert humans and humans[0]["name"] == "alice"
+
+
+def test_scheduled_arena_task_needs_two_agents(client):
+    from backend.tasks.training_tasks import run_one_arena_match
+
+    assert run_one_arena_match() is None  # no eligible agents yet: nothing to play
