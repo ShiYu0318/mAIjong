@@ -81,5 +81,7 @@ def test_value_warmup_keeps_the_policy_fixed(tmp_path):
     before_v = [p.detach().clone() for p in pol.value_net.parameters()]
     cb = LeagueCallback(tmp_path, 10**9, 10**9, 4, value_warmup=10**9)
     model.learn(total_timesteps=64, callback=cb)
-    assert all(torch.equal(a, b) for a, b in zip(before_pi, pol.action_net.parameters()))
-    assert not all(torch.equal(a, b) for a, b in zip(before_v, pol.value_net.parameters()))
+    assert all(torch.equal(a, b) for a, b in zip(before_pi, pol.action_net.parameters(),
+                                                     strict=True))
+    assert not all(torch.equal(a, b) for a, b in zip(before_v, pol.value_net.parameters(),
+                                                         strict=True))
