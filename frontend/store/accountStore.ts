@@ -16,6 +16,9 @@ interface AccountState {
   profile: Profile | null;
   loaded: boolean;
   lastXp: number;
+  /** level and experience before the latest hand's rewards, so the result can grow the bar */
+  xpBefore: { level: number; xp: number; xp_next: number } | null;
+  resetHandRewards: () => void;
   /** set by a LEVEL_UP event; LevelUpShow plays the full-screen moment and clears it */
   levelUp: { level: number; coins: number } | null;
   clearLevelUp: () => void;
@@ -37,6 +40,8 @@ export const useAccount = create<AccountState>((set, get) => ({
   profile: null,
   loaded: false,
   lastXp: 0,
+  xpBefore: null,
+  resetHandRewards: () => set({ lastXp: 0, xpBefore: null }),
   levelUp: null,
   clearLevelUp: () => set({ levelUp: null }),
   load: () => {
@@ -96,6 +101,7 @@ export const useAccount = create<AccountState>((set, get) => ({
         case "STATE": {
           const prof = get().profile;
           if (prof) {
+            set({ xpBefore: { level: prof.level, xp: prof.xp, xp_next: prof.xp_next } });
             set({ profile: { ...prof, level: Number(e.level), xp: Number(e.xp),
               xp_next: Number(e.xp_next), coins: Number(e.coins) } });
           }
@@ -104,6 +110,7 @@ export const useAccount = create<AccountState>((set, get) => ({
       }
     }
     if (gained) set({ lastXp: gained });
+    void get().refreshProfile(); // mission progress and achievements
   },
   signIn: (token, user) => {
     setAuthToken(token);

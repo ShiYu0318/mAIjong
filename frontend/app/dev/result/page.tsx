@@ -18,11 +18,18 @@ const WIN: WinPayload = {
   dealer_tai: 1, tai_by_payer: { "1": 11, "2": 11, "3": 12 }, payments: [1900, -650, -650, -600],
 };
 
-/** Preview of the end-of-hand sequence (docs design §11). */
+/** Preview of the end-of-hand sequence (docs design §11); `?draw` shows an exhaustive draw. */
 export default function ResultPreview() {
   useEffect(() => {
-    useGame.setState({ seat: 0, win: WIN, drawn: false, gameEnd: null });
-    useAccount.setState({ lastXp: 58 });
+    const draw = new URLSearchParams(window.location.search).has("draw");
+    useGame.setState({
+      seat: 0, gameEnd: null, nextHandAt: Date.now() + 8000,
+      ...(draw
+        ? { win: null, drawn: true, drawInfo: { tenpai: [true, false, true, false], declared: [true, false, false, false] } }
+        : { win: WIN, drawn: false, drawInfo: null }),
+    });
+    const profile = useAccount.getState().profile;
+    useAccount.setState({ lastXp: 58, xpBefore: profile ? { level: profile.level, xp: 20, xp_next: profile.xp_next } : null });
   }, []);
   return (
     <main className="relative h-dvh">

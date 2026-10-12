@@ -68,6 +68,10 @@ interface GameState {
   chat: ChatLine[];
   win: WinPayload | null;
   drawn: boolean;
+  /** ROUND_DRAW details: who was ready and who had declared */
+  drawInfo: { tenpai: boolean[]; declared: boolean[] } | null;
+  /** epoch ms when the next hand starts (NEXT_HAND_IN), for the result countdown */
+  nextHandAt: number | null;
   gameEnd: GameEnd | null;
   hint: Hint | null;
   coach: CoachNoteData | null;
@@ -136,6 +140,8 @@ const initial = {
   chat: [],
   win: null,
   drawn: false,
+  drawInfo: null,
+  nextHandAt: null,
   gameEnd: null,
   hint: null,
   coach: null,
@@ -149,7 +155,7 @@ export const useGame = create<GameState>((set, get) => ({
   setSender: (sender) => set({ sender }),
   reset: () => set({ ...initial }),
   select: (selected) => set({ selected }),
-  dismissResult: () => set({ win: null, drawn: false }),
+  dismissResult: () => set({ win: null, drawn: false, drawInfo: null }),
   act: (a) => {
     get().sender?.({ type: "ACTION", payload: a });
     set({ legal: [], deadline: null, waits: {}, selected: null, hint: null });
@@ -176,8 +182,9 @@ export const useGame = create<GameState>((set, get) => ({
       case "GAME_START":
       case "NEXT_ROUND": {
         const room = get().room;
+        useAccount.getState().resetHandRewards();
         set({
-          win: null, drawn: false, log: [], gameEnd: null,
+          win: null, drawn: false, drawInfo: null, nextHandAt: null, log: [], gameEnd: null,
           room: room ? { ...room, status: "IN_GAME" } : room,
         });
         break;
@@ -211,7 +218,12 @@ export const useGame = create<GameState>((set, get) => ({
         set({ win: p as unknown as WinPayload, legal: [], deadline: null, waits: {} });
         break;
       case "ROUND_DRAW":
-        set({ drawn: true, legal: [], deadline: null });
+        set({ drawn: true, legal: [], deadline: null,
+          drawInfo: Array.isArray(p.tenpai)
+            ? { tenpai: p.tenpai as boolean[], declared: (p.declared as boolean[] | undefined) ?? [] } : null });
+        break;
+      case "NEXT_HAND_IN":
+        set({ nextHandAt: Date.now() + Number(p.seconds ?? 0) * 1000 });
         break;
       case "GAME_END":
         set({ gameEnd: p as unknown as GameEnd });
