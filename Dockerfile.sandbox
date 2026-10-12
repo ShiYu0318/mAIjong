@@ -1,0 +1,18 @@
+# Image for running submitted agents (MAIJONG_SANDBOX=docker, SPEC P9-5).
+# The platform starts it with --network none, a memory cap and the submission mounted
+# read-only at /submission:  python -m maijong_sdk.sandbox /submission
+#   docker build -f Dockerfile.sandbox -t maijong-sandbox .
+#   docker build -f Dockerfile.sandbox --build-arg WITH_TORCH=1 -t maijong-sandbox .
+FROM python:3.12-slim
+ARG WITH_TORCH=0
+RUN pip install --no-cache-dir "numpy>=1.26" \
+    && if [ "$WITH_TORCH" = "1" ]; then \
+         pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu; \
+       fi \
+    && useradd --create-home --uid 10001 agent
+COPY engine /opt/maijong/engine
+COPY sdk/maijong_sdk /opt/maijong/maijong_sdk
+ENV PYTHONPATH=/opt/maijong PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+USER agent
+WORKDIR /submission
+CMD ["python", "-m", "maijong_sdk.sandbox", "/submission"]

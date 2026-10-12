@@ -35,11 +35,39 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string-0123456789}
       CORS_ORIGINS: http://localhost:3000
       REPLAY_DIR: /data/replays
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: maijong-replays
+      S3_ACCESS_KEY: maijong
+      S3_SECRET_KEY: maijong-secret
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      ARENA_INTERVAL: ${ARENA_INTERVAL:-0}
     ports: ["8000:8000"]
     volumes: [replays:/data/replays]
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_WS_URL: ws://localhost:8000
+    ports: ["3000:3000"]
+    depends_on: [backend]
+
+  # image for sandboxed agent submissions (build only):  docker compose build sandbox
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    image: maijong-sandbox
+    profiles: ["tools"]
 
 volumes:
   pgdata:

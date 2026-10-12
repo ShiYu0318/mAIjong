@@ -6,8 +6,11 @@ COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-install-project --extra backend --no-dev
 COPY engine ./engine
 COPY ai ./ai
+COPY sdk ./sdk
 COPY backend ./backend
 COPY alembic.ini ./
 RUN uv sync --frozen --extra backend --no-dev
+# run straight from the virtualenv: `uv run` would re-sync the environment at start-up
+ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8000
-CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn backend.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port 8000"]

@@ -65,3 +65,24 @@ jobs:
         working-directory: frontend
       - run: pnpm e2e
         working-directory: frontend
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build images
+        run: |
+          docker build -f Dockerfile.backend -t maijong-backend .
+          docker build -f Dockerfile.frontend -t maijong-frontend .
+          docker build -f Dockerfile.sandbox -t maijong-sandbox .
+      - name: Sandbox runs an agent with no network
+        run: |
+          mkdir -p /tmp/sub && cp sdk/examples/random_agent.py /tmp/sub/agent.py
+          echo '{"agent_class": "MyRandomAgent"}' > /tmp/sub/manifest.json
+          echo '{"op": "quit"}' | docker run --rm -i --network none --memory 512m \
+            -v /tmp/sub:/submission:ro maijong-sandbox
+      - name: Backend starts and answers health checks
+        run: |
+          docker run -d --name api -p 8000:8000 -e DATABASE_URL=sqlite:////tmp/m.db maijong-backend
+          for i in $(seq 1 30); do curl -sf localhost:8000/healthz && exit 0; sleep 2; done
+          docker logs api; exit 1
