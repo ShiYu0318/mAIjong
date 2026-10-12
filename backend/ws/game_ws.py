@@ -5,6 +5,7 @@ Without a token the connection joins as a spectator (no concealed tiles).
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 from typing import Any
 
@@ -16,6 +17,31 @@ from backend.ws.batching import BatchingSocket
 from backend.ws.hub import RoomManager
 
 router = APIRouter()
+
+
+async def _relay_spectator(ws: WebSocket, manager: RoomManager, room_id: str,
+                           snap: dict[str, Any]) -> None:
+    """Watch a room owned by another instance through the Redis channel."""
+    await ws.accept()
+    await ws.send_json({"type": "ROOM_STATE", "payload": snap.get("public", {})})
+    view = await manager.store.get_view(room_id)
+    if view is not None:
+        await ws.send_json({"type": "STATE_UPDATE", "payload": view})
+
+    async def forward() -> None:
+        async for msg in manager.store.subscribe(room_id):
+            await ws.send_json(msg)
+
+    relay = asyncio.create_task(forward())
+    try:
+        while True:  # spectators only send pings; any receive error means they left
+            await ws.receive_text()
+    except (WebSocketDisconnect, RuntimeError):
+        pass
+    finally:
+        relay.cancel()
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await relay
 
 
 @router.websocket("/ws/game/{room_id}")
@@ -35,7 +61,14 @@ async def game_socket(ws: WebSocket, room_id: str, token: str | None = None,
             return
         seat = int(claims["seat"])
     if room is None:
-        await ws.close(code=4404)
+        snap = await manager.store.load(room_id)
+        if snap is None:
+            await ws.close(code=4404)
+            return
+        if seat is not None:  # seated play happens on the instance that owns the room
+            await ws.close(code=4409, reason=f"room is hosted by {snap.get('owner')}")
+            return
+        await _relay_spectator(ws, manager, room_id, snap)
         return
     await ws.accept()
     sock: Any = BatchingSocket(ws) if batch else ws

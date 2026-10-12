@@ -23,6 +23,7 @@ from backend.routers import agents, auth, competition, games, lab, practice, roo
 from backend.security_middleware import SecurityMiddleware
 from backend.ws import game_ws
 from backend.ws.hub import Room, RoomManager
+from backend.ws.store import store_from_settings
 from engine.game import GameState
 
 API_PREFIX = "/api/v1"
@@ -62,7 +63,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     with session_factory()() as db:
         current_season(db)  # rankings count from the start of the active season
-    app.state.rooms = RoomManager(save_hook=_save_hand)
+    app.state.rooms = RoomManager(save_hook=_save_hand, store=store_from_settings())
+    restored = await app.state.rooms.restore()
+    if restored:
+        logging.getLogger("maijong").info("restored %d rooms from Redis", restored)
     interval = float(os.environ.get("ARENA_INTERVAL", "0"))
     arena = asyncio.create_task(_arena_loop(interval)) if interval > 0 else None
     yield

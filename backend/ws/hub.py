@@ -12,12 +12,13 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import dataclasses
 import logging
 import random
 import secrets
 import string
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any, Protocol
 
 from ai.agents import LEVEL_NAMES, Agent, RuleAgent, create_agent
@@ -25,8 +26,9 @@ from ai.explainability.candidate_scorer import score_all_discards
 from backend.config import get_settings
 from backend.hints.llm_provider import describe_discard, get_provider
 from backend.security_middleware import clean_text
+from backend.ws.store import NullStore, RoomStore
 from backend.ws.view import legal_actions_payload, masked_state, visible_event
-from engine.actions import Action, ActionType, encode_action
+from engine.actions import Action, ActionType, decode_action, encode_action
 from engine.game import (
     GameState,
     IllegalAction,
@@ -120,6 +122,10 @@ class Room:
         self.arena_agents: dict[int, str] = {}  # seat → agents.id (ARENA rooms)
         self.scenario: dict[str, int] | None = None  # practice: start from (seed, step)
         self.match_end_hook: Any = None
+        self.store: RoomStore = NullStore()
+        self.hand_seed: int | None = None  # seed of the current hand (for recovery)
+        self._dirty = False
+        self._writer_task: asyncio.Task[None] | None = None
         for i, lvl in enumerate(config.bot_levels):
             if lvl is not None:
                 self.seats[i] = Seat(i, name=bot_name(i, lvl), bot_level=lvl,
@@ -156,6 +162,7 @@ class Room:
         else:
             raise ValueError("room full")
         self.seats[idx] = Seat(idx, user_id=user_id, name=name)
+        self._persist()
         return idx
 
     def public(self) -> dict[str, Any]:
@@ -265,7 +272,8 @@ class Room:
             self.game = _replay_to(self.scenario["seed"], self.scenario["step"])
             self.match.dealer = self.game.dealer
         else:
-            self.game = start_hand(self.match, seed=self.rng.randrange(2**62))
+            self.hand_seed = self.rng.randrange(2**62)
+            self.game = start_hand(self.match, seed=self.hand_seed)
         self.decisions = {}
         self.actions = []
         self.version += 1
@@ -384,11 +392,19 @@ class Room:
                     await self._send(target, "PLAYER_ACTION", {
                         "player": ev.get("player"), "event": vis,
                     })
+        if self._shared:
+            for ev in events:
+                vis = visible_event(ev, None)
+                if vis is not None and ev["type"] != "HU":
+                    await self._publish("PLAYER_ACTION", {"player": ev.get("player"),
+                                                          "event": vis})
         if g.phase is Phase.ENDED:
             await self._hand_finished()
             return
         for target, seat in self._audience():
             await self._send(target, "STATE_UPDATE", masked_state(g, seat))
+        await self._publish_view()
+        self._persist()
         for seat in acting_players(g):
             st = self.seats[seat]
             if st is not None and not st.bot_controlled:
@@ -496,6 +512,7 @@ class Room:
             await self._broadcast("ROUND_DRAW", {"reason": result.get("reason")})
         for target, seat in self._audience():
             await self._send(target, "STATE_UPDATE", masked_state(g, seat))
+        await self._publish_view()
         if self.save_hook is not None:
             seats = [s.public() if s else None for s in self.seats]
             hand_index = m.hands_played
@@ -521,8 +538,10 @@ class Room:
                 except Exception:
                     log.exception("match end hook failed for room %s", self.id)
             self._close_agents()
+            self._persist()
             return
         self.status = "ROUND_END"
+        self._persist()
         self._spawn(self._next_hand_later(self.version))
 
     async def _next_hand_later(self, version: int) -> None:
@@ -562,6 +581,111 @@ class Room:
     async def _broadcast(self, kind: str, payload: dict[str, Any]) -> None:
         for ws, _ in self._audience():
             await self._send(ws, kind, payload)
+        await self._publish(kind, payload)
+
+    # ------------------------------------------------------------ shared state (Redis)
+    @property
+    def _shared(self) -> bool:
+        """Persisted and relayed: real tables only (not arena or practice scenarios)."""
+        return not isinstance(self.store, NullStore) and self.kind != "ARENA" \
+            and self.scenario is None
+
+    async def _publish(self, kind: str, payload: dict[str, Any]) -> None:
+        if not self._shared:
+            return
+        try:
+            await self.store.publish(self.id, {"type": kind, "payload": payload})
+        except Exception:  # Redis trouble must never stop the table
+            log.warning("publish failed for room %s", self.id, exc_info=True)
+
+    async def _publish_view(self) -> None:
+        if not self._shared or self.game is None:
+            return
+        view = masked_state(self.game, None)
+        try:
+            await self.store.set_view(self.id, view)
+            await self.store.publish(self.id, {"type": "STATE_UPDATE", "payload": view})
+        except Exception:
+            log.warning("publish failed for room %s", self.id, exc_info=True)
+
+    def snapshot(self) -> dict[str, Any]:
+        return {
+            "id": self.id, "code": self.code, "kind": self.kind, "host_id": self.host_id,
+            "status": self.status, "config": asdict(self.config),
+            "seats": [None if s is None else {
+                "index": s.index, "user_id": s.user_id, "name": s.name,
+                "bot_level": s.bot_level, "extension_used": s.extension_used,
+                "hints_used": s.hints_used,
+            } for s in self.seats],
+            "match": None if self.match is None else asdict(self.match),
+            "hand_seed": self.hand_seed, "actions": list(self.actions),
+            "game_id": self.game.game_id if self.game is not None else None,
+            "public": self.public(),
+        }
+
+    def _persist(self) -> None:
+        """Mark the room dirty; one writer task saves the newest snapshot (no reordering)."""
+        if not self._shared:
+            return
+        self._dirty = True
+        if self._writer_task is None or self._writer_task.done():
+            try:
+                self._writer_task = asyncio.get_running_loop().create_task(self._write())
+            except RuntimeError:  # called outside the event loop; the next change saves it
+                return
+
+    async def _write(self) -> None:
+        while self._dirty:
+            self._dirty = False
+            try:
+                if self.status == "GAME_END":
+                    await self.store.delete(self.id)
+                else:
+                    await self.store.save(self.id, self.snapshot())
+            except Exception:
+                log.warning("saving room %s failed", self.id, exc_info=True)
+                return
+
+    def restore(self, snap: dict[str, Any]) -> None:
+        """Rebuild seats, match and the current hand from a snapshot (see RoomManager)."""
+        from engine.score import ScoringRules as Rules
+
+        self.status = snap["status"]
+        now = time.time()
+        for raw in snap["seats"]:
+            if raw is None or raw["bot_level"] is not None:
+                continue  # bots were recreated from config.bot_levels
+            self.seats[raw["index"]] = Seat(
+                raw["index"], user_id=raw["user_id"], name=raw["name"],
+                extension_used=raw["extension_used"], hints_used=raw["hints_used"],
+                disconnected_at=now if self.status in ("IN_GAME", "ROUND_END") else None)
+        m = snap["match"]
+        if m is not None:
+            self.match = MatchState(**{**m, "rules": Rules(**m["rules"])})
+        self.hand_seed = snap["hand_seed"]
+        if self.status == "IN_GAME" and self.match is not None and self.hand_seed is not None:
+            g = start_hand(self.match, seed=self.hand_seed)
+            if snap.get("game_id"):
+                g = dataclasses.replace(g, game_id=snap["game_id"])  # replays stay linked
+            for seat, aid in snap["actions"]:
+                g, _ = apply_action(g, seat, decode_action(aid))
+            self.game = g
+            self.actions = [list(a) for a in snap["actions"]]
+        self.version += 1
+
+    async def resume(self) -> None:
+        """Restart bots, timers and reconnect windows after a restore."""
+        async with self.lock:
+            for st in self.seats:
+                if st is not None and st.disconnected_at is not None:
+                    self._spawn(self._takeover_after_grace(st.index, st.disconnected_at))
+            if self.status == "ROUND_END":
+                self._spawn(self._next_hand_later(self.version))
+            elif self.status == "IN_GAME" and self.game is not None:
+                if self.game.phase is Phase.ENDED:
+                    await self._hand_finished()
+                else:
+                    self._schedule_actors()
 
     async def _error(self, seat: int, code: str, message: str) -> None:
         await self._send_seat(seat, "ERROR", {"code": code, "message": message})
@@ -604,10 +728,12 @@ def _aid(a: Action) -> int:
 
 
 class RoomManager:
-    def __init__(self, save_hook: SaveHook | None = None) -> None:
+    def __init__(self, save_hook: SaveHook | None = None, store: RoomStore | None = None
+                 ) -> None:
         self.rooms: dict[str, Room] = {}
         self.by_code: dict[str, str] = {}
         self.save_hook = save_hook
+        self.store: RoomStore = store or NullStore()
         self._quick_lock = asyncio.Lock()
 
     def _code(self) -> str:
@@ -621,6 +747,7 @@ class RoomManager:
                code: str | None = None) -> Room:
         code = code or self._code()
         room = Room(room_id, code, kind, config, host_id, self.save_hook)
+        room.store = self.store
         self.rooms[room_id] = room
         self.by_code[code] = room_id
         return room
@@ -647,6 +774,26 @@ class RoomManager:
 
         room._spawn(later())
 
+    async def restore(self) -> int:
+        """Bring back this instance's rooms from Redis after a restart; returns the count."""
+        restored = 0
+        for snap in await self.store.load_owned():
+            if snap.get("status") == "GAME_END":
+                await self.store.delete(snap["id"])
+                continue
+            try:
+                cfg = RoomConfig(**snap["config"])
+                room = self.create(snap["id"], snap["kind"], cfg, snap["host_id"], snap["code"])
+                room.restore(snap)
+                await room.resume()
+                restored += 1
+            except Exception:  # a broken snapshot must not block startup
+                log.exception("could not restore room %s", snap.get("id"))
+                self.rooms.pop(snap.get("id", ""), None)
+                await self.store.delete(snap.get("id", ""))
+        return restored
+
     async def shutdown(self) -> None:
         for r in self.rooms.values():
             await r.close()
+        await self.store.close()
