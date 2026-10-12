@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Action, GameView, RoomInfo, ServerMessage, WinPayload } from "@/lib/protocol";
 import { translate } from "@/lib/i18n";
+import { type ProgressEvent, useAccount } from "@/store/accountStore";
 import { tileName } from "@/lib/tiles";
 
 export interface ChatLine {
@@ -188,6 +189,9 @@ export const useGame = create<GameState>((set, get) => ({
         break;
       case "TUTOR_NOTE":
         set({ coach: p as unknown as CoachNoteData });
+        break;
+      case "PROGRESS":
+        useAccount.getState().applyProgress((p.events ?? []) as ProgressEvent[]);
         break;
       case "HINT_RESULT":
         set({ hint: p as unknown as Hint });

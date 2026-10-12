@@ -268,6 +268,7 @@ export interface UserInfo {
   email: string;
   elo_human: number;
   games_played: number;
+  is_guest?: boolean;
 }
 
 export const account = {
@@ -276,6 +277,62 @@ export const account = {
   login: (email: string, password: string) =>
     api<{ token: string; user: UserInfo }>("/auth/login", { method: "POST", json: { email, password } }),
   me: () => api<UserInfo>("/auth/me"),
+  guest: () => api<{ token: string; user: UserInfo }>("/auth/guest", { method: "POST" }),
+  upgrade: (username: string, email: string, password: string) =>
+    api<{ token: string; user: UserInfo }>("/auth/upgrade", { method: "POST", json: { username, email, password } }),
+};
+
+export interface Mission {
+  id: string;
+  name: string;
+  progress: number;
+  target: number;
+  reward: number;
+  claimed: boolean;
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  reward: number;
+  unlocked: boolean;
+}
+
+export type CosmeticSlot = "tile_back" | "table" | "win_effect";
+
+export interface Profile {
+  user: UserInfo;
+  level: number;
+  xp: number;
+  xp_next: number;
+  coins: number;
+  rank: { id: string; name: string; next: string | null; next_at: number | null; progress: number };
+  bonus: { available: boolean; amount: number; streak: number };
+  missions: Mission[];
+  achievements: Achievement[];
+  equipped: Record<CosmeticSlot, string>;
+  owned: string[];
+  stats: Record<string, number>;
+}
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  price: number;
+  owned: boolean;
+  equipped: boolean;
+}
+
+export const profileApi = {
+  me: () => api<Profile>("/profile/me"),
+  claimBonus: () => api<{ amount: number; coins: number; streak: number }>("/profile/bonus", { method: "POST" }),
+  claimMission: (id: string) => api<{ reward: number; coins: number }>(`/profile/missions/${id}/claim`, { method: "POST" }),
+  shop: () => api<{ coins: number; items: Record<CosmeticSlot, ShopItem[]> }>("/shop"),
+  buy: (slot: CosmeticSlot, item: string) =>
+    api<{ coins: number; items: Record<CosmeticSlot, ShopItem[]> }>("/shop/buy", { method: "POST", json: { slot, item } }),
+  equip: (slot: CosmeticSlot, item: string) =>
+    api<{ equipped: Record<CosmeticSlot, string> }>("/profile/equip", { method: "POST", json: { slot, item } }),
 };
 
 export interface AgentInfo {

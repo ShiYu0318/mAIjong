@@ -1,35 +1,114 @@
 import { create } from "zustand";
-import { account, authToken, setAuthToken, type UserInfo } from "@/lib/api";
+import { useToasts } from "@/components/Game/Toasts";
+import { account, authToken, profileApi, setAuthToken, type Profile, type UserInfo } from "@/lib/api";
+import { translate } from "@/lib/i18n";
+import { sfx } from "@/lib/sfx";
+import { setTileBack, type TileBack } from "@/lib/tilePainter";
+
+/** A progression event pushed by the server after a hand (backend/progression.py). */
+export interface ProgressEvent {
+  type: "XP" | "LEVEL_UP" | "MISSION_DONE" | "ACHIEVEMENT" | "MATCH_REWARD" | "STATE";
+  [key: string]: unknown;
+}
 
 interface AccountState {
   user: UserInfo | null;
+  profile: Profile | null;
   loaded: boolean;
+  lastXp: number;
   load: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  applyProgress: (events: ProgressEvent[]) => void;
   signIn: (token: string, user: UserInfo) => void;
   signOut: () => void;
 }
 
-export const useAccount = create<AccountState>((set) => ({
+function applyCosmetics(profile: Profile) {
+  setTileBack((profile.equipped.tile_back ?? "jade") as TileBack);
+}
+
+let loading: Promise<void> | null = null;
+
+export const useAccount = create<AccountState>((set, get) => ({
   user: null,
+  profile: null,
   loaded: false,
-  load: async () => {
-    if (!authToken()) {
-      set({ loaded: true });
-      return;
-    }
+  lastXp: 0,
+  load: () => {
+    // every visitor gets a (guest) account so levels, missions and coins always work
+    loading ??= (async () => {
+      try {
+        if (!authToken()) {
+          const g = await account.guest();
+          setAuthToken(g.token);
+          set({ user: g.user });
+        } else {
+          set({ user: await account.me() });
+        }
+        await get().refreshProfile();
+      } catch {
+        setAuthToken(null);
+        set({ user: null, profile: null });
+      } finally {
+        set({ loaded: true });
+        loading = null;
+      }
+    })();
+    return loading;
+  },
+  refreshProfile: async () => {
     try {
-      set({ user: await account.me(), loaded: true });
+      const profile = await profileApi.me();
+      applyCosmetics(profile);
+      set({ profile, user: profile.user });
     } catch {
-      setAuthToken(null);
-      set({ user: null, loaded: true });
+      /* offline or signed out */
     }
+  },
+  applyProgress: (events) => {
+    const push = useToasts.getState().push;
+    let gained = 0;
+    for (const e of events) {
+      switch (e.type) {
+        case "XP":
+          gained += Number(e.xp);
+          break;
+        case "LEVEL_UP":
+          sfx.levelUp();
+          push({ icon: "⭐", title: translate("升級！等級 {n}", { n: Number(e.level) }),
+            body: translate("+{n} 金幣", { n: Number(e.coins) }) });
+          break;
+        case "MISSION_DONE":
+          push({ icon: "✅", title: translate("任務完成：{name}", { name: String(e.name) }),
+            body: translate("到大廳領取 {n} 金幣", { n: Number(e.coins) }) });
+          break;
+        case "ACHIEVEMENT":
+          push({ icon: "🏆", title: translate("成就解鎖：{name}", { name: String(e.name) }),
+            body: translate("+{n} 金幣", { n: Number(e.coins) }) });
+          break;
+        case "MATCH_REWARD":
+          gained += Number(e.xp);
+          break;
+        case "STATE": {
+          const prof = get().profile;
+          if (prof) {
+            set({ profile: { ...prof, level: Number(e.level), xp: Number(e.xp),
+              xp_next: Number(e.xp_next), coins: Number(e.coins) } });
+          }
+          break;
+        }
+      }
+    }
+    if (gained) set({ lastXp: gained });
   },
   signIn: (token, user) => {
     setAuthToken(token);
     set({ user, loaded: true });
+    void get().refreshProfile();
   },
   signOut: () => {
     setAuthToken(null);
-    set({ user: null });
+    set({ user: null, profile: null, loaded: false });
+    void get().load();
   },
 }));
