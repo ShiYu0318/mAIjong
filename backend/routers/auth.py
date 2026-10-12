@@ -28,6 +28,7 @@ class UserOut(BaseModel):
     email: str
     elo_human: float
     games_played: int
+    is_guest: bool = False
 
 
 class AuthOut(BaseModel):
@@ -38,7 +39,7 @@ class AuthOut(BaseModel):
 def user_out(u: User) -> UserOut:
     return UserOut(
         id=u.id, username=u.username, email=u.email,
-        elo_human=u.elo_human, games_played=u.games_played,
+        elo_human=u.elo_human, games_played=u.games_played, is_guest=bool(u.is_guest),
     )
 
 
@@ -59,7 +60,8 @@ def register(body: RegisterIn, db: SessionDep) -> AuthOut:
 @router.post("/login", response_model=AuthOut)
 def login(body: LoginIn, db: SessionDep) -> AuthOut:
     user = db.scalar(select(User).where(User.email == body.email))
-    if user is None or not verify_password(body.password, user.password_hash):
+    if user is None or user.password_hash is None or \
+            not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "wrong email or password")
     return AuthOut(token=create_access_token(user.id), user=user_out(user))
 

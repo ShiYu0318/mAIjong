@@ -100,7 +100,8 @@ SaveHook = Any  # callable(room, game_state) -> None, run in a worker thread
 
 class Room:
     def __init__(self, room_id: str, code: str, kind: str, config: RoomConfig,
-                 host_id: str | None, save_hook: SaveHook | None = None) -> None:
+                 host_id: str | None, save_hook: SaveHook | None = None,
+                 progress_hook: Any = None) -> None:
         self.id = room_id
         self.code = code
         self.kind = kind
@@ -114,6 +115,7 @@ class Room:
         self.lock = asyncio.Lock()
         self.spectators: list[Socket] = []
         self.save_hook = save_hook
+        self.progress_hook = progress_hook  # (room, game, final_scores) -> {seat: events}
         self.rng = random.Random()
         self.tasks: set[asyncio.Task[Any]] = set()
         self.deadline: float | None = None
@@ -526,6 +528,15 @@ class Room:
         self.match = finish_hand(m, g)
         if self.scenario is not None:
             self.match.finished = True  # practice scenarios are a single hand
+        if self.progress_hook is not None:
+            final = list(self.match.scores) if self.match.finished else None
+            try:
+                updates = await asyncio.to_thread(self.progress_hook, self, g, final)
+            except Exception:  # progression must not break play
+                log.exception("progress update failed in room %s", self.id)
+                updates = {}
+            for seat, events in updates.items():
+                await self._send_seat(seat, "PROGRESS", {"events": events})
         await self._broadcast("ROOM_STATE", self.public())
         if self.match.finished:
             self.status = "GAME_END"
@@ -728,12 +739,13 @@ def _aid(a: Action) -> int:
 
 
 class RoomManager:
-    def __init__(self, save_hook: SaveHook | None = None, store: RoomStore | None = None
-                 ) -> None:
+    def __init__(self, save_hook: SaveHook | None = None, store: RoomStore | None = None,
+                 progress_hook: Any = None) -> None:
         self.rooms: dict[str, Room] = {}
         self.by_code: dict[str, str] = {}
         self.save_hook = save_hook
         self.store: RoomStore = store or NullStore()
+        self.progress_hook = progress_hook
         self._quick_lock = asyncio.Lock()
 
     def _code(self) -> str:
@@ -746,7 +758,7 @@ class RoomManager:
     def create(self, room_id: str, kind: str, config: RoomConfig, host_id: str | None,
                code: str | None = None) -> Room:
         code = code or self._code()
-        room = Room(room_id, code, kind, config, host_id, self.save_hook)
+        room = Room(room_id, code, kind, config, host_id, self.save_hook, self.progress_hook)
         room.store = self.store
         self.rooms[room_id] = room
         self.by_code[code] = room_id

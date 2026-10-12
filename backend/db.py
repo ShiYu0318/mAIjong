@@ -42,7 +42,28 @@ def get_session() -> Iterator[Session]:
 
 
 def init_db() -> None:
-    """Create tables directly (tests / quick local runs). Production uses Alembic."""
+    """Create tables directly (tests / quick local runs). Production uses Alembic.
+
+    A local database created by an older version also gets newly added columns that have
+    a default or are nullable, so it keeps working without a migration step."""
+    from sqlalchemy import inspect, text
+
     from backend import models
 
-    models.Base.metadata.create_all(get_engine())
+    engine = get_engine()
+    models.Base.metadata.create_all(engine)
+    existing = inspect(engine)
+    with engine.begin() as conn:
+        for table in models.Base.metadata.sorted_tables:
+            have = {c["name"] for c in existing.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in have or col.primary_key:
+                    continue
+                default = getattr(col.server_default, "arg", None)
+                if default is None and not col.nullable:
+                    continue  # cannot be added safely; needs a real migration
+                ddl = f"ALTER TABLE {table.name} ADD COLUMN {col.name} " \
+                      f"{col.type.compile(engine.dialect)}"
+                if default is not None:
+                    ddl += f" DEFAULT {default}"
+                conn.execute(text(ddl))

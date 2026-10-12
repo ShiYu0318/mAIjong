@@ -30,7 +30,26 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(Text)
     elo_human: Mapped[float] = mapped_column(Float, default=1500.0)
     games_played: Mapped[int] = mapped_column(Integer, default=0)
+    is_guest: Mapped[bool] = mapped_column(default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(default=now)
+
+
+class UserProgress(Base):
+    """Levels, coins, missions, achievements and cosmetics (docs design §8)."""
+
+    __tablename__ = "user_progress"
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    level: Mapped[int] = mapped_column(Integer, default=1)
+    xp: Mapped[int] = mapped_column(Integer, default=0)
+    coins: Mapped[int] = mapped_column(Integer, default=0)
+    bonus_day: Mapped[str | None] = mapped_column(String(10))
+    bonus_streak: Mapped[int] = mapped_column(Integer, default=0)
+    missions_day: Mapped[str | None] = mapped_column(String(10))
+    missions: Mapped[list[Any]] = mapped_column(default=list)
+    achievements: Mapped[list[Any]] = mapped_column(default=list)
+    owned: Mapped[list[Any]] = mapped_column(default=list)
+    equipped: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    stats: Mapped[dict[str, Any]] = mapped_column(default=dict)
 
 
 class Room(Base):
