@@ -9,7 +9,7 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${WEB_PORT}`, viewport: { width: 1440, height: 900 } },
   webServer: [
     {
-      command: `uv run uvicorn backend.main:app --port ${API_PORT}`,
+      command: `uv run --no-sync uvicorn backend.main:app --port ${API_PORT}`,
       cwd: "..",
       url: `http://localhost:${API_PORT}/healthz`,
       env: {
@@ -23,7 +23,7 @@ export default defineConfig({
     {
       command: `pnpm exec next dev -p ${WEB_PORT}`,
       url: `http://localhost:${WEB_PORT}`,
-      env: { NEXT_PUBLIC_API_URL: `http://localhost:${API_PORT}` },
+      env: { NEXT_PUBLIC_API_URL: `http://localhost:${API_PORT}`, NEXT_DIST_DIR: ".next-e2e" },
       reuseExistingServer: false,
       timeout: 120_000,
     },
