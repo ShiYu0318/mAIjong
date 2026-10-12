@@ -1,5 +1,6 @@
 "use client";
 
+import { PageShell } from "@/components/Game/PageShell";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -18,13 +19,10 @@ export default function LessonPage() {
   const correct = lesson.quiz.filter((q, i) => answers[i] === q.answer).length;
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-10">
-      <Link href="/tutor" className="text-mist hover:text-ivory">← AI 教練</Link>
-      <p className="mt-6 text-mist">第 {idx + 1} 課</p>
-      <h1 className="font-display text-5xl">{lesson.title}</h1>
+    <PageShell icon="📘" backHref="/tutor" backLabel="AI 教練" title={lesson.title} subtitle={`第 ${idx + 1} 課`}>
       {lesson.sections.map((s) => (
         <section key={s.heading} className="mt-10">
-          <h2 className="font-display text-2xl">{s.heading}</h2>
+          <h2 className="font-display text-2xl font-black">{s.heading}</h2>
           {s.body.map((p, i) => <p key={i} className="mt-3 leading-relaxed">{p}</p>)}
           {s.tiles && (
             <div className="mt-4 flex flex-wrap gap-[3px]">
@@ -35,7 +33,7 @@ export default function LessonPage() {
       ))}
 
       <section className="mt-12 border-t border-felt-line pt-8">
-        <h2 className="font-display text-2xl">課後小測驗</h2>
+        <h2 className="font-display text-2xl font-black">課後小測驗</h2>
         {lesson.quiz.map((q, qi) => (
           <fieldset key={qi} className="mt-6">
             <legend className="font-medium">{q.question}</legend>
@@ -78,6 +76,6 @@ export default function LessonPage() {
           </Link>
         )}
       </section>
-    </main>
+    </PageShell>
   );
 }

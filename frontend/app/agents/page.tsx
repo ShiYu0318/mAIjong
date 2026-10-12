@@ -1,8 +1,8 @@
 "use client";
 
+import { PageShell } from "@/components/Game/PageShell";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AccountBar } from "@/components/Account/AccountBar";
 import { type AgentInfo, agentsApi, ApiError } from "@/lib/api";
 import { useAccount } from "@/store/accountStore";
 
@@ -25,19 +25,14 @@ export default function AgentsPage() {
   const mine = agents.filter((a) => user && a.owner_id === user.id);
 
   return (
-    <main className="mx-auto max-w-5xl px-5 py-8">
-      <div className="flex items-center justify-between">
-        <Link href="/" className="text-mist hover:text-ivory">← 大廳</Link>
-        <AccountBar />
-      </div>
-      <h1 className="mt-4 font-display text-5xl">社群 AI</h1>
+    <PageShell icon="🤖" title="社群 AI">
       <p className="mt-3 max-w-2xl text-mist">
         用 <code>pip install maijong-sdk</code> 寫好代理程式後，執行 <code>maijong pack</code> 產生 submission.zip 再上傳。
         平台會在隔離環境跑 10 手測試，通過後以 rating 1500 加入競技場。
       </p>
 
       <section className="mt-8">
-        <h2 className="font-display text-2xl">上傳</h2>
+        <h2 className="font-display text-2xl font-black">上傳</h2>
         {!user ? <p className="mt-2 text-mist">登入後才能上傳。</p> : (
           <form className="mt-3 flex flex-wrap items-center gap-3" onSubmit={async (e) => {
             e.preventDefault();
@@ -56,7 +51,7 @@ export default function AgentsPage() {
           }}>
             <input type="file" accept=".zip" aria-label="submission.zip"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-sm" />
-            <button disabled={!file || busy} className="rounded-lg bg-ivory px-4 py-2 text-ink disabled:opacity-50">
+            <button disabled={!file || busy} className="btn-game px-5 py-2.5 bg-gradient-to-b from-[#ffb547] to-[#ff7a3d] disabled:opacity-50">
               {busy ? "上傳中…" : "上傳"}
             </button>
             {msg && <p role="status" className="w-full text-sm">{msg}</p>}
@@ -66,15 +61,15 @@ export default function AgentsPage() {
 
       {mine.length > 0 && (
         <section className="mt-8">
-          <h2 className="font-display text-2xl">我的代理程式</h2>
+          <h2 className="font-display text-2xl font-black">我的代理程式</h2>
           <AgentTable rows={mine} />
         </section>
       )}
       <section className="mt-8">
-        <h2 className="font-display text-2xl">全部</h2>
+        <h2 className="font-display text-2xl font-black">全部</h2>
         <AgentTable rows={agents.filter((a) => a.status === "ACTIVE")} />
       </section>
-    </main>
+    </PageShell>
   );
 }
 

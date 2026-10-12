@@ -1,5 +1,6 @@
 "use client";
 
+import { TableFelt, TableHud, useTableLayout } from "@/components/Board/TableOverlay";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -12,6 +13,7 @@ const TableCanvas = dynamic(() => import("@/components/Board/TableCanvas").then(
 
 export default function ReplayPage() {
   const { id } = useParams<{ id: string }>();
+  const [tableRef, layout] = useTableLayout();
   const [frames, setFrames] = useState<ReplayFrame[] | null>(null);
   const [game, setGame] = useState<GameSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,8 +101,10 @@ export default function ReplayPage() {
         </div>
       </header>
       <div className="flex min-h-0 flex-1">
-        <section className="relative min-w-0 flex-1">
+        <section ref={tableRef} className="relative min-w-0 flex-1 overflow-hidden">
+          {layout && <TableFelt g={layout} />}
           <TableCanvas fixed={fixed} />
+          {layout && <TableHud g={layout} view={fixed.view} names={fixed.names} />}
         </section>
         <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-felt-line p-4 text-sm lg:flex">
           <div>

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PageShell } from "@/components/Game/PageShell";
 import { useEffect, useState } from "react";
 import { TileImage } from "@/components/Hand/TileImage";
 import { type Analysis, ApiError, type MeldInput, tutor } from "@/lib/api";
@@ -60,9 +60,7 @@ export default function AnalyzePage() {
   }, [hand, melds, need]);
 
   return (
-    <main className="mx-auto max-w-5xl px-5 py-10">
-      <Link href="/tutor" className="text-mist hover:text-ivory">← AI 教練</Link>
-      <h1 className="mt-4 font-display text-5xl">手牌分析</h1>
+    <PageShell icon="🔍" backHref="/tutor" backLabel="AI 教練" title="手牌分析">
       <p className="mt-3 text-mist">點下方的牌組出手牌。湊滿 {need + 1} 張看聽牌與進張；{need + 2} 張則分析每張牌該不該打。</p>
 
       <div className="mt-6 flex flex-wrap gap-2" role="radiogroup" aria-label="輸入模式">
@@ -84,7 +82,7 @@ export default function AnalyzePage() {
 
       <section className="mt-8">
         <div className="flex items-baseline gap-4">
-          <h2 className="font-display text-2xl">你的牌（{hand.length} 張）</h2>
+          <h2 className="font-display text-2xl font-black">你的牌（{hand.length} 張）</h2>
           <button onClick={() => { setHand([]); setMelds([]); }} className="text-sm text-mist underline">清空</button>
         </div>
         <div className="mt-3 flex min-h-14 flex-wrap items-end gap-[2px]">
@@ -105,7 +103,7 @@ export default function AnalyzePage() {
       {error && <p role="alert" className="mt-4 text-zhong">{error}</p>}
       {result && (
         <section className="mt-8 border-t border-felt-line pt-6">
-          <p className="font-display text-3xl">{shantenText(result.shanten)}</p>
+          <p className="font-display text-3xl font-black">{shantenText(result.shanten)}</p>
           {result.waits && (
             <ul className="mt-4 flex flex-wrap gap-4">
               {result.waits.map((w) => (
@@ -137,6 +135,6 @@ export default function AnalyzePage() {
           )}
         </section>
       )}
-    </main>
+    </PageShell>
   );
 }

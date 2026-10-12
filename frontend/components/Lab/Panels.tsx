@@ -8,7 +8,7 @@ import { useJob } from "@/components/Lab/useJob";
 import { ApiError, lab, type LabJob, type LabRun, type MetricPoint } from "@/lib/api";
 
 const field = "rounded-md border border-felt-line bg-felt-deep px-2 py-1.5";
-const primary = "rounded-lg bg-ivory px-4 py-2 text-ink disabled:opacity-50";
+const primary = "btn-game px-5 py-2.5 bg-gradient-to-b from-[#ffb547] to-[#ff7a3d] disabled:opacity-50";
 
 function AgentSelect({ value, onChange, agents, label }: {
   value: string; onChange: (v: string) => void; agents: string[]; label: string;
@@ -257,7 +257,7 @@ export function TrainingPanel() {
   return (
     <section className="grid gap-8 lg:grid-cols-[300px_1fr]">
       <div>
-        <h3 className="font-display text-xl">開始訓練</h3>
+        <h3 className="font-display text-xl font-black">開始訓練</h3>
         <div className="mt-3 grid gap-3 text-sm">
           <select aria-label="訓練方法" value={kind} onChange={(e) => {
             setKind(e.target.value);
@@ -288,7 +288,7 @@ export function TrainingPanel() {
           <button onClick={start} className={primary}>開始</button>
           {error && <p role="alert" className="text-zhong">{error}</p>}
         </div>
-        <h3 className="mt-8 font-display text-xl">訓練任務</h3>
+        <h3 className="mt-8 font-display text-xl font-black">訓練任務</h3>
         <ul className="mt-2 divide-y divide-felt-line text-sm">
           {jobs.length === 0 && <li className="py-2 text-mist">還沒有從這裡啟動的訓練。</li>}
           {jobs.map((j) => (
@@ -301,7 +301,7 @@ export function TrainingPanel() {
             </li>
           ))}
         </ul>
-        <h3 className="mt-8 font-display text-xl">所有訓練紀錄</h3>
+        <h3 className="mt-8 font-display text-xl font-black">所有訓練紀錄</h3>
         <p className="mt-1 text-xs text-mist">runs/ 資料夾裡的每一次訓練，包含用指令列啟動的。</p>
         <ul className="mt-2 divide-y divide-felt-line text-sm">
           {runs.length === 0 && <li className="py-2 text-mist">還沒有訓練紀錄。</li>}
@@ -322,7 +322,7 @@ export function TrainingPanel() {
         {!selected ? <p className="text-mist">選一個訓練任務或紀錄查看曲線。</p> : (
           <>
             <div className="flex flex-wrap items-center gap-3">
-              <h3 className="font-display text-xl">
+              <h3 className="font-display text-xl font-black">
                 {selected.type === "run" ? selected.id : `${detail?.kind.replace("TRAIN_", "") ?? ""} 訓練`}
               </h3>
               {detail && <span className="text-sm text-mist">{detail.status}</span>}

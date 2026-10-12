@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PageShell } from "@/components/Game/PageShell";
 import { useCallback, useEffect, useState } from "react";
 import { TileImage } from "@/components/Hand/TileImage";
 import { type QuizAnswer, type QuizPosition, tutor } from "@/lib/api";
@@ -51,9 +51,7 @@ export default function QuizPage() {
   };
 
   return (
-    <main className="mx-auto max-w-4xl px-5 py-10">
-      <Link href="/tutor" className="text-mist hover:text-ivory">← AI 教練</Link>
-      <h1 className="mt-4 font-display text-5xl">決策問答</h1>
+    <PageShell icon="❓" backHref="/tutor" backLabel="AI 教練" title="決策問答">
       <p className="mt-3 text-mist">輪到你打牌，選一張打出。難度：{DIFF[difficulty]}（依答對率自動調整）</p>
       {error && <p role="alert" className="mt-4 text-zhong">{error}</p>}
       {!pos && !error && <p className="mt-10 text-mist">從牌局中抽題…</p>}
@@ -104,6 +102,6 @@ export default function QuizPage() {
           <button onClick={load} className="mt-6 rounded-lg bg-ivory px-5 py-2.5 text-ink">下一題</button>
         </section>
       )}
-    </main>
+    </PageShell>
   );
 }

@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import { PageShell } from "@/components/Game/PageShell";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AccountBar } from "@/components/Account/AccountBar";
 import { LineChart } from "@/components/Lab/LineChart";
 import { type AgentInfo, agentsApi, ApiError, competition } from "@/lib/api";
 import { useAccount } from "@/store/accountStore";
@@ -43,12 +42,8 @@ export default function AgentDetail() {
   const history = (agent.elo_history ?? []).map((h, i) => ({ x: i + 1, y: h.elo }));
 
   return (
-    <main className="mx-auto max-w-4xl px-5 py-8">
-      <div className="flex items-center justify-between">
-        <Link href="/leaderboard" className="text-mist hover:text-ivory">← 排行榜</Link>
-        <AccountBar />
-      </div>
-      <h1 className="mt-4 font-display text-5xl">{agent.name} <span className="text-3xl text-mist">v{agent.version}</span></h1>
+    <PageShell icon="🤖" backHref="/leaderboard" backLabel="排行榜"
+      title={<>{agent.name} <span className="text-3xl text-mist">v{agent.version}</span></>}>
       <p className="mt-2 text-mist">作者：{agent.owner ?? "官方"}・rating {agent.elo.toFixed(0)}・{agent.games_played} 場</p>
       {agent.description && <p className="mt-3">{agent.description}</p>}
 
@@ -58,7 +53,7 @@ export default function AgentDetail() {
 
       {agent.validation && (
         <section className="mt-6 text-sm">
-          <h2 className="font-display text-xl">驗證結果</h2>
+          <h2 className="font-display text-xl font-black">驗證結果</h2>
           <p className="mt-1">
             {agent.validation.passed ? "通過" : "未通過"}
             {agent.validation.max_decision_s !== undefined && agent.validation.max_decision_s !== null
@@ -70,7 +65,7 @@ export default function AgentDetail() {
 
       {user && agent.status === "ACTIVE" && (
         <section className="mt-8">
-          <h2 className="font-display text-xl">發起挑戰賽</h2>
+          <h2 className="font-display text-xl font-black">發起挑戰賽</h2>
           <p className="mt-1 text-sm text-mist">兩個代理程式加上兩位官方 Bot，打 10 場不計分的系列賽。</p>
           <div className="mt-3 flex gap-2">
             <select aria-label="對手" value={opponent} onChange={(e) => setOpponent(e.target.value)}
@@ -90,6 +85,6 @@ export default function AgentDetail() {
           {result && <p role="status" className="mt-3">{result}</p>}
         </section>
       )}
-    </main>
+    </PageShell>
   );
 }

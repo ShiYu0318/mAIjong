@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PageShell } from "@/components/Game/PageShell";
 import { useState } from "react";
 import { ComparePanel, ReplayExplorer, SimulatorPanel, TrainingPanel } from "@/components/Lab/Panels";
 
@@ -14,13 +14,11 @@ const TABS = [
 export default function LabPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("training");
   return (
-    <main className="mx-auto max-w-7xl px-5 py-8">
-      <Link href="/" className="text-mist hover:text-ivory">← 大廳</Link>
-      <h1 className="mt-4 font-display text-5xl">實驗室</h1>
-      <div role="tablist" className="mt-6 flex gap-1 border-b border-felt-line">
+    <PageShell icon="🧪" title="實驗室" wide>
+      <div role="tablist" className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
-            className={`-mb-px border-b-2 px-4 py-2 ${tab === t.id ? "border-ivory text-ivory" : "border-transparent text-mist"}`}>
+            className={`rounded-full px-5 py-2 font-black transition ${tab === t.id ? "bg-ivory text-ink shadow-[0_4px_0_rgb(0_0_0/0.25)]" : "bg-black/25 text-mist hover:text-ivory"}`}>
             {t.label}
           </button>
         ))}
@@ -31,6 +29,6 @@ export default function LabPage() {
         {tab === "simulate" && <SimulatorPanel />}
         {tab === "replays" && <ReplayExplorer />}
       </div>
-    </main>
+    </PageShell>
   );
 }

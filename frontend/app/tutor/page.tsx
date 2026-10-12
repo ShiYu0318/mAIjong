@@ -3,73 +3,94 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { GameButton } from "@/components/Game/GameButton";
+import { PageShell } from "@/components/Game/PageShell";
+import { Panel } from "@/components/Game/Panel";
+import { ProgressBar } from "@/components/Game/ProgressBar";
 import { LESSONS } from "@/content/lessons";
 import { startGuidedGame } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { completedLessons } from "@/lib/progress";
+import { sfx } from "@/lib/sfx";
 
 export default function TutorHome() {
   const router = useRouter();
+  const t = useT();
   const [done, setDone] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     setDone(completedLessons());
   }, []);
+  const finished = LESSONS.filter((l) => done.has(l.id)).length;
+  const next = LESSONS.find((l) => !done.has(l.id));
 
   return (
-    <main className="mx-auto max-w-5xl px-5 py-10 sm:px-10">
-      <Link href="/" className="text-mist hover:text-ivory">← 大廳</Link>
-      <h1 className="mt-4 font-display text-5xl">AI 教練</h1>
-      <p className="mt-3 max-w-xl text-mist">從認識牌張開始，學完規則後和初學 AI 打一手，教練會解說每一張打出的牌。</p>
-
-      <section className="mt-10 grid gap-10 lg:grid-cols-[1.3fr_1fr]">
-        <div>
-          <h2 className="font-display text-3xl">課程</h2>
-          <ol className="mt-4 divide-y divide-felt-line border-y border-felt-line">
-            {LESSONS.map((l, i) => (
-              <li key={l.id}>
-                <Link href={`/tutor/lesson/${l.id}`} className="flex items-baseline gap-4 py-3 hover:bg-ivory/5">
-                  <span className="tabular w-6 text-mist">{i + 1}</span>
-                  <span className="flex-1">
-                    <span className="text-lg">{l.title}</span>
-                    <span className="block text-sm text-mist">{l.summary}</span>
-                  </span>
-                  {done.has(l.id) && <span className="text-sm text-jade">已完成</span>}
-                </Link>
-              </li>
-            ))}
+    <PageShell icon="📘" title={t("AI 教練")}
+      subtitle={t("從認識牌張開始，學完規則後和初學 AI 打一手，教練會解說每一張打出的牌。")}>
+      <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+        <Panel title={t("課程")} action={<span className="tabular font-black text-gold">{finished} / {LESSONS.length}</span>}>
+          <ProgressBar value={finished} max={LESSONS.length} label={t("課程進度")}
+            color="linear-gradient(90deg,#43e0a3,#16a874)" />
+          <ol className="mt-4 grid gap-2">
+            {LESSONS.map((l, i) => {
+              const isDone = done.has(l.id);
+              const isNext = next?.id === l.id;
+              return (
+                <li key={l.id} className="animate-rise" style={{ animationDelay: `${i * 40}ms` }}>
+                  <Link href={`/tutor/lesson/${l.id}`} onClick={() => sfx.tap()}
+                    className={`flex items-center gap-4 rounded-2xl p-3 transition hover:-translate-y-0.5 ${
+                      isNext ? "bg-gold/15 ring-2 ring-gold/70" : "bg-black/20 hover:bg-black/30"}`}>
+                    <span className={`flex size-10 shrink-0 items-center justify-center rounded-full font-black ${
+                      isDone ? "bg-jade text-white" : isNext ? "bg-gold text-ink" : "bg-white/10 text-mist"}`}>
+                      {isDone ? "✓" : i + 1}
+                    </span>
+                    <span className="flex-1">
+                      <span className="block font-black">{l.title}</span>
+                      <span className="block text-sm text-mist">{l.summary}</span>
+                    </span>
+                    {isNext && <span className="rounded-full bg-gold px-3 py-1 text-xs font-black text-ink">{t("下一課")}</span>}
+                    {isDone && <span className="text-sm font-bold text-jade">{t("已完成")}</span>}
+                  </Link>
+                </li>
+              );
+            })}
           </ol>
-        </div>
-        <div className="space-y-8">
-          <div>
-            <h2 className="font-display text-3xl">引導對局</h2>
-            <p className="mt-2 text-mist">和三位初學 AI 打一圈，不限時，每次出牌都有教練解說。</p>
-            <button disabled={busy} onClick={async () => {
+        </Panel>
+        <div className="space-y-5">
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#ff9f1c] via-[#ff7a3d] to-[#e8486b] p-6 shadow-[0_14px_40px_rgb(5_6_25/0.5)] ring-1 ring-white/15">
+            <span className="pointer-events-none absolute -top-4 -right-2 text-8xl opacity-20" aria-hidden="true">🀄</span>
+            <h2 className="font-display text-2xl font-black">{t("引導對局")}</h2>
+            <p className="mt-1 text-white/85">{t("和三位初學 AI 打一圈，不限時，每次出牌都有教練解說。")}</p>
+            <GameButton size="lg" className="mt-4 w-full" disabled={busy} onClick={async () => {
               setBusy(true);
               setError(null);
               try {
                 router.push(`/room/${await startGuidedGame()}`);
               } catch {
-                setError("連不上伺服器，請確認後端已啟動。");
+                sfx.error();
+                setError(t("連不上伺服器，請確認後端已啟動。"));
                 setBusy(false);
               }
-            }} className="mt-4 rounded-lg bg-ivory px-5 py-3 font-display text-xl text-ink hover:bg-white disabled:opacity-60">
-              {busy ? "準備牌桌…" : "開始引導對局"}
-            </button>
-            {error && <p role="alert" className="mt-2 text-zhong">{error}</p>}
-          </div>
-          <div>
-            <h2 className="font-display text-3xl">手牌分析</h2>
-            <p className="mt-2 text-mist">拼出任何一手牌，看向聽數、每張牌打出後的進張與聽牌台數。</p>
-            <Link href="/tutor/analyze" className="mt-3 inline-block underline">打開手牌分析</Link>
-          </div>
-          <div>
-            <h2 className="font-display text-3xl">決策問答</h2>
-            <p className="mt-2 text-mist">從真實牌局抽出一個局面，你決定打哪張，教練評分並說明理由。</p>
-            <Link href="/tutor/quiz" className="mt-3 inline-block underline">開始問答</Link>
-          </div>
+            }}>
+              {busy ? t("準備牌桌…") : t("開始引導對局")}
+            </GameButton>
+            {error && <p role="alert" className="mt-2 font-bold">{error}</p>}
+          </section>
+          <Link href="/tutor/analyze" onClick={() => sfx.tap()}
+            className="block rounded-3xl bg-gradient-to-br from-[#4f8dff] to-[#6a3fe0] p-6 shadow-[0_10px_30px_rgb(5_6_25/0.45)] ring-1 ring-white/15 transition hover:-translate-y-1">
+            <h2 className="font-display text-2xl font-black"><span aria-hidden="true">🔍 </span>{t("手牌分析")}</h2>
+            <p className="mt-1 text-white/85">{t("拼出任何一手牌，看向聽數、每張牌打出後的進張與聽牌台數。")}</p>
+            <span className="mt-3 inline-block font-black underline">{t("打開手牌分析")}</span>
+          </Link>
+          <Link href="/tutor/quiz" onClick={() => sfx.tap()}
+            className="block rounded-3xl bg-gradient-to-br from-[#ff5c9a] to-[#a35cff] p-6 shadow-[0_10px_30px_rgb(5_6_25/0.45)] ring-1 ring-white/15 transition hover:-translate-y-1">
+            <h2 className="font-display text-2xl font-black"><span aria-hidden="true">❓ </span>{t("決策問答")}</h2>
+            <p className="mt-1 text-white/85">{t("從真實牌局抽出一個局面，你決定打哪張，教練評分並說明理由。")}</p>
+            <span className="mt-3 inline-block font-black underline">{t("開始問答")}</span>
+          </Link>
         </div>
       </section>
-    </main>
+    </PageShell>
   );
 }
