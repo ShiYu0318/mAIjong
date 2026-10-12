@@ -98,5 +98,30 @@ def latest_checkpoint(kind: str, min_win_rate: float = MIN_EVAL_WIN_RATE) -> Pat
     return p if float(meta.get("eval_win_rate", 0.0)) >= min_win_rate else None
 
 
-__all__ = ["PolicyAgent", "agent_from_checkpoint", "decide_with_temperature",
+def best_level5(min_win_rate: float = MIN_EVAL_WIN_RATE) -> tuple[str, Path] | None:
+    """Strongest deployable Lv5 model: the custom PPO checkpoint or the SB3 MaskablePPO
+    best model, whichever recorded the higher win rate against rule agents."""
+    import json
+
+    found: list[tuple[float, str, Path]] = []
+    ppo = latest_checkpoint("ppo", min_win_rate)
+    if ppo is not None:
+        meta = torch.load(ppo, map_location="cpu", weights_only=False)
+        found.append((float(meta.get("eval_win_rate", 0.0)), "ppo", ppo))
+    sb3 = CHECKPOINT_DIR / "sb3_best.zip"
+    meta_path = sb3.with_suffix(".json")
+    if sb3.exists() and meta_path.exists():
+        try:
+            rate = float(json.loads(meta_path.read_text()).get("eval_win_rate", 0.0))
+        except (ValueError, OSError):
+            rate = 0.0
+        if rate >= min_win_rate:
+            found.append((rate, "sb3", sb3))
+    if not found:
+        return None
+    _, kind, path = max(found, key=lambda x: x[0])
+    return kind, path
+
+
+__all__ = ["PolicyAgent", "best_level5", "agent_from_checkpoint", "decide_with_temperature",
            "latest_checkpoint", "load_model", "save_checkpoint"]

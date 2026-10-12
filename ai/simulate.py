@@ -40,6 +40,14 @@ def make_agent(spec: str, seed: int) -> Agent:
         return create_agent(int(name[2:]), seed)
     if name in _REGISTRY:
         return _REGISTRY[name](arg, seed)
+    if name in ("ppo", "dqn", "bc") and arg:  # neural checkpoints (needs the ai extra)
+        from ai.agents.neural_agent import agent_from_checkpoint
+
+        return agent_from_checkpoint(arg, 0.1, seed)
+    if name == "sb3" and arg:  # Stable-Baselines3 MaskablePPO zip
+        from ai.agents.sb3_agent import Sb3Agent
+
+        return Sb3Agent(arg, 0.1, seed)
     raise ValueError(f"unknown agent spec {spec!r}")
 
 

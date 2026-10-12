@@ -26,6 +26,7 @@ def available_agents() -> list[str]:
         for p in sorted(ckpt.glob("*.pt")):
             kind = "ppo" if p.name.startswith(("ppo", "bc")) else "dqn"
             out.append(f"{kind}:{p}")
+        out += [f"sb3:{p}" for p in sorted(ckpt.glob("sb3_*.zip"))]
     return out
 
 
@@ -33,7 +34,7 @@ def _valid_spec(spec: str) -> bool:
     if spec in BASE_AGENTS or spec.startswith("rule:"):
         return True
     name, _, path = spec.partition(":")
-    return name in ("ppo", "dqn") and Path(path).exists()
+    return name in ("ppo", "dqn", "sb3") and Path(path).exists()
 
 
 def job_out(j: TrainingJob) -> dict[str, Any]:

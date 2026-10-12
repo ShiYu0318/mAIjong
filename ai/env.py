@@ -156,6 +156,13 @@ class MahjongEnv(gym.Env[dict[str, np.ndarray], int]):
         info["illegal_action"] = illegal
         return self._obs(), float(reward), done, False, info
 
+    def action_masks(self) -> np.ndarray:
+        """Legal-action mask for the current decision (used by sb3-contrib MaskablePPO)."""
+        g = self.game
+        if g is None or g.phase is Phase.ENDED:
+            return np.ones(N_ACTIONS, bool)
+        return mask_for(g, self.seat)
+
     def render(self) -> str | None:  # type: ignore[override]
         if self.game is None:
             return None

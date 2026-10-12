@@ -19,9 +19,17 @@ def create_agent(level: int, seed: int | None = None) -> Agent:
     temperature = LEVEL_TEMPERATURE.get(level, 1.5)
     if level >= 4:
         try:
-            from ai.agents.neural_agent import agent_from_checkpoint, latest_checkpoint
+            from ai.agents.neural_agent import agent_from_checkpoint, best_level5, latest_checkpoint
 
-            path = latest_checkpoint("dqn" if level == 4 else "ppo")
+            if level == 5:
+                best = best_level5()
+                if best is not None and best[0] == "sb3":
+                    from ai.agents.sb3_agent import Sb3Agent
+
+                    return Sb3Agent(best[1], temperature, seed)
+                path = best[1] if best is not None else None
+            else:
+                path = latest_checkpoint("dqn")
             if path is not None:
                 return agent_from_checkpoint(path, temperature, seed)
         except ImportError:  # torch not installed: serve rule agents only

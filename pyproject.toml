@@ -24,6 +24,9 @@ ai = [
     "numpy>=1.26",
     "torch>=2.3",
     "gymnasium>=0.29",
+    "stable-baselines3>=2.4",
+    "sb3-contrib>=2.4",
+    "pettingzoo>=1.24",
 ]
 
 [dependency-groups]
