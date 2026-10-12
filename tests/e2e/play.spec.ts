@@ -17,7 +17,7 @@ test("create a table with AI seats and play several turns", async ({ page }) => 
     const pass = page.getByRole("button", { name: "過", exact: true });
     if (await pass.isVisible().catch(() => false)) {
       await pass.click();
-    } else if (await page.getByText("點一張牌選取").isVisible().catch(() => false)) {
+    } else if (await page.getByRole("button", { name: "提示", exact: true }).isVisible().catch(() => false)) {
       const box = (await canvas.boundingBox())!;
       const x = box.x + box.width / 2;
       const y = box.y + box.height - 45;
@@ -42,7 +42,8 @@ test("play with the keyboard only", async ({ page }) => {
   for (let i = 0; i < 40 && !discarded; i++) {
     if (await page.getByRole("button", { name: "過", exact: true }).isVisible().catch(() => false)) {
       await page.keyboard.press("x");
-    } else if (await page.getByText("點一張牌選取").isVisible().catch(() => false)) {
+    } else if (await page.getByRole("button", { name: "提示", exact: true }).isVisible().catch(() => false)) {
+      // our discard turn (the help text is hidden when a kong or win is also possible)
       const before = await log.count();
       await page.keyboard.press("ArrowLeft");
       await expect(handList.locator("button[aria-pressed=true]")).toHaveCount(1);

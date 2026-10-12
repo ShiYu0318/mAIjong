@@ -144,6 +144,8 @@ export function HandList() {
   const act = useGame((s) => s.act);
   const t = useT();
   const order = useMemo(() => (view ? handOrder(view, seat) : []), [view, seat]);
+  // the store selects a tile kind; like the canvas, mark only its first copy in the hand
+  const pressedIndex = selected === null ? -1 : order.indexOf(selected);
   if (!view || seat === null) return null;
   const me = view.players[seat];
   const flowers = me?.flowers ?? [];
@@ -159,7 +161,7 @@ export function HandList() {
           const isDraw = i === order.length - 1 && view.last_draw === tile && view.turn === seat && view.phase === "DISCARD";
           return (
             <li key={`${tile}-${i}`}>
-              <button type="button" disabled={!playable} aria-pressed={selected === tile}
+              <button type="button" disabled={!playable} aria-pressed={i === pressedIndex}
                 onClick={() => {
                   if (selected === tile) {
                     const a = legal.find((x) => x.action_type === "DISCARD" && x.tile === tile)
