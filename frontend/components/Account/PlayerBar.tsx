@@ -97,8 +97,7 @@ function AccountMenu() {
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
             placeholder={t("密碼（至少 6 碼）")} aria-label={t("密碼")} required minLength={6} className={field} />
           {error && <p role="alert" className="text-zhong">{error}</p>}
-          <button className="btn-game mt-1 px-4 py-2"
-            style={{ background: "linear-gradient(180deg,#ffb547,#ff7a3d)", ["--btn-lip" as string]: "#b8481c" }}>
+          <button className="btn-game btn-primary mt-1 px-4 py-2">
             {open === "upgrade" ? t("綁定") : t("登入")}
           </button>
         </form>

@@ -8,7 +8,7 @@ import { useJob } from "@/components/Lab/useJob";
 import { ApiError, lab, type LabJob, type LabRun, type MetricPoint } from "@/lib/api";
 
 const field = "rounded-md border border-felt-line bg-felt-deep px-2 py-1.5";
-const primary = "btn-game px-5 py-2.5 bg-gradient-to-b from-[#ffb547] to-[#ff7a3d] disabled:opacity-50";
+const primary = "btn-game px-5 py-2.5 btn-primary disabled:opacity-50";
 
 function AgentSelect({ value, onChange, agents, label }: {
   value: string; onChange: (v: string) => void; agents: string[]; label: string;

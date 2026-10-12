@@ -188,8 +188,7 @@ export function ResultOverlay({ names }: { names: string[] }) {
               ))}
             </ol>
             <div className="mt-6 text-center">
-              <Link href="/" className="btn-game px-8 py-3 text-lg"
-                style={{ background: "linear-gradient(180deg,#ffb547,#ff7a3d)", ["--btn-lip" as string]: "#b8481c" }}>
+              <Link href="/" className="btn-game btn-primary px-8 py-3 text-lg">
                 {t("回大廳")}
               </Link>
             </div>

@@ -13,11 +13,11 @@ import { tileName } from "@/lib/tiles";
 
 type Tab = "scenario" | "speed" | "defense";
 const CATEGORY: Record<string, { label: string; icon: string; tone: string }> = {
-  one_away: { label: "一向聽", icon: "🎯", tone: "from-[#22c58b] to-[#0f8f8a]" },
-  ready_choice: { label: "聽牌選擇", icon: "🀄", tone: "from-[#4f8dff] to-[#6a3fe0]" },
-  defense: { label: "防守", icon: "🛡️", tone: "from-[#ff5c9a] to-[#a35cff]" },
-  call: { label: "吃碰判斷", icon: "🤔", tone: "from-[#ff9f1c] to-[#e8486b]" },
-  early: { label: "早巡整理", icon: "🌱", tone: "from-[#38d0ff] to-[#3b82f6]" },
+  one_away: { label: "一向聽", icon: "🎯", tone: "from-[#17845d] to-[#0e817d]" },
+  ready_choice: { label: "聽牌選擇", icon: "🀄", tone: "from-[#196aff] to-[#6a3fe0]" },
+  defense: { label: "防守", icon: "🛡️", tone: "from-[#e60057] to-[#9542ff]" },
+  call: { label: "吃碰判斷", icon: "🤔", tone: "from-[#d14200] to-[#e31f4a]" },
+  early: { label: "早巡整理", icon: "🌱", tone: "from-[#007fa6] to-[#196cf4]" },
 };
 
 function Hand({ tiles, drawn, onPick, disabled, mark }: {

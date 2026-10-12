@@ -10,7 +10,7 @@ export default function OfflinePage() {
       <p className="mt-4 leading-relaxed text-ivory-dim">
         線上對戰與 AI 分析需要網路。恢復連線後重新整理即可回到大廳；已經看過的課程頁面仍可離線瀏覽。
       </p>
-      <Link href="/" className="btn-game mt-8 bg-gradient-to-b from-[#ffb547] to-[#ff7a3d] px-8 py-3 text-lg">
+      <Link href="/" className="btn-game mt-8 btn-primary px-8 py-3 text-lg">
         重新整理
       </Link>
     </main>

@@ -51,7 +51,7 @@ export default function AgentsPage() {
           }}>
             <input type="file" accept=".zip" aria-label="submission.zip"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-sm" />
-            <button disabled={!file || busy} className="btn-game px-5 py-2.5 bg-gradient-to-b from-[#ffb547] to-[#ff7a3d] disabled:opacity-50">
+            <button disabled={!file || busy} className="btn-game px-5 py-2.5 btn-primary disabled:opacity-50">
               {busy ? "上傳中…" : "上傳"}
             </button>
             {msg && <p role="status" className="w-full text-sm">{msg}</p>}

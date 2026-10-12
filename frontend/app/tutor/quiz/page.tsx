@@ -99,7 +99,7 @@ export default function QuizPage() {
               </li>
             ))}
           </ol>
-          <button onClick={load} className="btn-game mt-6 bg-gradient-to-b from-[#ffb547] to-[#ff7a3d] px-6 py-3">下一題</button>
+          <button onClick={load} className="btn-game mt-6 btn-primary px-6 py-3">下一題</button>
         </section>
       )}
     </PageShell>

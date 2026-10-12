@@ -123,6 +123,13 @@ body {
   cursor: pointer;
   user-select: none;
 }
+/* the orange call-to-action, for links and plain buttons outside GameButton */
+.btn-primary {
+  background: linear-gradient(180deg, #ffb547 0%, #ff7a3d 100%);
+  color: #3a1500;
+  text-shadow: none;
+  --btn-lip: #b8481c;
+}
 .btn-game:hover {
   filter: brightness(1.08);
 }

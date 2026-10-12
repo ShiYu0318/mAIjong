@@ -233,11 +233,11 @@ export default function Lobby() {
 }
 
 const TONES = {
-  amber: "from-[#ff9f1c] via-[#ff7a3d] to-[#e8486b]",
-  blue: "from-[#4f8dff] via-[#3b5be8] to-[#6a3fe0]",
-  green: "from-[#22c58b] to-[#0f8f8a]",
-  pink: "from-[#ff5c9a] to-[#a35cff]",
-  violet: "from-[#7a5cff] to-[#3b82f6]",
+  amber: "from-[#d14200] via-[#d8301f] to-[#e31f4a]",
+  blue: "from-[#196aff] via-[#3b5be8] to-[#6a3fe0]",
+  green: "from-[#17845d] to-[#0e817d]",
+  pink: "from-[#e60057] to-[#9542ff]",
+  violet: "from-[#7454ff] to-[#196cf4]",
 } as const;
 
 function ModeCard({ tone, icon, className = "", children }: {

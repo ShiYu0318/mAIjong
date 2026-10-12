@@ -42,7 +42,7 @@ export default function TutorHome() {
                     className={`flex items-center gap-4 rounded-2xl p-3 transition hover:-translate-y-0.5 ${
                       isNext ? "bg-gold/15 ring-2 ring-gold/70" : "bg-black/20 hover:bg-black/30"}`}>
                     <span className={`flex size-10 shrink-0 items-center justify-center rounded-full font-black ${
-                      isDone ? "bg-jade text-white" : isNext ? "bg-gold text-ink" : "bg-white/10 text-mist"}`}>
+                      isDone ? "bg-jade text-ink" : isNext ? "bg-gold text-ink" : "bg-white/10 text-mist"}`}>
                       {isDone ? "✓" : i + 1}
                     </span>
                     <span className="flex-1">
@@ -58,7 +58,7 @@ export default function TutorHome() {
           </ol>
         </Panel>
         <div className="space-y-5">
-          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#ff9f1c] via-[#ff7a3d] to-[#e8486b] p-6 shadow-[0_14px_40px_rgb(5_6_25/0.5)] ring-1 ring-white/15">
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#d14200] via-[#d8301f] to-[#e31f4a] p-6 shadow-[0_14px_40px_rgb(5_6_25/0.5)] ring-1 ring-white/15">
             <span className="pointer-events-none absolute -top-4 -right-2 text-8xl opacity-20" aria-hidden="true">🀄</span>
             <h2 className="font-display text-2xl font-black">{t("引導對局")}</h2>
             <p className="mt-1 text-white/85">{t("和三位初學 AI 打一圈，不限時，每次出牌都有教練解說。")}</p>
@@ -78,13 +78,13 @@ export default function TutorHome() {
             {error && <p role="alert" className="mt-2 font-bold">{error}</p>}
           </section>
           <Link href="/tutor/analyze" onClick={() => sfx.tap()}
-            className="block rounded-3xl bg-gradient-to-br from-[#4f8dff] to-[#6a3fe0] p-6 shadow-[0_10px_30px_rgb(5_6_25/0.45)] ring-1 ring-white/15 transition hover:-translate-y-1">
+            className="block rounded-3xl bg-gradient-to-br from-[#196aff] to-[#6a3fe0] p-6 shadow-[0_10px_30px_rgb(5_6_25/0.45)] ring-1 ring-white/15 transition hover:-translate-y-1">
             <h2 className="font-display text-2xl font-black"><span aria-hidden="true">🔍 </span>{t("手牌分析")}</h2>
             <p className="mt-1 text-white/85">{t("拼出任何一手牌，看向聽數、每張牌打出後的進張與聽牌台數。")}</p>
             <span className="mt-3 inline-block font-black underline">{t("打開手牌分析")}</span>
           </Link>
           <Link href="/tutor/quiz" onClick={() => sfx.tap()}
-            className="block rounded-3xl bg-gradient-to-br from-[#ff5c9a] to-[#a35cff] p-6 shadow-[0_10px_30px_rgb(5_6_25/0.45)] ring-1 ring-white/15 transition hover:-translate-y-1">
+            className="block rounded-3xl bg-gradient-to-br from-[#e60057] to-[#9542ff] p-6 shadow-[0_10px_30px_rgb(5_6_25/0.45)] ring-1 ring-white/15 transition hover:-translate-y-1">
             <h2 className="font-display text-2xl font-black"><span aria-hidden="true">❓ </span>{t("決策問答")}</h2>
             <p className="mt-1 text-white/85">{t("從真實牌局抽出一個局面，你決定打哪張，教練評分並說明理由。")}</p>
             <span className="mt-3 inline-block font-black underline">{t("開始問答")}</span>

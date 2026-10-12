@@ -3,13 +3,14 @@
 import type { ButtonHTMLAttributes } from "react";
 import { sfx } from "@/lib/sfx";
 
+// text colours keep >= 4.5:1 against both gradient stops (DESIGN.md §12)
 const VARIANTS = {
-  primary: { bg: "linear-gradient(180deg, #ffb547 0%, #ff7a3d 100%)", lip: "#b8481c" },
-  blue: { bg: "linear-gradient(180deg, #5ea2ff 0%, #2f63e8 100%)", lip: "#1c3c9a" },
-  green: { bg: "linear-gradient(180deg, #43e0a3 0%, #16a874 100%)", lip: "#0c6b49" },
-  danger: { bg: "linear-gradient(180deg, #ff6f86 0%, #e3274a 100%)", lip: "#8e1430" },
-  pink: { bg: "linear-gradient(180deg, #ff86bd 0%, #e83f88 100%)", lip: "#931f56" },
-  ghost: { bg: "linear-gradient(180deg, #3a4384 0%, #2b3270 100%)", lip: "#171b45" },
+  primary: { bg: "linear-gradient(180deg, #ffb547 0%, #ff7a3d 100%)", lip: "#b8481c", fg: "#3a1500" },
+  blue: { bg: "linear-gradient(180deg, #2f6ce6 0%, #1f4fcf 100%)", lip: "#14317f", fg: "#ffffff" },
+  green: { bg: "linear-gradient(180deg, #43e0a3 0%, #16a874 100%)", lip: "#0c6b49", fg: "#06291c" },
+  danger: { bg: "linear-gradient(180deg, #d7304f 0%, #b31535 100%)", lip: "#6e0d22", fg: "#ffffff" },
+  pink: { bg: "linear-gradient(180deg, #cc3a7c 0%, #a81f60 100%)", lip: "#64123a", fg: "#ffffff" },
+  ghost: { bg: "linear-gradient(180deg, #3a4384 0%, #2b3270 100%)", lip: "#171b45", fg: "#ffffff" },
 } as const;
 
 const SIZES = {
@@ -37,7 +38,8 @@ export function GameButton({ variant = "primary", size = "md", silent, className
         onClick?.(e);
       }}
       className={`btn-game ${SIZES[size]} ${className}`}
-      style={{ background: v.bg, ["--btn-lip" as string]: v.lip, ...style }}
+      style={{ background: v.bg, color: v.fg, textShadow: v.fg === "#ffffff" ? undefined : "none",
+        ["--btn-lip" as string]: v.lip, ...style }}
     />
   );
 }
