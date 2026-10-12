@@ -69,10 +69,10 @@ export default function QuizPage() {
               </div>
             ))}
           </div>
-          <div className="mt-8 flex flex-wrap items-end gap-[3px]">
+          <div className="panel mt-8 flex flex-wrap items-end gap-[3px] p-4">
             {pos.hand.map((t, i) => (
               <button key={i} onClick={() => choose(t)} disabled={!!answer}
-                className={`transition ${picked === t && i === pos.hand.indexOf(t) ? "-translate-y-2" : "hover:-translate-y-1"}`}
+                className={`transition ${picked === t && i === pos.hand.indexOf(t) ? "-translate-y-3 drop-shadow-[0_0_10px_rgb(56_208_255/0.8)]" : "hover:-translate-y-2"}`}
                 aria-label={`打出 ${t}`}>
                 <TileImage id={t} width={44} />
               </button>
@@ -99,7 +99,7 @@ export default function QuizPage() {
               </li>
             ))}
           </ol>
-          <button onClick={load} className="mt-6 rounded-lg bg-ivory px-5 py-2.5 text-ink">下一題</button>
+          <button onClick={load} className="btn-game mt-6 bg-gradient-to-b from-[#ffb547] to-[#ff7a3d] px-6 py-3">下一題</button>
         </section>
       )}
     </PageShell>

@@ -66,15 +66,15 @@ export default function AnalyzePage() {
       <div className="mt-6 flex flex-wrap gap-2" role="radiogroup" aria-label="輸入模式">
         {MODES.map((m) => (
           <button key={m.v} role="radio" aria-checked={mode === m.v} onClick={() => setMode(m.v)}
-            className={`rounded-md border px-3 py-1.5 text-sm ${mode === m.v ? "border-ivory bg-ivory/15" : "border-felt-line text-mist"}`}>
+            className={`rounded-full px-4 py-2 text-sm font-black transition ${mode === m.v ? "bg-ivory text-ink shadow-[0_4px_0_rgb(0_0_0/0.25)]" : "bg-black/25 text-mist hover:text-ivory"}`}>
             {m.label}
           </button>
         ))}
       </div>
-      <div className="mt-4 grid w-fit grid-cols-9 gap-1">
+      <div className="panel mt-4 grid w-fit grid-cols-9 gap-1.5 p-4">
         {PICKER.map((t) => (
           <button key={t} onClick={() => add(t)} disabled={left(t) < 1} aria-label={`加入 ${tileName(t)}`}
-            className="disabled:opacity-30">
+            className="transition hover:-translate-y-1 disabled:opacity-30 disabled:hover:translate-y-0">
             <TileImage id={t} width={36} />
           </button>
         ))}
