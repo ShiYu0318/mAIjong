@@ -3,6 +3,7 @@ import { AccountLoader } from "@/components/Account/AccountLoader";
 import { LevelUpShow } from "@/components/Game/LevelUpShow";
 import { Toasts } from "@/components/Game/Toasts";
 import { LocaleSync } from "@/components/I18n/LocaleToggle";
+import { SentryInit } from "@/components/Monitoring/SentryInit";
 import { ServiceWorker } from "@/components/Pwa/ServiceWorker";
 import { notoSans, wenkai } from "@/lib/fonts";
 import "./globals.css";
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ServiceWorker />
         <LocaleSync />
         <AccountLoader />
+        <SentryInit />
         <Toasts />
         <LevelUpShow />
       </body>
