@@ -1,12 +1,14 @@
 """Evaluate an agent locally against reference opponents.
 
-python -m maijong_sdk.evaluate --agent my_module:MyAgent --opponent greedy --games 1000
+python -m maijong_sdk.evaluate --agent my_agent.py:MyAgent --opponent greedy --games 1000
+(`my_module:MyAgent` on the import path works too)
 """
 
 from __future__ import annotations
 
 import argparse
 import importlib
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -16,10 +18,20 @@ from maijong_sdk.runner import play_hand
 
 
 def load_agent(spec: str) -> BaseAgent:
+    """`path/to/file.py:ClassName` (same as `maijong pack`) or `package.module:ClassName`."""
     module, _, cls = spec.partition(":")
-    sys.path.insert(0, str(Path.cwd()))
-    obj = getattr(importlib.import_module(module), cls)
-    agent = obj()
+    if module.endswith(".py"):
+        path = Path(module).resolve()
+        sys.path.insert(0, str(path.parent))  # let the agent import its sibling files
+        mod_spec = importlib.util.spec_from_file_location(path.stem, path)
+        if mod_spec is None or mod_spec.loader is None:
+            raise ImportError(f"cannot load {module}")
+        mod = importlib.util.module_from_spec(mod_spec)
+        mod_spec.loader.exec_module(mod)
+    else:
+        sys.path.insert(0, str(Path.cwd()))
+        mod = importlib.import_module(module)
+    agent = getattr(mod, cls)()
     if not isinstance(agent, BaseAgent):
         raise TypeError(f"{spec} is not a BaseAgent subclass")
     return agent
@@ -50,7 +62,7 @@ def evaluate(agent: BaseAgent, opponent_name: str = "greedy", games: int = 100,
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--agent", required=True, help="module:ClassName")
+    ap.add_argument("--agent", required=True, help="file.py:ClassName or module:ClassName")
     ap.add_argument("--opponent", choices=["greedy", "random"], default="greedy")
     ap.add_argument("--games", type=int, default=100)
     ap.add_argument("--seed", type=int, default=0)

@@ -59,3 +59,14 @@ def test_sdk_env_and_feature_parity():
     p = acting_players(s)[0]
     a, b = platform_encode(s, p), sdk_encode(observe(s, p))
     assert np.array_equal(a[0], b[0]) and np.array_equal(a[1], b[1])
+
+
+def test_load_agent_from_file_path_and_module():
+    from pathlib import Path
+
+    from maijong_sdk.evaluate import load_agent
+
+    examples = Path(__file__).resolve().parents[2] / "sdk" / "examples"
+    by_path = load_agent(f"{examples / 'greedy_agent.py'}:MyGreedyAgent")
+    assert type(by_path).__name__ == "MyGreedyAgent"
+    assert type(load_agent("maijong_sdk.agents:GreedyAgent")).__name__ == "GreedyAgent"
