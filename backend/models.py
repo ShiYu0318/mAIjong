@@ -75,6 +75,8 @@ class Game(Base):
     result: Mapped[dict[str, Any]] = mapped_column(default=dict)
     replay_url: Mapped[str | None] = mapped_column(Text)
     is_public: Mapped[bool] = mapped_column(default=False)
+    # re-run from seed + actions after saving (SPEC 11): None = not checked yet
+    replay_verified: Mapped[bool | None] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(default=now)
 
 

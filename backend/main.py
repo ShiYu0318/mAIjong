@@ -19,6 +19,7 @@ from backend.config import Settings, get_settings
 from backend.db import init_db, session_factory
 from backend.models import Room as RoomRow
 from backend.persistence import save_hand
+from backend.replay_check import verify_game
 from backend.routers import (
     agents,
     auth,
@@ -46,8 +47,11 @@ def _save_hand(room: Room, g: GameState, hand_index: int, seats: list[Any],
             db.add(RoomRow(id=room.id, code=room.code, type=room.kind,
                            config=room.public()["config"], created_by=room.host_id))
             db.flush()
-        save_hand(db, g, room_id=room.id, hand_index=hand_index, seats=seats,
-                  decisions=decisions, actions=actions, is_public=room.config.public)
+        game = save_hand(db, g, room_id=room.id, hand_index=hand_index, seats=seats,
+                         decisions=decisions, actions=actions, is_public=room.config.public,
+                         scenario=room.scenario)
+        # already off the event loop (asyncio.to_thread): re-run the hand right away
+        verify_game(db, game)
 
 
 def _progress(room: Room, g: GameState, final_scores: list[int] | None

@@ -44,6 +44,7 @@ def save_hand(
     decisions: dict[int, dict[str, Any]] | None = None,
     actions: list[list[int]] | None = None,
     is_public: bool = False,
+    scenario: dict[str, int] | None = None,
 ) -> Game:
     """Store a finished hand. `decisions` maps event seq → AI decision details."""
     assert s.result is not None
@@ -56,6 +57,8 @@ def save_hand(
         "game_id": s.game_id, "seed": s.seed, "dealer": s.dealer,
         "dealer_streak": s.dealer_streak, "round_wind": s.round_wind,
         "seats": seats, "result": s.result, "actions": actions or [],
+        # practice hands start from a self-play position, not a fresh deal
+        **({"scenario": dict(scenario)} if scenario else {}),
         "rules": {"base_points": s.rules.base_points, "tai_points": s.rules.tai_points,
                   "tai_cap": s.rules.tai_cap},
         "scores_before": [s.scores[i] - (s.result.get("payments") or [0] * 4)[i]
