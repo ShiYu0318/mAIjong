@@ -230,6 +230,15 @@ export interface LabJob {
 
 export type MetricPoint = { step: number; time: number } & Record<string, number>;
 
+export interface LabRun {
+  name: string;
+  kind: string;
+  updated_at: number;
+  points: number;
+  last_step: number | null;
+  eval_win_rate: number | null;
+}
+
 export const lab = {
   agents: () => api<string[]>("/lab/agents"),
   jobs: () => api<LabJob[]>("/lab/jobs"),
@@ -240,7 +249,12 @@ export const lab = {
     api<{ job_id: string }>("/lab/compare", { method: "POST", json: { agents, n_games } }),
   train: (kind: string, config: Record<string, unknown>) =>
     api<{ job_id: string }>("/lab/training", { method: "POST", json: { kind, config } }),
-  training: (id: string) => api<LabJob & { series: MetricPoint[] }>(`/lab/training/${id}`),
+  training: (id: string, since?: number) =>
+    api<LabJob & { series: MetricPoint[] }>(`/lab/training/${id}${since !== undefined ? `?since=${since}` : ""}`),
+  runs: () => api<LabRun[]>("/lab/runs"),
+  run: (name: string, since?: number) =>
+    api<{ name: string; config: Record<string, unknown>; series: MetricPoint[] }>(
+      `/lab/runs/${encodeURIComponent(name)}${since !== undefined ? `?since=${since}` : ""}`),
   stop: (id: string) => api<LabJob>(`/lab/training/${id}/stop`, { method: "POST" }),
   resume: (id: string) => api<LabJob>(`/lab/training/${id}/resume`, { method: "POST" }),
   replays: (q: Record<string, string>) =>

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Literal
 
@@ -9,6 +10,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from ai.training import metrics as metrics_mod
 from ai.training.metrics import read_metrics
 from backend.deps import OptionalUserDep, SessionDep
 from backend.models import Game, TrainingJob
@@ -27,6 +29,7 @@ def available_agents() -> list[str]:
             kind = "ppo" if p.name.startswith(("ppo", "bc")) else "dqn"
             out.append(f"{kind}:{p}")
         out += [f"sb3:{p}" for p in sorted(ckpt.glob("sb3_*.zip"))]
+        out += [f"sb3:{p}" for p in sorted(ckpt.glob("sb3_*/sb3_best.zip"))]
     return out
 
 
@@ -110,7 +113,7 @@ def job(job_id: str, db: SessionDep) -> dict[str, Any]:
 
 
 class TrainIn(BaseModel):
-    kind: Literal["ppo", "dqn", "bc"]
+    kind: Literal["ppo", "dqn", "bc", "sb3"]
     config: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -118,6 +121,9 @@ class TrainIn(BaseModel):
 def start_training(body: TrainIn, db: SessionDep, user: OptionalUserDep) -> dict[str, str]:
     if body.kind == "bc" and not Path(str(body.config.get("data", ""))).exists():
         raise HTTPException(422, "BC needs config.data pointing to simulation records")
+    if body.kind == "sb3" and body.config.get("bc_data") \
+            and not Path(str(body.config["bc_data"])).exists():
+        raise HTTPException(422, "config.bc_data does not exist")
     job = _create_job(db, user, f"TRAIN_{body.kind.upper()}", body.config)
     job.checkpoint_url = str(runner.checkpoint_for(job.id, body.kind))
     db.commit()
@@ -126,9 +132,27 @@ def start_training(body: TrainIn, db: SessionDep, user: OptionalUserDep) -> dict
 
 
 @router.get("/training/{job_id}")
-def training(job_id: str, db: SessionDep) -> dict[str, Any]:
+def training(job_id: str, db: SessionDep, since: int | None = None) -> dict[str, Any]:
     j = _job(db, job_id)
-    return {**job_out(j), "series": read_metrics(job_id)}
+    return {**job_out(j), "series": read_metrics(job_id, since)}
+
+
+@router.get("/runs")
+def runs() -> list[dict[str, Any]]:
+    """All training runs under runs/, including ones started from the command line."""
+    return metrics_mod.list_runs()
+
+
+@router.get("/runs/{name}")
+def run_series(name: str, since: int | None = None) -> dict[str, Any]:
+    runs_dir = metrics_mod.RUNS_DIR
+    if "/" in name or name.startswith(".") or not (runs_dir / name / "metrics.jsonl").exists():
+        raise HTTPException(404, "run not found")
+    try:
+        config = json.loads((runs_dir / name / "config.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        config = {}
+    return {"name": name, "config": config, "series": read_metrics(name, since)}
 
 
 @router.post("/training/{job_id}/stop")
@@ -149,6 +173,11 @@ def resume(job_id: str, db: SessionDep) -> dict[str, Any]:
     ckpt = runner.checkpoint_for(job_id, kind)
     if kind == "ppo" and ckpt.exists():
         config["init"] = str(ckpt)
+    if kind == "sb3":
+        last = ckpt.parent / "sb3_last.zip"
+        if last.exists() or ckpt.exists():
+            config["init"] = str(last if last.exists() else ckpt)
+            config.pop("bc_data", None)
     runner.start_training(job_id, kind, config)
     db.expire_all()
     return job_out(_job(db, job_id))

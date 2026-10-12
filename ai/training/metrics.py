@@ -51,8 +51,44 @@ class MetricsLogger:
             self._wandb.finish()
 
 
-def read_metrics(run: str) -> list[dict[str, Any]]:
+def read_metrics(run: str, since: int | None = None) -> list[dict[str, Any]]:
+    """Metric records of a run; with `since`, only those with step > since."""
     path = RUNS_DIR / run / "metrics.jsonl"
     if not path.exists():
         return []
-    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    out = []
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:  # a line being written right now
+            continue
+        if since is None or rec.get("step", 0) > since:
+            out.append(rec)
+    return out
+
+
+def list_runs() -> list[dict[str, Any]]:
+    """Every run directory (lab jobs and command-line training alike), newest first."""
+    if not RUNS_DIR.exists():
+        return []
+    rows = []
+    for d in RUNS_DIR.iterdir():
+        metrics = d / "metrics.jsonl"
+        if not d.is_dir() or not metrics.exists():
+            continue
+        try:
+            config = json.loads((d / "config.json").read_text())
+        except (OSError, json.JSONDecodeError):
+            config = {}
+        series = read_metrics(d.name)
+        last: dict[str, Any] = {}
+        for rec in series:
+            last.update(rec)
+        rows.append({
+            "name": d.name, "kind": str(config.get("kind", "")),
+            "updated_at": metrics.stat().st_mtime, "points": len(series),
+            "last_step": last.get("step"), "eval_win_rate": last.get("eval_win_rate"),
+        })
+    return sorted(rows, key=lambda r: r["updated_at"], reverse=True)

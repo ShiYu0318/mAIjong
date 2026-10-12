@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LineChart } from "@/components/Lab/LineChart";
 import { agentLabel, StatsTable, toCsv } from "@/components/Lab/StatsTable";
 import { useJob } from "@/components/Lab/useJob";
-import { ApiError, lab, type LabJob, type MetricPoint } from "@/lib/api";
+import { ApiError, lab, type LabJob, type LabRun, type MetricPoint } from "@/lib/api";
 
 const field = "rounded-md border border-felt-line bg-felt-deep px-2 py-1.5";
 const primary = "rounded-lg bg-ivory px-4 py-2 text-ink disabled:opacity-50";
@@ -117,42 +117,82 @@ export function ComparePanel() {
   );
 }
 
-const CHARTS: Record<string, { key: string; title: string; fmt?: (v: number) => string }[]> = {
+type ChartSpec = { key: string; title: string; fmt?: (v: number) => string };
+const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
+const EVAL: ChartSpec[] = [
+  { key: "eval_win_rate", title: "對規則型的胡牌率", fmt: pct },
+  { key: "eval_elo", title: "評估 rating", fmt: (v) => v.toFixed(0) },
+  { key: "eval_avg_tai", title: "胡牌平均台數", fmt: (v) => v.toFixed(2) },
+  { key: "eval_deal_in_rate", title: "放槍率", fmt: pct },
+];
+
+const CHARTS: Record<string, ChartSpec[]> = {
   ppo: [
-    { key: "eval_win_rate", title: "對規則型的胡牌率", fmt: (v) => `${(v * 100).toFixed(1)}%` },
-    { key: "eval_elo", title: "評估 rating", fmt: (v) => v.toFixed(0) },
-    { key: "eval_avg_tai", title: "胡牌平均台數", fmt: (v) => v.toFixed(2) },
-    { key: "eval_deal_in_rate", title: "放槍率", fmt: (v) => `${(v * 100).toFixed(1)}%` },
+    ...EVAL,
     { key: "policy_loss", title: "策略損失" },
     { key: "value_loss", title: "價值損失" },
     { key: "entropy", title: "策略熵" },
+    { key: "kl_to_init", title: "與初始策略的 KL" },
     { key: "explained_variance", title: "解釋變異" },
   ],
+  sb3: [
+    ...EVAL,
+    { key: "mean_episode_reward", title: "每手平均獎勵" },
+    { key: "value_loss", title: "價值損失" },
+    { key: "entropy", title: "策略熵" },
+    { key: "approx_kl", title: "近似 KL" },
+    { key: "clip_fraction", title: "裁切比例", fmt: pct },
+    { key: "sps", title: "每秒步數", fmt: (v) => v.toFixed(0) },
+  ],
   dqn: [
-    { key: "eval_win_rate", title: "對規則型的胡牌率", fmt: (v) => `${(v * 100).toFixed(1)}%` },
-    { key: "eval_elo", title: "評估 rating", fmt: (v) => v.toFixed(0) },
+    ...EVAL.slice(0, 2),
     { key: "loss", title: "TD 損失" },
     { key: "epsilon", title: "探索率 ε", fmt: (v) => v.toFixed(2) },
   ],
   bc: [
-    { key: "val_acc", title: "驗證集準確率", fmt: (v) => `${(v * 100).toFixed(1)}%` },
+    { key: "val_acc", title: "驗證集準確率", fmt: pct },
     { key: "train_loss", title: "訓練損失" },
     { key: "val_loss", title: "驗證損失" },
   ],
 };
 
+/** Kind from a job ("TRAIN_SB3") or a run config ("sb3_maskable_ppo", "ppo"…). */
+function chartKind(kind: string): string {
+  const k = kind.replace("TRAIN_", "").toLowerCase();
+  if (k.startsWith("sb3")) return "sb3";
+  return k in CHARTS ? k : "";
+}
+
+/** Known charts for the kind, or every numeric series for an unknown kind. */
+function chartsFor(kind: string, series: MetricPoint[]): ChartSpec[] {
+  const known = CHARTS[chartKind(kind)];
+  if (known) return known;
+  const keys = new Set<string>();
+  for (const p of series) {
+    for (const [k, v] of Object.entries(p)) if (typeof v === "number" && k !== "step" && k !== "time") keys.add(k);
+  }
+  return [...keys].map((key) => ({ key, title: key }));
+}
+
+type Selection = { type: "job"; id: string } | { type: "run"; id: string };
+
 export function TrainingPanel() {
   const [jobs, setJobs] = useState<LabJob[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [runs, setRuns] = useState<LabRun[]>([]);
+  const [selected, setSelected] = useState<Selection | null>(null);
   const [series, setSeries] = useState<MetricPoint[]>([]);
   const [detail, setDetail] = useState<LabJob | null>(null);
+  const [runKind, setRunKind] = useState("");
   const [kind, setKind] = useState("ppo");
   const [amount, setAmount] = useState(50);
   const [init, setInit] = useState("");
   const [data, setData] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = () => lab.jobs().then((j) => setJobs(j.filter((x) => x.kind.startsWith("TRAIN_")))).catch(() => undefined);
+  const refresh = () => {
+    lab.jobs().then((j) => setJobs(j.filter((x) => x.kind.startsWith("TRAIN_")))).catch(() => undefined);
+    lab.runs().then(setRuns).catch(() => undefined);
+  };
   useEffect(() => {
     refresh();
   }, []);
@@ -160,49 +200,70 @@ export function TrainingPanel() {
     if (!selected) return;
     let alive = true;
     let timer: ReturnType<typeof setTimeout>;
+    let last: number | undefined;
+    setSeries([]);
+    setDetail(null);
     const tick = async () => {
       try {
-        const d = await lab.training(selected);
-        if (!alive) return;
-        setDetail(d);
-        setSeries(d.series);
-        if (d.status === "RUNNING") timer = setTimeout(tick, 3000);
+        let fresh: MetricPoint[];
+        let live: boolean;
+        if (selected.type === "job") {
+          const d = await lab.training(selected.id, last);
+          if (!alive) return;
+          setDetail(d);
+          fresh = d.series;
+          live = d.status === "RUNNING";
+        } else {
+          const d = await lab.run(selected.id, last);
+          if (!alive) return;
+          setRunKind(String(d.config.kind ?? ""));
+          fresh = d.series;
+          const lastTime = fresh.length ? fresh[fresh.length - 1].time : undefined;
+          live = fresh.length > 0 ? Date.now() / 1000 - (lastTime ?? 0) < 600 : last !== undefined;
+        }
+        if (fresh.length) {
+          last = fresh[fresh.length - 1].step;
+          setSeries((prev) => [...prev, ...fresh]);
+        }
+        if (live) timer = setTimeout(tick, 4000);
       } catch { /* retry on next selection */ }
     };
     tick();
     return () => { alive = false; clearTimeout(timer); };
   }, [selected]);
 
-  const charts = useMemo(() => {
-    const k = detail?.kind.replace("TRAIN_", "").toLowerCase() ?? "ppo";
-    return (CHARTS[k] ?? []).map((c) => ({
-      ...c, points: series.filter((p) => typeof p[c.key] === "number").map((p) => ({ x: p.step, y: p[c.key] })),
-    }));
-  }, [detail, series]);
+  const kindName = selected?.type === "run" ? runKind : detail?.kind ?? "";
+  const charts = useMemo(() => chartsFor(kindName, series).map((c) => ({
+    ...c, points: series.filter((p) => typeof p[c.key] === "number").map((p) => ({ x: p.step, y: p[c.key] })),
+  })).filter((c) => c.points.length > 0), [kindName, series]);
 
   const start = async () => {
     setError(null);
     const config: Record<string, unknown> =
       kind === "ppo" ? { updates: amount, ...(init ? { init } : {}) } :
+      kind === "sb3" ? { steps: amount, ...(data ? { bc_data: data } : {}), ...(init ? { init } : {}) } :
       kind === "dqn" ? { steps: amount } : { data };
     try {
       const { job_id } = await lab.train(kind, config);
-      await refresh();
-      setSelected(job_id);
+      refresh();
+      setSelected({ type: "job", id: job_id });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "無法開始訓練");
     }
   };
 
+  const isSel = (type: Selection["type"], id: string) => selected?.type === type && selected.id === id;
+
   return (
-    <section className="grid gap-8 lg:grid-cols-[280px_1fr]">
+    <section className="grid gap-8 lg:grid-cols-[300px_1fr]">
       <div>
         <h3 className="font-display text-xl">開始訓練</h3>
         <div className="mt-3 grid gap-3 text-sm">
           <select aria-label="訓練方法" value={kind} onChange={(e) => {
             setKind(e.target.value);
-            setAmount(e.target.value === "dqn" ? 50000 : 50);
+            setAmount(e.target.value === "dqn" ? 50000 : e.target.value === "sb3" ? 200000 : 50);
           }} className={field}>
+            <option value="sb3">SB3 MaskablePPO 自我對弈（多行程）</option>
             <option value="ppo">PPO 自對弈</option>
             <option value="dqn">Dueling DQN</option>
             <option value="bc">行為克隆</option>
@@ -212,14 +273,16 @@ export function TrainingPanel() {
               <input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={`${field} text-ivory`} />
             </label>
           )}
-          {kind === "ppo" && (
-            <label className="flex flex-col text-mist">初始權重（BC 檢查點路徑，可留空）
-              <input value={init} onChange={(e) => setInit(e.target.value)} placeholder="checkpoints/bc_v1.pt" className={`${field} text-ivory`} />
+          {(kind === "ppo" || kind === "sb3") && (
+            <label className="flex flex-col text-mist">
+              {kind === "ppo" ? "初始權重（BC 檢查點路徑，可留空）" : "接續訓練的模型（.zip，可留空）"}
+              <input value={init} onChange={(e) => setInit(e.target.value)}
+                placeholder={kind === "ppo" ? "checkpoints/bc_v2.pt" : "checkpoints/sb3_best.zip"} className={`${field} text-ivory`} />
             </label>
           )}
-          {kind === "bc" && (
-            <label className="flex flex-col text-mist">對局紀錄檔
-              <input value={data} onChange={(e) => setData(e.target.value)} placeholder="data/bc/rule.jsonl.gz" className={`${field} text-ivory`} />
+          {(kind === "bc" || kind === "sb3") && (
+            <label className="flex flex-col text-mist">{kind === "bc" ? "對局紀錄檔" : "模仿學習暖身資料（可留空）"}
+              <input value={data} onChange={(e) => setData(e.target.value)} placeholder="data/bc/rule_3k.jsonl.gz" className={`${field} text-ivory`} />
             </label>
           )}
           <button onClick={start} className={primary}>開始</button>
@@ -227,33 +290,56 @@ export function TrainingPanel() {
         </div>
         <h3 className="mt-8 font-display text-xl">訓練任務</h3>
         <ul className="mt-2 divide-y divide-felt-line text-sm">
-          {jobs.length === 0 && <li className="py-2 text-mist">還沒有訓練任務。</li>}
+          {jobs.length === 0 && <li className="py-2 text-mist">還沒有從這裡啟動的訓練。</li>}
           {jobs.map((j) => (
             <li key={j.id}>
-              <button onClick={() => setSelected(j.id)}
-                className={`flex w-full justify-between py-2 text-left ${selected === j.id ? "text-ivory" : "text-mist"}`}>
+              <button onClick={() => setSelected({ type: "job", id: j.id })}
+                className={`flex w-full justify-between py-2 text-left ${isSel("job", j.id) ? "text-ivory" : "text-mist"}`}>
                 <span>{j.kind.replace("TRAIN_", "")}・{new Date(j.created_at).toLocaleString("zh-TW")}</span>
                 <span>{j.status}</span>
               </button>
             </li>
           ))}
         </ul>
+        <h3 className="mt-8 font-display text-xl">所有訓練紀錄</h3>
+        <p className="mt-1 text-xs text-mist">runs/ 資料夾裡的每一次訓練，包含用指令列啟動的。</p>
+        <ul className="mt-2 divide-y divide-felt-line text-sm">
+          {runs.length === 0 && <li className="py-2 text-mist">還沒有訓練紀錄。</li>}
+          {runs.map((r) => (
+            <li key={r.name}>
+              <button onClick={() => setSelected({ type: "run", id: r.name })}
+                className={`flex w-full justify-between gap-2 py-2 text-left ${isSel("run", r.name) ? "text-ivory" : "text-mist"}`}>
+                <span className="truncate">{r.name}</span>
+                <span className="tabular shrink-0">
+                  {typeof r.eval_win_rate === "number" ? pct(r.eval_win_rate) : `${r.points} 筆`}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
       <div>
-        {!detail ? <p className="text-mist">選一個訓練任務查看曲線。</p> : (
+        {!selected ? <p className="text-mist">選一個訓練任務或紀錄查看曲線。</p> : (
           <>
             <div className="flex flex-wrap items-center gap-3">
-              <h3 className="font-display text-xl">{detail.kind.replace("TRAIN_", "")} 訓練</h3>
-              <span className="text-sm text-mist">{detail.status}</span>
-              {detail.status === "RUNNING" && (
+              <h3 className="font-display text-xl">
+                {selected.type === "run" ? selected.id : `${detail?.kind.replace("TRAIN_", "") ?? ""} 訓練`}
+              </h3>
+              {detail && <span className="text-sm text-mist">{detail.status}</span>}
+              {detail?.status === "RUNNING" && (
                 <button onClick={async () => { setDetail(await lab.stop(detail.id)); refresh(); }}
                   className="rounded border border-ivory/30 px-3 py-1 text-sm">停止</button>
               )}
-              {(detail.status === "STOPPED" || detail.status === "FAILED") && (
-                <button onClick={async () => { await lab.resume(detail.id); setSelected(null); setTimeout(() => setSelected(detail.id), 50); refresh(); }}
-                  className="rounded border border-ivory/30 px-3 py-1 text-sm">從檢查點繼續</button>
+              {detail && (detail.status === "STOPPED" || detail.status === "FAILED") && (
+                <button onClick={async () => {
+                  await lab.resume(detail.id);
+                  setSelected(null);
+                  setTimeout(() => setSelected({ type: "job", id: detail.id }), 50);
+                  refresh();
+                }} className="rounded border border-ivory/30 px-3 py-1 text-sm">從檢查點繼續</button>
               )}
             </div>
+            {charts.length === 0 && <p className="mt-4 text-mist">還沒有資料點，訓練開始後會自動更新。</p>}
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {charts.map((c) => <LineChart key={c.key} title={c.title} points={c.points} format={c.fmt} />)}
             </div>

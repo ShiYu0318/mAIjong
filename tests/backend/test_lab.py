@@ -57,3 +57,33 @@ def test_replay_explorer_filters(client):
 def test_binomial_p_value():
     assert binomial_p_value(50, 100, 0.5) > 0.9
     assert binomial_p_value(90, 100, 0.5) < 1e-10
+
+
+def test_runs_listing_and_incremental_series(client, tmp_path, monkeypatch):
+    from ai.training import metrics
+
+    monkeypatch.setattr(metrics, "RUNS_DIR", tmp_path / "runs")
+    logger = metrics.MetricsLogger("cli-run", {"kind": "sb3_maskable_ppo"})
+    for step in (1, 2, 3):
+        logger.log(step, eval_win_rate=0.1 * step)
+    logger.close()
+    rows = client.get("/api/v1/lab/runs").json()
+    assert rows[0]["name"] == "cli-run" and rows[0]["kind"] == "sb3_maskable_ppo"
+    assert rows[0]["points"] == 3 and abs(rows[0]["eval_win_rate"] - 0.3) < 1e-9
+    full = client.get("/api/v1/lab/runs/cli-run").json()
+    assert [p["step"] for p in full["series"]] == [1, 2, 3]
+    newer = client.get("/api/v1/lab/runs/cli-run?since=2").json()
+    assert [p["step"] for p in newer["series"]] == [3]
+    assert client.get("/api/v1/lab/runs/..").status_code == 404
+    assert client.get("/api/v1/lab/runs/missing").status_code == 404
+
+
+def test_sb3_training_arguments():
+    from backend.tasks import runner
+
+    args = runner._train_args("job1", "sb3", {"steps": 5000, "bc_data": "data/x.jsonl.gz"})
+    assert args[2] == "ai.training.sb3_trainer"
+    assert args[args.index("--steps") + 1] == "5000"
+    assert args[args.index("--bc-data") + 1] == "data/x.jsonl.gz"
+    assert args[args.index("--out-dir") + 1].endswith("checkpoints/sb3_job1")
+    assert runner.checkpoint_for("job1", "sb3").name == "sb3_best.zip"

@@ -100,7 +100,7 @@ def submit_simulation(job_id: str, specs: list[str], hands: int, seed: int) -> N
 
 
 TRAIN_MODULES = {"ppo": "ai.training.ppo_trainer", "dqn": "ai.training.dqn_trainer",
-                 "bc": "ai.training.bc_trainer"}
+                 "bc": "ai.training.bc_trainer", "sb3": "ai.training.sb3_trainer"}
 
 
 def _train_args(job_id: str, kind: str, config: dict[str, Any]) -> list[str]:
@@ -110,6 +110,16 @@ def _train_args(job_id: str, kind: str, config: dict[str, Any]) -> list[str]:
         args += ["--updates", str(int(config.get("updates", 100))),
                  "--envs", str(int(config.get("envs", 8))),
                  "--out", str(ckpt / f"ppo_{job_id}.pt")]
+        if config.get("init"):
+            args += ["--init", str(config["init"])]
+    elif kind == "sb3":
+        args += ["--steps", str(int(config.get("steps", 1_000_000))),
+                 "--envs", str(int(config.get("envs", 8))),
+                 "--eval-every", str(int(config.get("eval_every", 100_000))),
+                 "--snapshot-every", str(int(config.get("eval_every", 100_000))),
+                 "--out-dir", str(ckpt / f"sb3_{job_id}")]
+        if config.get("bc_data"):
+            args += ["--bc-data", str(config["bc_data"])]
         if config.get("init"):
             args += ["--init", str(config["init"])]
     elif kind == "dqn":
@@ -159,4 +169,6 @@ def stop_training(job_id: str) -> bool:
 
 
 def checkpoint_for(job_id: str, kind: str) -> Path:
+    if kind == "sb3":
+        return ROOT / "checkpoints" / f"sb3_{job_id}" / "sb3_best.zip"
     return ROOT / "checkpoints" / f"{kind}_{job_id}.pt"
