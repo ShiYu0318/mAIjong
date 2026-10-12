@@ -27,7 +27,7 @@ from backend.config import get_settings
 from backend.hints.llm_provider import describe_discard, get_provider
 from backend.security_middleware import clean_text
 from backend.ws.store import NullStore, RoomStore
-from backend.ws.view import legal_actions_payload, masked_state, visible_event
+from backend.ws.view import discard_waits, legal_actions_payload, masked_state, visible_event
 from engine.actions import Action, ActionType, decode_action, encode_action
 from engine.game import (
     GameState,
@@ -419,6 +419,7 @@ class Room:
             "player": seat,
             "legal_actions": legal_actions_payload(self.game, seat),
             "deadline": self.deadline,
+            "waits": discard_waits(self.game, seat),
         }
 
     # ------------------------------------------------------------ bots & timers
