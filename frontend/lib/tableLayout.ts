@@ -13,6 +13,8 @@ export interface TableLayout {
   /** discard (river) tile size */
   sd: number;
   sdH: number;
+  /** phone-sized: mini seat badges in the table corners, hand shrinks to fit */
+  compact: boolean;
 }
 
 export function tableLayout(W: number, H: number): TableLayout {
@@ -23,7 +25,7 @@ export function tableLayout(W: number, H: number): TableLayout {
   const cx = W / 2;
   const cy = 8 + (H - bottom - 8) / 2;
   const sd = Math.max(20, L / 22);
-  return { W, H, L, cx, cy, handW, handH, sd, sdH: (sd * TILE_H) / TILE_W };
+  return { W, H, L, cx, cy, handW, handH, sd, sdH: (sd * TILE_H) / TILE_W, compact: W < 640 };
 }
 
 /** Seat position relative to the viewer: 0 bottom (you), 1 right, 2 top, 3 left. */
@@ -47,7 +49,7 @@ export function seatCorner(rel: number, g: TableLayout): { x: number; y: number 
       { x: left, y: g.cy },
     ][rel];
   }
-  const d = g.L * 0.4;
+  const d = g.compact ? g.L / 2 - 28 : g.L * 0.4;
   return [
     { x: g.cx + d, y: g.cy + d },
     { x: g.cx + d, y: g.cy - d },

@@ -82,7 +82,7 @@ export default function Lobby() {
       </header>
 
       <section className="relative mt-8 grid items-center gap-8 lg:grid-cols-[1.2fr_1fr]">
-        <div className="animate-rise">
+        <div className="min-w-0 animate-rise">
           <h1 className="font-display text-6xl leading-none font-black sm:text-8xl">
             <span className="bg-gradient-to-b from-white to-ivory-dim bg-clip-text text-transparent drop-shadow-[0_6px_0_rgb(0_0_0_/_0.25)]">
               {t("麥醬")}
@@ -115,11 +115,11 @@ export default function Lobby() {
         </p>
       )}
 
-      <section className="mt-8 grid gap-5 lg:grid-cols-[1fr_1fr_340px]">
+      <section className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px]">
         <ModeCard tone="amber" icon="⚡" className="lg:row-span-2">
           <h2 className="font-display text-3xl font-black">{t("快速配對")}</h2>
           <p className="mt-2 text-white/85">{t("和正在等待的玩家湊一桌；30 秒內沒湊滿就由 AI 補位。")}</p>
-          <div className="relative my-6 flex flex-1 items-center justify-center" aria-hidden="true">
+          <div className="relative my-6 flex min-h-28 flex-1 scale-75 items-center justify-center sm:scale-100" aria-hidden="true">
             {[27, 31, 0, 32, 28].map((tile, i) => (
               <span key={i} className="absolute transition-transform"
                 style={{ transform: `translateX(${(i - 2) * 46}px) translateY(${Math.abs(i - 2) * 10}px) rotate(${(i - 2) * 9}deg)` }}>

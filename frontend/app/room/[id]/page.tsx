@@ -91,9 +91,9 @@ export default function RoomPage() {
 
   return (
     <main className="flex h-dvh flex-col">
-      <header className="flex items-center gap-4 border-b border-white/10 bg-black/25 px-4 py-2 text-sm backdrop-blur">
+      <header className="flex items-center gap-3 border-b border-white/10 bg-black/25 px-3 py-2 text-sm whitespace-nowrap backdrop-blur sm:gap-4 sm:px-4">
         <Link href="/" className="font-display text-xl font-black text-gold">{t("麥醬")}</Link>
-        <span className="text-mist">{t("房間")} <span className="tabular text-ivory">{room.code}</span></span>
+        <span className="text-mist"><span className="hidden sm:inline">{t("房間")} </span><span className="tabular text-ivory">{room.code}</span></span>
         {view && (
           <span className="text-mist">
             {t("{wind}風圈・第 {n} 手", { wind: windName(view.round_wind), n: (room.match?.hands_played ?? 0) + 1 })}

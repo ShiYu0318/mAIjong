@@ -23,12 +23,12 @@ export function PlayerBar({ compact = false }: { compact?: boolean }) {
   const level = profile?.level ?? 1;
   const xpPct = profile ? profile.xp / profile.xp_next : 0;
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
       {user && (
         <Link href="/profile" className="group flex items-center gap-2 rounded-full bg-black/20 py-1 pr-4 pl-1 hover:bg-black/30"
           aria-label={t("我的檔案")}>
           <Avatar name={user.username} size={compact ? 32 : 40} progress={xpPct} />
-          <span className="leading-tight">
+          <span className="hidden leading-tight sm:block">
             <span className="block max-w-36 truncate font-black">{user.username}</span>
             <span className="block text-xs text-gold">Lv.{level}</span>
           </span>
@@ -72,7 +72,7 @@ function AccountMenu() {
   return (
     <div className="relative text-sm">
       {guest ? (
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 whitespace-nowrap">
           <button onClick={() => setOpen(open === "upgrade" ? null : "upgrade")}
             className="rounded-full bg-gold/90 px-3 py-1.5 font-black text-ink hover:bg-gold">{t("綁定帳號")}</button>
           <button onClick={() => setOpen(open === "login" ? null : "login")} className="text-mist underline hover:text-ivory">
@@ -83,7 +83,7 @@ function AccountMenu() {
         <button onClick={signOut} className="text-mist underline hover:text-ivory">{t("登出")}</button>
       )}
       {open && (
-        <form onSubmit={submit} className="panel absolute right-0 z-40 mt-3 grid w-80 animate-pop-in gap-2 p-4">
+        <form onSubmit={submit} className="panel absolute right-0 z-40 mt-3 grid w-80 max-w-[calc(100vw-2rem)] animate-pop-in gap-2 p-4">
           <p className="font-display text-xl font-black">{open === "upgrade" ? t("綁定帳號") : t("登入")}</p>
           {open === "upgrade" && (
             <>

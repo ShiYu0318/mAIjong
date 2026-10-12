@@ -245,8 +245,11 @@ function drawOpponent(area: Container, tex: Textures, p: PlayerView, g: TableLay
 function drawMyHand(app: Application, mem: Memory, stage: Container, tex: Textures, p: PlayerView,
   sc: Scene, g: TableLayout) {
   const hand = p.hand ?? [];
-  const w = g.handW;
-  const h = g.handH;
+  const meldCount = p.melds.reduce((n, m) => n + m.tiles.length, 0);
+  // shrink the tiles so the whole hand (+ the fresh draw and melds) fits the width
+  const units = hand.length + 1.4 + meldCount * 0.72 + p.melds.length * 0.3 + 0.5;
+  const w = Math.min(g.handW, (g.W - 16) / units);
+  const h = (w * TILE_H) / TILE_W;
   const lastDraw = sc.view.last_draw;
   let tiles = hand;
   let drawn: number | null = null;
@@ -259,10 +262,9 @@ function drawMyHand(app: Application, mem: Memory, stage: Container, tex: Textur
   }
   const justDrew = drawn !== null && hand.length === mem.handLen + 1;
   mem.handLen = hand.length;
-  const meldTiles = p.melds.reduce((n, m) => n + m.tiles.length, 0);
-  const totalW = (tiles.length + (drawn !== null ? 1.4 : 0)) * w + meldTiles * w * 0.72
+  const totalW = (tiles.length + (drawn !== null ? 1.4 : 0)) * w + meldCount * w * 0.72
     + p.melds.length * w * 0.3;
-  let x = Math.max(12, (g.W - totalW) / 2);
+  let x = Math.max(8, (g.W - totalW) / 2);
   const y = g.H - h - 18;
   const selectedIdx = sc.selected === null ? -1 : tiles.indexOf(sc.selected);
 

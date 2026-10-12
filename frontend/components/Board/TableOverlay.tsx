@@ -93,6 +93,30 @@ export function TableHud({ g, view, names }: { g: TableLayout; view: GameView; n
         const pos = seatCorner(rel, g);
         const acting = view.acting.includes(p.seat) && view.phase !== "ENDED";
         const name = names[p.seat] ?? `#${p.seat + 1}`;
+        if (g.compact) {
+          return (
+            <Abs key={p.seat} x={pos.x} y={pos.y}>
+              <div className={`flex flex-col items-center rounded-xl px-1 py-0.5 ${acting ? "bg-black/60 ring-2 ring-gold" : "bg-black/40"}`}
+                aria-label={name}>
+                <span className="relative">
+                  <Avatar name={name} size={22} active={acting} />
+                  <span className="absolute -top-1 -right-2 rounded bg-ivory px-0.5 text-[10px] leading-tight font-black text-ink">
+                    {windName(p.seat_wind)}
+                  </span>
+                </span>
+                <span className={`tabular text-[10px] font-black ${p.score > 0 ? "text-jade" : p.score < 0 ? "text-zhong" : "text-mist"}`}>
+                  {p.score > 0 ? `+${p.score}` : p.score}
+                </span>
+                {(view.dealer === p.seat || p.declared_ting) && (
+                  <span className="flex gap-0.5 text-[9px] font-black">
+                    {view.dealer === p.seat && <span className="rounded bg-zhong px-0.5">{t("莊")}</span>}
+                    {p.declared_ting && <span className="rounded bg-pink px-0.5">{t("聽")}</span>}
+                  </span>
+                )}
+              </div>
+            </Abs>
+          );
+        }
         return (
           <Abs key={p.seat} x={pos.x} y={pos.y}>
             <div className={`flex w-[168px] items-center gap-2 rounded-2xl px-2 py-1.5 transition-all duration-300 ${
@@ -118,7 +142,11 @@ export function TableHud({ g, view, names }: { g: TableLayout; view: GameView; n
         const rel = relSeat(e.seat, me);
         const pos = seatStamp(rel, g);
         const st = STAMP_TEXT[e.kind];
-        return st ? <Abs key={e.id} x={pos.x} y={pos.y}><Stamp text={t(st.text)} colors={st.colors} /></Abs> : null;
+        return st ? (
+          <Abs key={e.id} x={pos.x} y={pos.y} className={g.compact ? "scale-75" : ""}>
+            <Stamp text={t(st.text)} colors={st.colors} />
+          </Abs>
+        ) : null;
       })}
     </div>
   );

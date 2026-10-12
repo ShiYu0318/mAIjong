@@ -71,3 +71,21 @@ test("switch the interface to English and keep the choice", async ({ page }) => 
   await page.getByRole("button", { name: "Switch language" }).click();
   await expect(page.getByRole("tab", { name: "牌局紀錄" })).toBeVisible();
 });
+
+test.describe("phone screen", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test("lobby and table fit without sideways scrolling", async ({ page }) => {
+    const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "快速配對" })).toBeVisible();
+    await page.waitForTimeout(1500);
+    expect(await overflow()).toBeLessThanOrEqual(1);
+    await page.getByRole("button", { name: "開桌" }).click();
+    await page.waitForURL(/\/room\//);
+    await page.getByRole("button", { name: "開始" }).click();
+    await expect(page.locator("canvas")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("region", { name: "你的手牌" })).toBeAttached();
+    expect(await overflow()).toBeLessThanOrEqual(1);
+  });
+});

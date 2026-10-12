@@ -60,7 +60,7 @@ export function ActionBar() {
     <div className="flex flex-wrap items-end justify-end gap-3" role="group" aria-label={t("可執行的動作")}>
       {selected !== null && discardPhase && <WaitsPreview tile={selected} />}
       {discardPhase && selected === null && !hu && kongs.length === 0 && (
-        <p className="rounded-full bg-black/40 px-4 py-2 text-sm text-ivory-dim">
+        <p className="hidden rounded-full bg-black/40 px-4 py-2 text-sm text-ivory-dim sm:block">
           {t("點一張牌選取，再點一次打出（鍵盤：← → 選牌、Enter 打出）。")}
         </p>
       )}
