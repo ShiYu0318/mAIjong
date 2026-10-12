@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { LocaleSync } from "@/components/I18n/LocaleToggle";
 import { ServiceWorker } from "@/components/Pwa/ServiceWorker";
 import { notoSans, wenkai } from "@/lib/fonts";
 import "./globals.css";
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-dvh antialiased">
         {children}
         <ServiceWorker />
+        <LocaleSync />
       </body>
     </html>
   );

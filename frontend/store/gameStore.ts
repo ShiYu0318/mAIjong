@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Action, GameView, RoomInfo, ServerMessage, WinPayload } from "@/lib/protocol";
+import { translate } from "@/lib/i18n";
 import { tileName } from "@/lib/tiles";
 
 export interface ChatLine {
@@ -77,13 +78,13 @@ function eventLine(ev: Record<string, unknown>, names: string[]): string | null 
   const t = ev.tile as number | null;
   const tile = t === null || t === undefined ? "" : tileName(t);
   switch (ev.type) {
-    case "DISCARD": return `${who} 打出 ${tile}`;
-    case "TING": return `${who} 打出 ${tile} 並宣告聽牌`;
-    case "PON": return `${who} 碰 ${tile}`;
-    case "CHI": return `${who} 吃 ${tile}`;
-    case "KONG": return ev.kind === "AN_KONG" ? `${who} 暗槓` : `${who} 槓 ${tile}`;
-    case "FLOWER": return `${who} 補花 ${tile}`;
-    case "FLOWER_ROB": return `${who} 搶花 ${tile}`;
+    case "DISCARD": return translate("{who} 打出 {tile}", { who, tile });
+    case "TING": return translate("{who} 打出 {tile} 並宣告聽牌", { who, tile });
+    case "PON": return translate("{who} 碰 {tile}", { who, tile });
+    case "CHI": return translate("{who} 吃 {tile}", { who, tile });
+    case "KONG": return ev.kind === "AN_KONG" ? translate("{who} 暗槓", { who }) : translate("{who} 槓 {tile}", { who, tile });
+    case "FLOWER": return translate("{who} 補花 {tile}", { who, tile });
+    case "FLOWER_ROB": return translate("{who} 搶花 {tile}", { who, tile });
     default: return null;
   }
 }

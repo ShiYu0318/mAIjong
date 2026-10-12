@@ -1,10 +1,11 @@
 "use client";
 
 import { TileImage } from "@/components/Hand/TileImage";
+import { translate, useT } from "@/lib/i18n";
 import { useGame } from "@/store/gameStore";
 
 function shantenLabel(sh: number) {
-  return sh === 0 ? "聽牌" : `${sh} 向聽`;
+  return sh === 0 ? translate("聽牌") : translate("{n} 向聽", { n: sh });
 }
 
 export function HintButton() {
@@ -12,11 +13,12 @@ export function HintButton() {
   const seat = useGame((s) => s.seat);
   const legal = useGame((s) => s.legal);
   const request = useGame((s) => s.requestHint);
+  const t = useT();
   const canDiscard = legal.some((a) => a.action_type === "DISCARD");
   if (!view || view.phase !== "DISCARD" || view.turn !== seat || !canDiscard) return null;
   return (
     <button onClick={request} className="rounded-lg border border-jade bg-felt-deep px-4 py-2.5 text-ivory hover:bg-jade/30">
-      提示
+      {t("提示")}
     </button>
   );
 }
@@ -26,16 +28,17 @@ export function HintPanel() {
   const close = useGame((s) => s.closeHint);
   const select = useGame((s) => s.select);
   const selected = useGame((s) => s.selected);
+  const t = useT();
   if (!hint) return null;
   return (
-    <section aria-label="打牌提示"
+    <section aria-label={t("打牌提示")}
       className="absolute top-3 left-3 z-10 max-h-[70%] w-80 overflow-y-auto rounded-xl border border-felt-line bg-felt-deep/95 p-4 text-sm shadow-xl">
       <div className="flex items-start justify-between gap-2">
         <p className="leading-relaxed">{hint.explanation}</p>
-        <button onClick={close} aria-label="關閉提示" className="shrink-0 text-mist hover:text-ivory">✕</button>
+        <button onClick={close} aria-label={t("關閉提示")} className="shrink-0 text-mist hover:text-ivory">✕</button>
       </div>
       {hint.remaining !== null && (
-        <p className="mt-1 text-xs text-mist">本場還能用 {hint.remaining} 次提示</p>
+        <p className="mt-1 text-xs text-mist">{t("本場還能用 {n} 次提示", { n: hint.remaining })}</p>
       )}
       <ol className="mt-3 space-y-1">
         {hint.candidates.map((c, i) => (
@@ -49,8 +52,8 @@ export function HintPanel() {
                   {shantenLabel(c.shanten_after)}
                 </span>
                 <span className="ml-2 tabular text-mist">
-                  {c.shanten_after === 0 ? `可胡 ${c.uke_count} 張` : `進張 ${c.uke_count} 張`}
-                  {c.best_tai !== null ? `・約 ${c.best_tai} 台` : ""}
+                  {c.shanten_after === 0 ? t("可胡 {n} 張", { n: c.uke_count }) : t("進張 {n} 張", { n: c.uke_count })}
+                  {c.best_tai !== null ? t("・約 {n} 台", { n: c.best_tai }) : ""}
                 </span>
                 <span className="mt-1 flex flex-wrap gap-[1px]">
                   {(c.shanten_after === 0 ? c.waits : c.uke_ire).slice(0, 9).map((t) => (
@@ -59,7 +62,7 @@ export function HintPanel() {
                 </span>
               </span>
               {c.danger >= 0.5 && (
-                <span className="size-2.5 rounded-full bg-zhong" title="有放槍風險" aria-label="有放槍風險" />
+                <span className="size-2.5 rounded-full bg-zhong" title={t("有放槍風險")} aria-label={t("有放槍風險")} />
               )}
             </button>
           </li>

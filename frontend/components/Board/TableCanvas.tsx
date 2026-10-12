@@ -4,7 +4,8 @@ import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js
 import { useEffect, useRef } from "react";
 import type { GameView, MeldView, PlayerView } from "@/lib/protocol";
 import { TILE_H, TILE_W, ensureTileFont, tileCanvas } from "@/lib/tilePainter";
-import { WINDS } from "@/lib/tiles";
+import { translate, useLocale } from "@/lib/i18n";
+import { windName } from "@/lib/tiles";
 import { useGame } from "@/store/gameStore";
 
 const COLORS = {
@@ -149,7 +150,7 @@ function drawSeatLabel(area: Container, p: PlayerView, sc: Scene, L: number, rel
   const name = sc.names[p.seat] ?? "";
   const tags = [dealer ? "莊" : "", p.declared_ting ? "聽" : ""].filter(Boolean).join("・");
   const t = new Text({
-    text: `${acting ? "▶ " : ""}${WINDS[p.seat_wind]}　${name}\n${p.score}${tags ? "　" + tags : ""}`,
+    text: `${acting ? "▶ " : ""}${windName(p.seat_wind)}　${name}\n${p.score}${tags ? "　" + tags : ""}`,
     style: {
       fontFamily: "PingFang TC, Noto Sans TC, sans-serif",
       fontSize: 13,
@@ -173,7 +174,7 @@ function drawCenter(stage: Container, view: GameView, cx: number, cy: number, L:
     .fill({ color: COLORS.felt }).stroke({ width: 1, color: COLORS.line });
   stage.addChild(g);
   const wind = new Text({
-    text: `${WINDS[view.round_wind]}風圈`,
+    text: translate("{wind}風圈", { wind: windName(view.round_wind) }),
     style: { fontFamily: "var(--font-wenkai), Kaiti TC, serif", fontSize: Math.max(16, size * 0.2), fill: COLORS.ivory },
   });
   wind.anchor.set(0.5);
@@ -256,6 +257,7 @@ export function TableCanvas({ fixed }: { fixed?: StaticTable } = {}) {
   const selected = useGame((s) => s.selected);
   const legal = useGame((s) => s.legal);
   const room = useGame((s) => s.room);
+  const locale = useLocale((s) => s.locale);
 
   useEffect(() => {
     let disposed = false;
@@ -325,7 +327,7 @@ export function TableCanvas({ fixed }: { fixed?: StaticTable } = {}) {
 
   useEffect(() => {
     redraw();
-  }, [view, selected, legal, room, fixed]);
+  }, [view, selected, legal, room, fixed, locale]);
 
   return <div ref={host} className="absolute inset-0" aria-label="牌桌" role="img" />;
 }

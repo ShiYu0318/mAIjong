@@ -55,3 +55,18 @@ test("play with the keyboard only", async ({ page }) => {
   expect(discarded).toBe(true);
   await expect(page.locator("[aria-live=polite]").first()).not.toBeEmpty();
 });
+
+test("switch the interface to English and keep the choice", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "切換語言" }).click();
+  await expect(page.getByRole("heading", { name: "Quick match" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Open a table" })).toBeVisible();
+  await page.getByRole("button", { name: "Open table" }).click();
+  await page.waitForURL(/\/room\//);
+  await expect(page.getByRole("heading", { name: "Waiting to start" })).toBeVisible();
+  await page.getByRole("button", { name: "Start" }).click();
+  await expect(page.getByRole("tab", { name: "Log" })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Switch language" }).click();
+  await expect(page.getByRole("tab", { name: "牌局紀錄" })).toBeVisible();
+});

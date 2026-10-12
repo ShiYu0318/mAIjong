@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/i18n";
 import { useGame } from "@/store/gameStore";
 
 export function SidePanel({ names }: { names: string[] }) {
   const log = useGame((s) => s.log);
   const chat = useGame((s) => s.chat);
   const sendChat = useGame((s) => s.sendChat);
+  const t = useT();
   const [tab, setTab] = useState<"log" | "chat">("log");
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
@@ -17,10 +19,10 @@ export function SidePanel({ names }: { names: string[] }) {
   return (
     <aside className="flex h-full flex-col rounded-xl border border-felt-line bg-felt-deep/80 text-sm">
       <div className="flex border-b border-felt-line" role="tablist">
-        {(["log", "chat"] as const).map((t) => (
-          <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-            className={`flex-1 py-2 ${tab === t ? "text-ivory" : "text-mist"}`}>
-            {t === "log" ? "牌局紀錄" : `聊天${chat.length ? `（${chat.length}）` : ""}`}
+        {(["log", "chat"] as const).map((tb) => (
+          <button key={tb} role="tab" aria-selected={tab === tb} onClick={() => setTab(tb)}
+            className={`flex-1 py-2 ${tab === tb ? "text-ivory" : "text-mist"}`}>
+            {tb === "log" ? t("牌局紀錄") : `${t("聊天")}${chat.length ? ` (${chat.length})` : ""}`}
           </button>
         ))}
       </div>
@@ -38,9 +40,9 @@ export function SidePanel({ names }: { names: string[] }) {
           sendChat(text);
           setText("");
         }}>
-          <input value={text} onChange={(e) => setText(e.target.value.slice(0, 200))} aria-label="聊天訊息"
-            className="min-w-0 flex-1 rounded-md border border-felt-line bg-felt px-2 py-1.5" placeholder="說點什麼" />
-          <button className="rounded-md border border-ivory/30 px-3">送出</button>
+          <input value={text} onChange={(e) => setText(e.target.value.slice(0, 200))} aria-label={t("聊天訊息")}
+            className="min-w-0 flex-1 rounded-md border border-felt-line bg-felt px-2 py-1.5" placeholder={t("說點什麼")} />
+          <button className="rounded-md border border-ivory/30 px-3">{t("送出")}</button>
         </form>
       )}
     </aside>

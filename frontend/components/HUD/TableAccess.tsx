@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { translate, useT } from "@/lib/i18n";
 import type { Action, GameView } from "@/lib/protocol";
 import { tileName } from "@/lib/tiles";
 import { useGame } from "@/store/gameStore";
@@ -25,12 +26,12 @@ const ACTION_WORDS: Partial<Record<Action["action_type"], string>> = {
 function describeLegal(legal: Action[], phase: GameView["phase"]): string {
   const words = new Set<string>();
   for (const a of legal) {
-    if (a.action_type === "HU" && phase === "DISCARD") words.add("自摸");
-    else if (ACTION_WORDS[a.action_type]) words.add(ACTION_WORDS[a.action_type]!);
+    if (a.action_type === "HU" && phase === "DISCARD") words.add(translate("自摸"));
+    else if (ACTION_WORDS[a.action_type]) words.add(translate(ACTION_WORDS[a.action_type]!));
   }
-  if (legal.some((a) => a.action_type === "DISCARD")) words.add("打牌");
-  if (legal.some((a) => a.action_type === "TING")) words.add("宣告聽牌");
-  return [...words].join("、");
+  if (legal.some((a) => a.action_type === "DISCARD")) words.add(translate("打牌"));
+  if (legal.some((a) => a.action_type === "TING")) words.add(translate("宣告聽牌"));
+  return [...words].join(translate("、"));
 }
 
 const typing = (el: EventTarget | null) =>
@@ -108,18 +109,22 @@ export function TableAnnouncer() {
   const win = useGame((s) => s.win);
   const drawn = useGame((s) => s.drawn);
   const seats = useGame((s) => s.room?.seats);
+  const t = useT();
   const [polite, setPolite] = useState("");
 
   const last = log[log.length - 1];
   useEffect(() => { if (last) setPolite(last); }, [last, log.length]);
   useEffect(() => {
-    if (view && legal.length) setPolite(`輪到你。可以：${describeLegal(legal, view.phase)}`);
-  }, [legal, view]);
-  useEffect(() => { if (selected !== null) setPolite(`選取 ${tileName(selected)}`); }, [selected]);
+    if (view && legal.length) setPolite(t("輪到你。可以：{list}", { list: describeLegal(legal, view.phase) }));
+  }, [legal, view, t]);
+  useEffect(() => { if (selected !== null) setPolite(t("選取 {tile}", { tile: tileName(selected) })); }, [selected, t]);
 
   const assertive = win
-    ? `${seats?.[win.winner]?.name ?? `玩家${win.winner + 1}`} ${win.self_draw ? "自摸" : "胡牌"}，共 ${(win.tai_breakdown ?? []).reduce((n, x) => n + x.tai, 0)} 台`
-    : drawn ? "流局" : "";
+    ? t(win.self_draw ? "{who} 自摸，共 {n} 台" : "{who} 胡牌，共 {n} 台", {
+      who: seats?.[win.winner]?.name ?? `#${win.winner + 1}`,
+      n: (win.tai_breakdown ?? []).reduce((n, x) => n + x.tai, 0),
+    })
+    : drawn ? t("流局") : "";
 
   return (
     <>
@@ -137,41 +142,42 @@ export function HandList() {
   const selected = useGame((s) => s.selected);
   const select = useGame((s) => s.select);
   const act = useGame((s) => s.act);
+  const t = useT();
   const order = useMemo(() => (view ? handOrder(view, seat) : []), [view, seat]);
   if (!view || seat === null) return null;
   const me = view.players[seat];
   const flowers = me?.flowers ?? [];
   return (
-    <section aria-label="你的手牌"
+    <section aria-label={t("你的手牌")}
       className="sr-only focus-within:not-sr-only focus-within:absolute focus-within:top-2 focus-within:left-2 focus-within:z-30 focus-within:max-w-[90%] focus-within:rounded-md focus-within:bg-felt-deep focus-within:p-3 focus-within:shadow-lg">
       <p className="mb-2 text-sm text-mist">
-        鍵盤：← → 選牌、Enter 打出、T 打出並聽牌、H 胡、P 碰、K 槓、C 吃、X 過、? 提示
+        {t("鍵盤：← → 選牌、Enter 打出、T 打出並聽牌、H 胡、P 碰、K 槓、C 吃、X 過、? 提示")}
       </p>
       <ul className="flex flex-wrap gap-1">
-        {order.map((t, i) => {
-          const playable = legal.some((a) => (a.action_type === "DISCARD" || a.action_type === "TING") && a.tile === t);
-          const isDraw = i === order.length - 1 && view.last_draw === t && view.turn === seat && view.phase === "DISCARD";
+        {order.map((tile, i) => {
+          const playable = legal.some((a) => (a.action_type === "DISCARD" || a.action_type === "TING") && a.tile === tile);
+          const isDraw = i === order.length - 1 && view.last_draw === tile && view.turn === seat && view.phase === "DISCARD";
           return (
-            <li key={`${t}-${i}`}>
-              <button type="button" disabled={!playable} aria-pressed={selected === t}
+            <li key={`${tile}-${i}`}>
+              <button type="button" disabled={!playable} aria-pressed={selected === tile}
                 onClick={() => {
-                  if (selected === t) {
-                    const a = legal.find((x) => x.action_type === "DISCARD" && x.tile === t)
-                      ?? legal.find((x) => x.action_type === "TING" && x.tile === t);
+                  if (selected === tile) {
+                    const a = legal.find((x) => x.action_type === "DISCARD" && x.tile === tile)
+                      ?? legal.find((x) => x.action_type === "TING" && x.tile === tile);
                     if (a) act(a);
-                  } else select(t);
+                  } else select(tile);
                 }}
                 className="rounded border border-felt-line px-2 py-1 text-sm aria-pressed:bg-ivory aria-pressed:text-ink disabled:opacity-60">
-                {tileName(t)}{isDraw ? "（剛摸）" : ""}
+                {tileName(tile)}{isDraw ? t("（剛摸）") : ""}
               </button>
             </li>
           );
         })}
       </ul>
       {(me?.melds.length ?? 0) > 0 && (
-        <p className="mt-2 text-sm">副露：{me!.melds.map((m) => m.tiles.map((t) => (t === null ? "暗" : tileName(t))).join("")).join("、")}</p>
+        <p className="mt-2 text-sm">{t("副露：{m}", { m: me!.melds.map((m) => m.tiles.map((x) => (x === null ? t("暗") : tileName(x))).join(" ")).join(t("、")) })}</p>
       )}
-      {flowers.length > 0 && <p className="mt-1 text-sm">花牌：{flowers.map(tileName).join("、")}</p>}
+      {flowers.length > 0 && <p className="mt-1 text-sm">{t("花牌：{f}", { f: flowers.map(tileName).join(t("、")) })}</p>}
     </section>
   );
 }

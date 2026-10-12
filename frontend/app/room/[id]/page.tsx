@@ -13,7 +13,9 @@ import { HandList, TableAnnouncer, useTableKeys } from "@/components/HUD/TableAc
 import { TurnTimer } from "@/components/HUD/TurnTimer";
 import { WaitingRoom } from "@/components/HUD/WaitingRoom";
 import { ApiError, loadTicket, rooms, saveTicket } from "@/lib/api";
-import { WINDS } from "@/lib/tiles";
+import { LocaleToggle } from "@/components/I18n/LocaleToggle";
+import { translate, useT } from "@/lib/i18n";
+import { windName } from "@/lib/tiles";
 import { GameSocket } from "@/lib/ws";
 import { useGame } from "@/store/gameStore";
 
@@ -37,6 +39,7 @@ export default function RoomPage() {
   const view = useGame((s) => s.view);
   const seat = useGame((s) => s.seat);
   const error = useGame((s) => s.error);
+  const t = useT();
   useTableKeys();
 
   useEffect(() => {
@@ -56,7 +59,7 @@ export default function RoomPage() {
   if (ticket === null) {
     return (
       <main className="mx-auto max-w-md px-5 py-20">
-        <h1 className="font-display text-4xl">加入這一桌</h1>
+        <h1 className="font-display text-4xl">{t("加入這一桌")}</h1>
         <form className="mt-6 flex gap-2" onSubmit={async (e) => {
           e.preventDefault();
           try {
@@ -64,15 +67,15 @@ export default function RoomPage() {
             saveTicket(id, j);
             setTicket({ seat: j.seat, token: j.ws_token });
           } catch (err) {
-            setJoinError(err instanceof ApiError ? err.message : "無法加入");
+            setJoinError(err instanceof ApiError ? err.message : t("無法加入"));
           }
         }}>
-          <input value={name} onChange={(e) => setName(e.target.value.slice(0, 20))} placeholder="暱稱"
-            aria-label="暱稱" className="flex-1 rounded-md border border-felt-line bg-felt-deep px-3 py-2" />
-          <button className="rounded-md bg-ivory px-4 py-2 text-ink">入座</button>
+          <input value={name} onChange={(e) => setName(e.target.value.slice(0, 20))} placeholder={t("暱稱")}
+            aria-label={t("暱稱")} className="flex-1 rounded-md border border-felt-line bg-felt-deep px-3 py-2" />
+          <button className="rounded-md bg-ivory px-4 py-2 text-ink">{t("入座")}</button>
         </form>
         {joinError && <p role="alert" className="mt-3 text-zhong">{joinError}</p>}
-        <Link href="/" className="mt-8 inline-block text-mist underline">回大廳</Link>
+        <Link href="/" className="mt-8 inline-block text-mist underline">{t("回大廳")}</Link>
       </main>
     );
   }
@@ -82,20 +85,20 @@ export default function RoomPage() {
   if (room?.status === "WAITING" || (!view && room)) {
     return room.status === "WAITING" ? <WaitingRoom room={room} seat={seat} /> : <Loading />;
   }
-  if (!room) return <Loading text={STATUS_TEXT[status] ?? "載入中…"} />;
+  if (!room) return <Loading text={t(STATUS_TEXT[status] ?? "載入中…")} />;
 
   return (
     <main className="flex h-dvh flex-col">
       <header className="flex items-center gap-4 border-b border-felt-line px-4 py-2 text-sm">
-        <Link href="/" className="font-display text-xl">麥醬</Link>
-        <span className="text-mist">房間 <span className="tabular text-ivory">{room.code}</span></span>
+        <Link href="/" className="font-display text-xl">{t("麥醬")}</Link>
+        <span className="text-mist">{t("房間")} <span className="tabular text-ivory">{room.code}</span></span>
         {view && (
           <span className="text-mist">
-            {WINDS[view.round_wind]}風圈・第 {(room.match?.hands_played ?? 0) + 1} 手
+            {t("{wind}風圈・第 {n} 手", { wind: windName(view.round_wind), n: (room.match?.hands_played ?? 0) + 1 })}
           </span>
         )}
-        {STATUS_TEXT[status] && <span className="text-zhong">{STATUS_TEXT[status]}</span>}
-        <div className="ml-auto"><TurnTimer /></div>
+        {STATUS_TEXT[status] && <span className="text-zhong">{t(STATUS_TEXT[status])}</span>}
+        <div className="ml-auto flex items-center gap-3"><TurnTimer /><LocaleToggle /></div>
       </header>
       <div className="flex min-h-0 flex-1">
         <section className="relative min-w-0 flex-1">
@@ -122,6 +125,6 @@ export default function RoomPage() {
   );
 }
 
-function Loading({ text = "載入中…" }: { text?: string }) {
+function Loading({ text = translate("載入中…") }: { text?: string }) {
   return <main className="flex h-dvh items-center justify-center text-mist">{text}</main>;
 }
