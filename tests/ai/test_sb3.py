@@ -85,3 +85,16 @@ def test_value_warmup_keeps_the_policy_fixed(tmp_path):
                                                      strict=True))
     assert not all(torch.equal(a, b) for a, b in zip(before_v, pol.value_net.parameters(),
                                                          strict=True))
+
+
+def test_chunked_behaviour_clone(tmp_path):
+    from stable_baselines3.common.vec_env import DummyVecEnv
+
+    from ai.simulate import run_batch
+    from ai.training.sb3_trainer import _make_env, behaviour_clone, build_model
+
+    rec = tmp_path / "r.jsonl.gz"
+    run_batch(["rule"] * 4, 8, seed=5, save_path=rec)
+    model = build_model(DummyVecEnv([lambda: _make_env(0, 1.0)]), 1e-4, 32, 32, 0)
+    assert 0 < behaviour_clone(model, rec, 1, None, chunk_hands=3, val_hands=2) <= 1
+    assert 0 < behaviour_clone(model, rec, 1, None) <= 1

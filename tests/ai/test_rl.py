@@ -116,3 +116,26 @@ def test_tiny_training_runs(tmp_path: Path, monkeypatch):
     from engine.game import get_legal_actions
 
     assert agent.act(s, p, get_legal_actions(s, p)) in get_legal_actions(s, p)
+
+
+def test_streaming_behaviour_cloning(tmp_path, monkeypatch):
+    monkeypatch.setenv("MAIJONG_RUNS_DIR", str(tmp_path / "runs"))
+    import importlib
+
+    import ai.training.metrics as metrics
+
+    importlib.reload(metrics)
+    from ai.simulate import run_batch
+    from ai.training import bc_trainer
+
+    importlib.reload(bc_trainer)
+    records = tmp_path / "rule.jsonl.gz"
+    run_batch(["rule"] * 4, 9, seed=3, save_path=records)
+    chunks = list(bc_trainer.iter_chunks(records, chunk_hands=3, skip=2, workers=1))
+    assert len(chunks) == 3 and all(len(c["actions"]) > 0 for c in chunks)
+    out = tmp_path / "bc_stream.pt"
+    best = bc_trainer.train_bc_stream(records, out, epochs=1, chunk_hands=3, val_hands=2,
+                                      run="bc-stream", workers=1)
+    assert out.exists() and 0 < best["val_acc"] <= 1
+    lines = (tmp_path / "runs" / "bc-stream" / "metrics.jsonl").read_text().splitlines()
+    assert len(lines) == 3  # one record per streamed chunk

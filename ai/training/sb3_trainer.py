@@ -18,6 +18,7 @@ import json
 import random
 import time
 from collections import OrderedDict
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -168,42 +169,58 @@ class LeagueCallback(BaseCallback):
 
 
 def behaviour_clone(model: MaskablePPO, data_path: Path, epochs: int, limit: int | None,
-                    lr: float = 1e-3, batch: int = 512) -> float:
-    """Supervised warm start of the policy on rule-agent decisions; returns val accuracy."""
-    from ai.training.bc_trainer import build_dataset
+                    lr: float = 1e-3, batch: int = 512, chunk_hands: int = 0,
+                    val_hands: int = 1000) -> float:
+    """Supervised warm start of the policy on rule-agent decisions; returns val accuracy.
+    With `chunk_hands` the records are streamed (first `val_hands` hands validate)."""
+    from ai.training.bc_trainer import build_dataset, iter_chunks
 
-    data = build_dataset(data_path, limit)
-    n = len(data["actions"])
     rng = np.random.default_rng(0)
-    idx = rng.permutation(n)
-    val, tr = idx[: max(1, n // 10)], idx[max(1, n // 10):]
-    t = {k: torch.from_numpy(v) for k, v in data.items()}
+    if chunk_hands:
+        val_data = build_dataset(data_path, val_hands)
+
+        def train_sets() -> Iterator[dict[str, np.ndarray]]:
+            return iter_chunks(data_path, chunk_hands, skip=val_hands)
+    else:
+        data = build_dataset(data_path, limit)
+        idx = rng.permutation(len(data["actions"]))
+        cut = max(1, len(idx) // 10)
+        val_data = {k: v[idx[:cut]] for k, v in data.items()}
+        train_only = {k: v[idx[cut:]] for k, v in data.items()}
+
+        def train_sets() -> Iterator[dict[str, np.ndarray]]:
+            return iter([train_only])
+
     policy = model.policy
     opt = torch.optim.Adam(policy.parameters(), lr=lr)
 
-    def dist(ids: np.ndarray) -> Any:
+    def dist(t: dict[str, torch.Tensor], ids: Any) -> Any:
         obs = {"tiles": t["tiles"][ids], "scalars": t["scalars"][ids]}
         return policy.get_distribution(obs, action_masks=t["masks"][ids].numpy())
 
+    vt = {k: torch.from_numpy(v) for k, v in val_data.items()}
+    n_val = len(val_data["actions"])
     acc = 0.0
     for _ in range(epochs):
-        policy.train()
-        rng.shuffle(tr)
-        for i in range(0, len(tr), batch):
-            b = tr[i:i + batch]
-            loss = -dist(b).log_prob(t["actions"][b]).mean()
-            opt.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
-            opt.step()
+        for chunk in train_sets():
+            t = {k: torch.from_numpy(v) for k, v in chunk.items()}
+            order = rng.permutation(len(chunk["actions"]))
+            policy.train()
+            for i in range(0, len(order), batch):
+                b = order[i:i + batch]
+                loss = -dist(t, b).log_prob(t["actions"][b]).mean()
+                opt.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
+                opt.step()
         policy.eval()
         hits = 0.0
         with torch.no_grad():
-            for i in range(0, len(val), batch):
-                b = val[i:i + batch]
-                pred = dist(b).distribution.logits.argmax(1)
-                hits += float((pred == t["actions"][b]).float().sum())
-        acc = hits / len(val)
+            for i in range(0, n_val, batch):
+                b = np.arange(i, min(i + batch, n_val))
+                pred = dist(vt, b).distribution.logits.argmax(1)
+                hits += float((pred == vt["actions"][b]).float().sum())
+        acc = hits / n_val
         print(f"bc epoch acc {acc:.3f}", flush=True)
     return acc
 
@@ -226,7 +243,7 @@ def build_model(env: VecEnv, lr: float, n_steps: int, batch: int, seed: int,
 def train(steps: int, envs: int, out_dir: Path, run: str, *, bc_data: Path | None = None,
           bc_epochs: int = 8, bc_limit: int | None = None, lr: float = 3e-5,
           n_steps: int = 512, batch: int = 1024, rule_share: float = 0.7,
-          value_warmup: int = 100_000,
+          value_warmup: int = 100_000, bc_chunk_hands: int = 0,
           snapshot_every: int = 100_000, eval_every: int = 100_000, eval_hands: int = 200,
           seed: int = 0, subprocess: bool = True, init: Path | None = None) -> dict[str, float]:
     factories = [functools.partial(_make_env, seed * 1000 + i, rule_share) for i in range(envs)]
@@ -246,7 +263,7 @@ def train(steps: int, envs: int, out_dir: Path, run: str, *, bc_data: Path | Non
                         value_warmup=value_warmup)
     cb.init_callback(model)
     if bc_data is not None:
-        acc = behaviour_clone(model, bc_data, bc_epochs, bc_limit)
+        acc = behaviour_clone(model, bc_data, bc_epochs, bc_limit, chunk_hands=bc_chunk_hands)
         metrics.log(0, bc_val_acc=acc)
         model.save(out_dir / "sb3_bc.zip")  # reuse with --init to skip cloning next time
         cb.run_eval()  # the cloned policy is the first "best"
@@ -270,6 +287,8 @@ def main() -> None:
     ap.add_argument("--bc-data", type=Path, default=None)
     ap.add_argument("--bc-epochs", type=int, default=8)
     ap.add_argument("--bc-limit", type=int, default=None)
+    ap.add_argument("--bc-chunk-hands", type=int, default=0,
+                    help="stream large BC record files this many hands at a time")
     ap.add_argument("--init", type=Path, default=None, help="continue from a saved zip")
     ap.add_argument("--lr", type=float, default=3e-5)
     ap.add_argument("--n-steps", type=int, default=512, help="rollout length per env")
@@ -285,7 +304,7 @@ def main() -> None:
     best = train(args.steps, args.envs, args.out_dir, args.run, bc_data=args.bc_data,
                  bc_epochs=args.bc_epochs, bc_limit=args.bc_limit, lr=args.lr,
                  n_steps=args.n_steps, batch=args.batch, rule_share=args.rule_share,
-                 value_warmup=args.value_warmup,
+                 value_warmup=args.value_warmup, bc_chunk_hands=args.bc_chunk_hands,
                  snapshot_every=args.snapshot_every, eval_every=args.eval_every,
                  eval_hands=args.eval_hands, seed=args.seed, init=args.init)
     print(json.dumps(best, indent=2))
