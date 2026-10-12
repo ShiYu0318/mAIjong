@@ -27,7 +27,13 @@ from backend.config import get_settings
 from backend.hints.llm_provider import describe_discard, get_provider
 from backend.security_middleware import clean_text
 from backend.ws.store import NullStore, RoomStore
-from backend.ws.view import discard_waits, legal_actions_payload, masked_state, visible_event
+from backend.ws.view import (
+    discard_waits,
+    draw_summary,
+    legal_actions_payload,
+    masked_state,
+    visible_event,
+)
 from engine.actions import Action, ActionType, decode_action, encode_action
 from engine.game import (
     GameState,
@@ -530,7 +536,7 @@ class Room:
                 "tai_by_payer": result["tai_by_payer"], "payments": result["payments"],
             })
         else:
-            await self._broadcast("ROUND_DRAW", {"reason": result.get("reason")})
+            await self._broadcast("ROUND_DRAW", draw_summary(g))
         for target, seat in self._audience():
             await self._send(target, "STATE_UPDATE", masked_state(g, seat))
         await self._publish_view()
@@ -572,6 +578,7 @@ class Room:
             return
         self.status = "ROUND_END"
         self._persist()
+        await self._broadcast("NEXT_HAND_IN", {"seconds": self.config.next_hand_delay})
         self._spawn(self._next_hand_later(self.version))
 
     async def _next_hand_later(self, version: int) -> None:

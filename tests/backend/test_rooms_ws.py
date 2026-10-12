@@ -64,6 +64,7 @@ def test_one_human_three_bots_full_match_and_persistence(client):
         end = play_until_game_end(ws, seat, log)
     assert sum(end["final_scores"]) == 0 and sorted(end["ranks"]) == [1, 2, 3, 4]
     assert "DEAL" in log and "STATE_UPDATE" in log and "ACTION_REQUEST" in log
+    assert "NEXT_HAND_IN" in log  # a full round has more than one hand
 
     with dbmod.session_factory()() as db:
         games = db.scalars(select(Game)).all()
@@ -173,3 +174,4 @@ def test_every_request_carries_the_deadline_when_timed(client):
                 pick = next((a for a in legal if a["action_type"] == "PASS"), None) or legal[-1]
                 ws.send_json({"type": "ACTION", "payload": pick})
     assert seen > 0
+

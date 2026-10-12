@@ -9,7 +9,7 @@ from engine.actions import ActionType
 from engine.game import GameState, Phase, acting_players, get_legal_actions
 from engine.hand import MeldType
 from engine.shanten import shanten_after_discards
-from engine.ting import waiting_tiles
+from engine.ting import is_tenpai, waiting_tiles
 
 
 def masked_state(s: GameState, seat: int | None, reveal_all: bool = False) -> dict[str, Any]:
@@ -153,3 +153,13 @@ def ready_waits(s: GameState, seat: int) -> list[list[int]]:
     seen = _seen_on_table(s, seat)
     waits = waiting_tiles(counts, len(s.melds[seat]))
     return [[w, max(0, 4 - counts[w] - seen[w])] for w in waits]
+
+
+def draw_summary(s: GameState) -> dict[str, Any]:
+    """ROUND_DRAW payload: why the hand ended and who was ready or had declared."""
+    assert s.result is not None
+    return {
+        "reason": s.result.get("reason"),
+        "tenpai": [is_tenpai(tiles.to_counts(s.hands[p]), len(s.melds[p])) for p in range(4)],
+        "declared": list(s.declared_ting),
+    }

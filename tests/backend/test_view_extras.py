@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ai.agents import RuleAgent
-from backend.ws.view import discard_flags, discard_waits, masked_state, ready_waits
+from backend.ws.view import discard_flags, discard_waits, draw_summary, masked_state, ready_waits
 from engine import tiles
 from engine.game import Phase, acting_players, apply_action, get_legal_actions, new_game
 from engine.shanten import shanten
@@ -77,3 +77,25 @@ def test_ready_waits_only_in_own_view_and_complete_the_hand():
             assert all("waits" not in pl for pl in view["players"][1:])
     assert ready > 0
     assert all("waits" not in pl for pl in masked_state(new_game(seed=3), None)["players"])
+
+
+def test_draw_summary_marks_ready_hands():
+    from engine.ting import is_tenpai
+
+    draws = 0
+    for seed in range(40):
+        states = list(play(seed, steps=2000))
+        s = states[-1] if states else None
+        while s is not None and s.phase is not Phase.ENDED:  # play() yields before the final move
+            p = acting_players(s)[0]
+            s, _ = apply_action(s, p, RuleAgent(0.0, seed).act(s, p, get_legal_actions(s, p)))
+        if s is None or s.result is None or s.result["kind"] == "HU":
+            continue
+        d = draw_summary(s)
+        assert d["declared"] == list(s.declared_ting)
+        for p in range(4):
+            assert d["tenpai"][p] == is_tenpai(tiles.to_counts(s.hands[p]), len(s.melds[p]))
+        draws += 1
+        if draws >= 3:
+            break
+    assert draws > 0

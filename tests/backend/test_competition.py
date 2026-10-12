@@ -72,7 +72,15 @@ def test_model_hash_mismatch_bans(client, tmp_path, monkeypatch):
         assert a.status == "BANNED"
 
 
-def test_human_arena_updates_human_rating(client):
+def test_human_arena_updates_human_rating(client, monkeypatch):
+    import functools
+
+    from backend.routers import competition
+    from backend.ws.hub import RoomConfig
+
+    # real arena rooms pace bots at 0.6 s a move; the rating logic does not need the wait
+    monkeypatch.setattr(competition, "RoomConfig",
+                        functools.partial(RoomConfig, bot_delay=0, next_hand_delay=0))
     token, user = register(client)
     r = client.post("/api/v1/arena/human/join", headers=auth(token))
     assert r.status_code == 200, r.text
