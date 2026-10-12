@@ -27,8 +27,65 @@ function buildTextures(font: string): Textures {
   return map;
 }
 
+/** Reuses tile sprites across redraws instead of re-creating ~150 per state update
+ * (SPEC P11-7). Sprites are reset to defaults when taken from the pool. */
+export class SpritePool {
+  private free: Sprite[] = [];
+  private used: Sprite[] = [];
+  created = 0;
+
+  get(texture: Texture): Sprite {
+    let s = this.free.pop();
+    if (!s) {
+      s = new Sprite();
+      this.created += 1;
+    }
+    s.texture = texture;
+    s.alpha = 1;
+    s.rotation = 0;
+    s.visible = true;
+    s.eventMode = "passive";
+    s.cursor = "default";
+    s.removeAllListeners();
+    this.used.push(s);
+    return s;
+  }
+
+  /** Detach every sprite handed out since the last call and make it available again. */
+  releaseAll() {
+    for (const s of this.used) {
+      s.removeFromParent();
+      s.removeAllListeners();
+    }
+    this.free.push(...this.used);
+    this.used = [];
+  }
+
+  destroy() {
+    this.releaseAll();
+    for (const s of this.free) s.destroy();
+    this.free = [];
+  }
+
+  get size() {
+    return this.free.length + this.used.length;
+  }
+}
+
+const pools = new WeakMap<Application, SpritePool>();
+let pool = new SpritePool(); // the pool of the app being rendered (render() is synchronous)
+
+function poolFor(app: Application): SpritePool {
+  let p = pools.get(app);
+  if (!p) {
+    p = new SpritePool();
+    pools.set(app, p);
+  }
+  return p;
+}
+
 function tileSprite(tex: Textures, id: number | null, w: number): Sprite {
-  const s = new Sprite(tex.get(id === null ? "back" : id)!);
+  const s = pool.get(tex.get(id === null ? "back" : id)!);
   s.width = w;
   s.height = (w * TILE_H) / TILE_W;
   return s;
@@ -62,6 +119,8 @@ interface Scene {
 
 function render(app: Application, tex: Textures, sc: Scene) {
   const stage = app.stage;
+  pool = poolFor(app);
+  pool.releaseAll(); // pooled tile sprites survive; containers, text and graphics are rebuilt
   stage.removeChildren().forEach((ch) => ch.destroy({ children: true }));
   const W = app.screen.width;
   const H = app.screen.height;
@@ -284,6 +343,7 @@ export function TableCanvas({ fixed }: { fixed?: StaticTable } = {}) {
     return () => {
       disposed = true;
       if (appRef.current) {
+        poolFor(appRef.current).destroy();
         appRef.current.destroy(true, { children: true });
         appRef.current = null;
       }

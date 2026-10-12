@@ -14,7 +14,8 @@ export class GameSocket {
   connect() {
     const store = useGame.getState();
     store.setStatus(this.retries ? "reconnecting" : "connecting");
-    const q = this.token ? `?token=${encodeURIComponent(this.token)}` : "";
+    // batch=1: the server packs each burst of messages into one BATCH frame (SPEC P11-7)
+    const q = this.token ? `?token=${encodeURIComponent(this.token)}&batch=1` : "?batch=1";
     const ws = new WebSocket(`${WS_URL}/ws/game/${this.roomId}${q}`);
     this.ws = ws;
     ws.onopen = () => {
@@ -24,11 +25,14 @@ export class GameSocket {
       this.ping = setInterval(() => this.send({ type: "PING" }), 30_000);
     };
     ws.onmessage = (e) => {
+      let frame: ServerMessage;
       try {
-        useGame.getState().handle(JSON.parse(e.data) as ServerMessage);
+        frame = JSON.parse(e.data) as ServerMessage;
       } catch {
-        /* ignore malformed frame */
+        return; // ignore malformed frame
       }
+      const handle = useGame.getState().handle;
+      for (const msg of unpackFrame(frame)) handle(msg);
     };
     ws.onclose = (e) => {
       if (this.ping) clearInterval(this.ping);
@@ -52,4 +56,13 @@ export class GameSocket {
     if (this.ping) clearInterval(this.ping);
     this.ws?.close();
   }
+}
+
+/** A BATCH frame carries several server messages in order; anything else is one message. */
+export function unpackFrame(frame: ServerMessage): ServerMessage[] {
+  if (frame.type === "BATCH") {
+    const messages = (frame.payload as { messages?: ServerMessage[] } | undefined)?.messages;
+    return Array.isArray(messages) ? messages : [];
+  }
+  return [frame];
 }
