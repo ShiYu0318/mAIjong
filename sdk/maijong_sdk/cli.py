@@ -101,6 +101,8 @@ def main(argv: list[str] | None = None) -> None:
     if not report["passed"]:
         print(json.dumps(report, ensure_ascii=False, indent=2))
         raise SystemExit("local validation failed; fix the issues above before submitting")
+    print(f"local validation passed: {report['games']} games, {report['decisions']} decisions, "
+          f"slowest {report['max_decision_s']}s")
     if args.cmd == "submit":
         if not args.token:
             raise SystemExit("--token or MAIJONG_API_TOKEN is required")
