@@ -179,7 +179,8 @@ def run(human: int | None, seed: int | None, rounds: int, delay_events: bool = F
         m = finish_hand(m, s)
         print("目前分數：" + "  ".join(f"{SEAT_NAMES[p]} {m.scores[p]}" for p in range(4)))
     order = ranks(m.scores)
-    print("\n===== 一將結束 =====")
+    label = {1: "東風圈", 2: "東南兩圈", 3: "三圈", 4: "一將"}.get(rounds, f"{rounds} 圈")
+    print(f"\n===== {label}結束 =====")
     for p in sorted(range(4), key=lambda x: order[x]):
         print(f"第 {order[p]} 名：{SEAT_NAMES[p]} {m.scores[p]}")
 
