@@ -4,9 +4,11 @@
         checkpoints/ppo_latest.pt checkpoints/sb3_best.zip --hands 1000
 
 Every candidate plays the same deals (same seeds, rotating seats) against three rule
-agents; the best by win rate, then average score, is written to checkpoints/level5.json,
-which create_agent(5) uses. 200-hand evaluations differ by ±3% from noise alone, so
-promotion uses more hands than the periodic evaluations during training.
+agents, and the rule agent itself always competes as the baseline: with ~7% draws a rule
+agent's fair share is ~23%, so a fixed 25% bar would reject everything. The best by win
+rate, then average score, is written to checkpoints/level5.json, which create_agent(5)
+uses; if the rule agent wins, Lv5 stays rule-based. 200-hand evaluations differ by ±3%
+from noise alone, so promotion uses more hands than the periodic evaluations.
 """
 
 from __future__ import annotations
@@ -24,7 +26,14 @@ from ai.training.evaluate import evaluate
 EVAL_SEED = 50_000
 
 
+BASELINE = "rule"
+
+
 def load_candidate(path: str, seed: int, temperature: float = 0.1) -> Agent:
+    if path == BASELINE:
+        from ai.agents import RuleAgent
+
+        return RuleAgent(0.0, seed)
     if path.endswith(".zip"):
         from ai.agents.sb3_agent import Sb3Agent
 
@@ -74,7 +83,9 @@ def head_to_head(paths: list[str], hands: int = 1000, workers: int = 4,
 
 def promote(rows: list[dict[str, Any]], out: Path) -> dict[str, Any]:
     best = rows[0]
-    record = {**best, "kind": "sb3" if best["path"].endswith(".zip") else "ppo",
+    kind = "rule" if best["path"] == BASELINE else \
+        "sb3" if best["path"].endswith(".zip") else "ppo"
+    record = {**best, "kind": kind,
               "promoted_at": time.time(), "candidates": rows}
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(record, indent=2, ensure_ascii=False))
@@ -90,10 +101,11 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=Path("checkpoints/level5.json"))
     ap.add_argument("--dry-run", action="store_true", help="only print the table")
     args = ap.parse_args()
-    missing = [c for c in args.candidates if not Path(c).exists()]
+    missing = [c for c in args.candidates if c != BASELINE and not Path(c).exists()]
     if missing:
         raise SystemExit(f"missing: {', '.join(missing)}")
-    rows = head_to_head(args.candidates, args.hands, args.workers)
+    candidates = [BASELINE, *[c for c in args.candidates if c != BASELINE]]
+    rows = head_to_head(candidates, args.hands, args.workers)
     for r in rows:
         print(f"{r['eval_win_rate']:6.1%} win  {r['eval_deal_in_rate']:6.1%} deal-in  "
               f"{r['eval_avg_score']:+7.1f} score  {r['eval_avg_tai']:.2f} tai  {r['path']}")

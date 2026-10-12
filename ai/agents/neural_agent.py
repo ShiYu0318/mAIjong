@@ -103,14 +103,16 @@ def best_level5(min_win_rate: float = MIN_EVAL_WIN_RATE) -> tuple[str, Path] | N
     best model, whichever recorded the higher win rate against rule agents."""
     import json
 
-    promoted = CHECKPOINT_DIR / "level5.json"  # written by ai.training.promote
+    promoted = CHECKPOINT_DIR / "level5.json"  # head-to-head result from ai.training.promote
     if promoted.exists():
         try:
             rec = json.loads(promoted.read_text())
+            if rec.get("kind") == "rule":
+                return None  # no model beat the rule agent on the same deals
             path = Path(rec["path"])
             if not path.is_absolute() and not path.exists():
                 path = CHECKPOINT_DIR.parent / path
-            if path.exists() and float(rec.get("eval_win_rate", 0.0)) >= min_win_rate:
+            if path.exists():
                 return ("sb3" if path.suffix == ".zip" else "ppo"), path
         except (ValueError, KeyError, OSError):
             pass  # fall back to the per-checkpoint records below

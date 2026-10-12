@@ -29,7 +29,16 @@ def test_head_to_head_and_level5_pointer(tmp_path, monkeypatch):
     assert json.loads(out.read_text())["path"] == rec["path"] == rows[0]["path"]
 
     monkeypatch.setattr(na, "CHECKPOINT_DIR", tmp_path)
-    assert na.best_level5(min_win_rate=0.0) == ("ppo", tmp_path / rows[0]["path"].split("/")[-1])
-    agent = create_agent(5, seed=0) if rows[0]["eval_win_rate"] >= na.MIN_EVAL_WIN_RATE else None
-    if agent is not None:
-        assert getattr(agent, "kind", "") == "ppo"
+    assert na.best_level5() == ("ppo", tmp_path / rows[0]["path"].split("/")[-1])
+    assert getattr(create_agent(5, seed=0), "kind", "") == "ppo"
+
+    # the rule baseline winning keeps Lv5 rule-based
+    promote([{"path": "rule", "eval_win_rate": 0.23, "eval_avg_score": 0.0}, *rows], out)
+    assert na.best_level5() is None
+    assert type(create_agent(5, seed=0)).__name__ == "RuleAgent"
+
+
+def test_rule_baseline_is_a_candidate():
+    from ai.training.promote import load_candidate
+
+    assert type(load_candidate("rule", 0)).__name__ == "RuleAgent"
