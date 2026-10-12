@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Toasts } from "@/components/Game/Toasts";
 import { LocaleSync } from "@/components/I18n/LocaleToggle";
 import { ServiceWorker } from "@/components/Pwa/ServiceWorker";
 import { notoSans, wenkai } from "@/lib/fonts";
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {children}
         <ServiceWorker />
         <LocaleSync />
+        <Toasts />
       </body>
     </html>
   );

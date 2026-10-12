@@ -1,18 +1,70 @@
 @import "tailwindcss";
 
+/* Modern casual game theme. The original token names stay (felt = page background,
+   ivory = text, jade/zhong/tong = green/red/blue accents) so every page picks up the
+   new palette; the game-specific tokens below add the playful layer. */
 @theme {
-  --color-felt: #12302b;
-  --color-felt-deep: #0c221e;
-  --color-felt-line: #24493f;
-  --color-ivory: #f4efe1;
-  --color-ivory-dim: #ddd5bf;
-  --color-jade: #1f6f57;
-  --color-zhong: #b3192c;
-  --color-tong: #1e4f8c;
-  --color-ink: #1a1a17;
-  --color-mist: #a9bdb4;
-  --font-display: var(--font-wenkai), "Kaiti TC", "BiauKai", serif;
+  --color-felt: #161a3a;
+  --color-felt-deep: #0f1230;
+  --color-felt-line: #343c78;
+  --color-ivory: #f6f7ff;
+  --color-ivory-dim: #d6d9f5;
+  --color-jade: #22c58b;
+  --color-zhong: #ff4d6a;
+  --color-tong: #3b82f6;
+  --color-ink: #1b1d33;
+  --color-mist: #a3a9d6;
+
+  --color-panel: #232a5c;
+  --color-panel-2: #2d3573;
+  --color-gold: #ffcc3d;
+  --color-amber: #ff9f1c;
+  --color-pink: #ff5c9a;
+  --color-cyan: #38d0ff;
+  --color-table: #0f6b52;
+
+  --font-display: var(--font-sans), "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-tile: var(--font-wenkai), "Kaiti TC", "BiauKai", serif;
   --font-body: var(--font-sans), "PingFang TC", "Microsoft JhengHei", sans-serif;
+
+  --animate-pop-in: pop-in 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-rise: rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-float: float 3.2s ease-in-out infinite;
+  --animate-shine: shine 2.6s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 1.6s ease-in-out infinite;
+  --animate-stamp: stamp 520ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  --animate-wiggle: wiggle 420ms ease-in-out;
+
+  @keyframes pop-in {
+    from { opacity: 0; transform: scale(0.6); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  @keyframes shine {
+    0% { background-position: -160% 0; }
+    60%, 100% { background-position: 260% 0; }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(255 204 61 / 0.55); }
+    50% { box-shadow: 0 0 0 10px rgb(255 204 61 / 0); }
+  }
+  @keyframes stamp {
+    0% { opacity: 0; transform: scale(2.6) rotate(-8deg); }
+    60% { opacity: 1; transform: scale(0.92) rotate(2deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0); }
+  }
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-6deg); }
+    75% { transform: rotate(6deg); }
+  }
 }
 
 :root {
@@ -21,13 +73,18 @@
 
 html,
 body {
-  background: var(--color-felt);
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgb(91 76 214 / 0.45), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgb(56 208 255 / 0.18), transparent 60%),
+    radial-gradient(800px 600px at 50% 120%, rgb(255 92 154 / 0.14), transparent 60%),
+    var(--color-felt);
+  background-attachment: fixed;
   color: var(--color-ivory);
   font-family: var(--font-body);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-ivory);
+  outline: 3px solid var(--color-cyan);
   outline-offset: 2px;
 }
 
@@ -35,11 +92,58 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Glassy raised panel used for cards and dialogs. */
+.panel {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.02)),
+    var(--color-panel);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 30px rgb(5 6 25 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+/* Chunky game button: a bottom lip that sinks when pressed. */
+.btn-game {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: white;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.25);
+  box-shadow: 0 5px 0 var(--btn-lip, #0006), 0 10px 20px rgb(0 0 0 / 0.3);
+  transition: transform 90ms ease, box-shadow 90ms ease, filter 120ms ease;
+  cursor: pointer;
+  user-select: none;
+}
+.btn-game:hover {
+  filter: brightness(1.08);
+}
+.btn-game:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 var(--btn-lip, #0006), 0 4px 10px rgb(0 0 0 / 0.3);
+}
+.btn-game:disabled {
+  filter: grayscale(0.6) brightness(0.8);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Moving highlight sweep for "something good is here". */
+.shine {
+  background-image: linear-gradient(110deg, transparent 35%, rgb(255 255 255 / 0.35) 50%,
+      transparent 65%);
+  background-size: 200% 100%;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

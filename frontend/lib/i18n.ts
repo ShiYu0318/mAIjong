@@ -124,6 +124,8 @@ const EN: Record<string, string> = {
   "English": "English",
   "中文": "中文",
   "切換語言": "Switch language",
+  "開啟音效": "Turn sound on",
+  "關閉音效": "Turn sound off",
   // account
   "登出": "Sign out",
   "登入": "Sign in",

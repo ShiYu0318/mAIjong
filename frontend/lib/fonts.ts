@@ -10,7 +10,7 @@ export const wenkai = LXGW_WenKai_TC({
 });
 
 export const notoSans = Noto_Sans_TC({
-  weight: ["400", "500", "700"],
+  weight: ["400", "500", "700", "900"],
   subsets: ["latin"],
   display: "swap",
   variable: "--font-sans",
