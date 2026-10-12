@@ -20,7 +20,9 @@ jobs:
       - name: Type check
         run: uv run mypy
       - name: Test
-        run: uv run pytest
+        run: uv run pytest --cov=engine --cov=backend --cov=ai --cov-report=json
+      - name: Coverage targets
+        run: uv run python scripts/check_coverage.py coverage.json
 
   frontend:
     runs-on: ubuntu-latest
