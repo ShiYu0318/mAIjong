@@ -1,4 +1,4 @@
-"""Tai (台) detection and settlement, following the Taiwanese 16-tile tai table.
+"""Tai (台) detection and settlement, following the Taiwanese 16-tile tai table (SPEC 02.7).
 
 `score_hand` finds the best-scoring interpretation of a win; `settle` turns it into
 per-player payments: payment = BASE_POINTS + tai × TAI_POINTS, where the dealer tai

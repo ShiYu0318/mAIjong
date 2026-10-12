@@ -1,4 +1,4 @@
-"""Tai and settlement tests, many taken from the tai table's worked examples."""
+"""Tai and settlement tests, many taken from the tai table's worked examples (SPEC 02.8)."""
 
 from __future__ import annotations
 

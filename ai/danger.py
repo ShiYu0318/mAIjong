@@ -1,6 +1,6 @@
 """Deal-in danger estimates from public information only.
 
-These rules have no furiten, so the main hard safety signal comes from declared
+These Taiwanese 16-tile rules have no furiten, so the main hard safety signal comes from declared
 ready hands: a declared player can no longer change their hand, so any tile discarded
 after their declaration that they did not win on is not one of their waits.
 """
