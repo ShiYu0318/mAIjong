@@ -11,6 +11,7 @@ from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from backend.metrics import METRICS
 from backend.security import TokenError, decode_token
 from backend.security_middleware import TokenBucket, _limit
 from backend.ws.batching import BatchingSocket
@@ -33,12 +34,14 @@ async def _relay_spectator(ws: WebSocket, manager: RoomManager, room_id: str,
             await ws.send_json(msg)
 
     relay = asyncio.create_task(forward())
+    METRICS.ws_connected()
     try:
         while True:  # spectators only send pings; any receive error means they left
             await ws.receive_text()
     except (WebSocketDisconnect, RuntimeError):
         pass
     finally:
+        METRICS.ws_disconnected()
         relay.cancel()
         with contextlib.suppress(asyncio.CancelledError, Exception):
             await relay
@@ -71,6 +74,7 @@ async def game_socket(ws: WebSocket, room_id: str, token: str | None = None,
         await _relay_spectator(ws, manager, room_id, snap)
         return
     await ws.accept()
+    METRICS.ws_connected()
     sock: Any = BatchingSocket(ws) if batch else ws
     await room.connect(seat, sock)
     bucket = TokenBucket(_limit("RATE_LIMIT_WS_PER_SEC", "20"), 1)  # per socket
@@ -87,5 +91,6 @@ async def game_socket(ws: WebSocket, room_id: str, token: str | None = None,
     except (WebSocketDisconnect, RuntimeError):
         pass
     finally:
+        METRICS.ws_disconnected()
         with contextlib.suppress(Exception):
             await room.disconnect(seat, sock)

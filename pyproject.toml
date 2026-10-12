@@ -74,7 +74,7 @@ plugins = ["pydantic.mypy"]
 omit = ["engine/cli.py"]
 
 [[tool.mypy.overrides]]
-module = ["boto3", "boto3.*", "botocore.*"]
+module = ["boto3", "boto3.*", "botocore.*", "sentry_sdk", "sentry_sdk.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

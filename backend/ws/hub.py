@@ -25,6 +25,7 @@ from ai.agents import LEVEL_NAMES, Agent, RuleAgent, create_agent
 from ai.explainability.candidate_scorer import score_all_discards
 from backend.config import get_settings
 from backend.hints.llm_provider import describe_discard, get_provider
+from backend.metrics import METRICS
 from backend.security_middleware import clean_text
 from backend.ws.store import NullStore, RoomStore
 from backend.ws.view import (
@@ -526,6 +527,7 @@ class Room:
         assert g is not None and m is not None and g.result is not None
         self.deadline = None
         result = g.result
+        METRICS.hand_finished(str(result["kind"]))
         if result["kind"] == "HU":
             await self._broadcast("WIN_DECLARED", {
                 "winner": result["winner"], "loser": result.get("loser"),
@@ -565,6 +567,7 @@ class Room:
         await self._broadcast("ROOM_STATE", self.public())
         if self.match.finished:
             self.status = "GAME_END"
+            METRICS.match_finished()
             await self._broadcast("GAME_END", {
                 "final_scores": self.match.scores, "ranks": ranks(self.match.scores),
             })

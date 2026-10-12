@@ -6,18 +6,22 @@ Run locally:  uv run uvicorn backend.main:app --reload
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 
 from backend.config import Settings, get_settings
 from backend.db import init_db, session_factory
+from backend.metrics import render as render_metrics
 from backend.models import Room as RoomRow
+from backend.observability import init_sentry
 from backend.persistence import save_hand
 from backend.replay_check import verify_game
 from backend.routers import (
@@ -119,6 +123,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
+    init_sentry()
     settings = get_settings()
     if settings.secret_key == Settings().secret_key and not settings.debug and \
             settings.database_url.startswith("postgresql"):
@@ -146,6 +151,15 @@ def create_app() -> FastAPI:
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/metrics", include_in_schema=False)
+    def metrics(request: Request) -> PlainTextResponse:
+        token = os.environ.get("METRICS_TOKEN")
+        if token and not hmac.compare_digest(request.headers.get("authorization", ""),
+                                             f"Bearer {token}"):
+            return PlainTextResponse("unauthorized\n", status_code=401)
+        return PlainTextResponse(render_metrics(app.state.rooms),
+                                 media_type="text/plain; version=0.0.4")
 
     return app
 
