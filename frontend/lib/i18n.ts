@@ -325,6 +325,7 @@ const EN: Record<string, string> = {
   "餘 {n} 張": "{n} left",
   "下一手 {n} 秒後開始": "Next hand in {n}s",
   "未聽": "Not ready",
+  "選單": "Menu",
   "已宣告": "declared",
   "連 {n}": "streak {n}",
   "場上已見 {n} 張": "{n} on the table",

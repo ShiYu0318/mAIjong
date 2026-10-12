@@ -37,9 +37,30 @@ export function PlayerBar({ compact = false }: { compact?: boolean }) {
       )}
       {user && !compact && <span className="hidden sm:inline"><RankBadge rating={user.elo_human} size={24} showProgress /></span>}
       {profile && <CoinCounter value={profile.coins} />}
-      <SoundToggle />
-      <LocaleToggle />
-      <AccountMenu />
+      <div className="hidden items-center gap-3 sm:flex">
+        <SoundToggle />
+        <LocaleToggle />
+        <AccountMenu />
+      </div>
+      <PhoneMenu />
+    </div>
+  );
+}
+
+/** On phones the bar keeps only the avatar and coins; the rest folds into this menu. */
+function PhoneMenu() {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative sm:hidden">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={t("選單")}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-xl font-black">⋯</button>
+      {open && (
+        <div className="panel absolute right-0 z-40 mt-2 flex w-56 animate-pop-in flex-col items-stretch gap-3 p-3">
+          <div className="flex items-center justify-between gap-2"><SoundToggle /><LocaleToggle /></div>
+          <AccountMenu />
+        </div>
+      )}
     </div>
   );
 }

@@ -194,11 +194,12 @@ export default function Lobby() {
         </div>
       </section>
 
-      <section className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         <SmallCard href="/practice" tone="green" icon="🎯" title={t("單人練習")} desc={t("情境、速度、防守三種練習")} />
         <SmallCard href="/tutor" tone="pink" icon="📘" title={t("AI 教練")} desc={t("第一次玩？從 AI 教練開始")} />
-        <SmallCard href="/leaderboard" tone="violet" icon="🏆" title={t("排位賽")} desc={t("挑戰段位、登上排行榜")} />
-        <Panel className="flex flex-col justify-between">
+        <SmallCard href="/leaderboard" tone="violet" icon="🏆" title={t("排位賽")} desc={t("挑戰段位、登上排行榜")}
+          className="col-span-2 sm:col-span-1" />
+        <Panel className="col-span-2 flex flex-col justify-between sm:col-span-1">
           <h2 className="font-display text-xl font-black">{t("用房間碼加入")}</h2>
           <form className="mt-3 flex gap-2" onSubmit={(e) => {
             e.preventDefault();
@@ -253,16 +254,16 @@ function ModeCard({ tone, icon, className = "", children }: {
   );
 }
 
-function SmallCard({ href, tone, icon, title, desc }: {
-  href: string; tone: keyof typeof TONES; icon: string; title: string; desc: string;
+function SmallCard({ href, tone, icon, title, desc, className = "" }: {
+  href: string; tone: keyof typeof TONES; icon: string; title: string; desc: string; className?: string;
 }) {
   return (
     <Link href={href} onClick={() => sfx.tap()}
-      className={`group relative flex animate-rise items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br p-5 shadow-[0_10px_30px_rgb(5_6_25/0.45)] ring-1 ring-white/15 transition hover:-translate-y-1 active:translate-y-0.5 ${TONES[tone]}`}>
-      <span className="text-5xl drop-shadow transition group-hover:scale-110" aria-hidden="true">{icon}</span>
+      className={`group relative flex animate-rise flex-col items-start gap-2 overflow-hidden rounded-3xl bg-gradient-to-br p-4 shadow-[0_10px_30px_rgb(5_6_25/0.45)] ring-1 ring-white/15 transition hover:-translate-y-1 active:translate-y-0.5 sm:flex-row sm:items-center sm:gap-4 sm:p-5 ${TONES[tone]} ${className}`}>
+      <span className="text-4xl drop-shadow transition group-hover:scale-110 sm:text-5xl" aria-hidden="true">{icon}</span>
       <span>
-        <span className="block font-display text-xl font-black">{title}</span>
-        <span className="block text-sm text-white/85">{desc}</span>
+        <span className="block font-display text-lg font-black sm:text-xl">{title}</span>
+        <span className="block text-xs text-white/85 sm:text-sm">{desc}</span>
       </span>
     </Link>
   );

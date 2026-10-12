@@ -208,7 +208,7 @@ function Compass({ g, view, clocks, handNo }: {
 }) {
   const t = useT();
   const me = view.you ?? 0;
-  const size = Math.max(96, g.L * 0.2);
+  const size = Math.max(96, g.L * 0.2); // larger would cover the first river rows
   // our own countdown wins; otherwise show whoever is on the clock
   const clock = clocks[me] ?? view.acting.map((s) => clocks[s]).find(Boolean);
   const left = clock?.left ?? null;
@@ -223,7 +223,9 @@ function Compass({ g, view, clocks, handNo }: {
     { rel: 2, style: { top: 6, left: "50%", transform: "translateX(-50%) rotate(180deg)" } },
     { rel: 3, style: { left: 6, top: "50%", transform: "translateY(-50%) rotate(90deg)" } },
   ];
-  const ring = 2 * Math.PI * (size * 0.3);
+  // ring stays inside the four wind letters on the compass edge
+  const rr = size * (g.compact ? 0.22 : 0.27);
+  const ring = 2 * Math.PI * rr;
   const small = Math.max(10, size * 0.085);
   return (
     <Abs x={g.cx} y={g.cy}>
@@ -236,7 +238,7 @@ function Compass({ g, view, clocks, handNo }: {
           return (
             <span key={rel} className={`absolute font-display leading-none font-black transition ${on ? "text-gold drop-shadow-[0_0_8px_rgb(255_204_61/0.9)]" : "text-ivory/45"} ${
               view.dealer === seat ? "rounded-md px-0.5 ring-2 ring-zhong/80" : ""}`}
-              style={{ ...style, fontSize: size * 0.17 }} title={view.dealer === seat ? t("莊") : undefined}>
+              style={{ ...style, fontSize: size * (g.compact ? 0.13 : 0.17) }} title={view.dealer === seat ? t("莊") : undefined}>
               {windName(p.seat_wind)}
             </span>
           );
@@ -244,15 +246,15 @@ function Compass({ g, view, clocks, handNo }: {
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {left !== null && clock ? (
             <>
-              <svg className="absolute -rotate-90" width={size * 0.66} height={size * 0.66} viewBox={`0 0 ${size * 0.66} ${size * 0.66}`} aria-hidden="true">
-                <circle cx={size * 0.33} cy={size * 0.33} r={size * 0.3} fill="none" stroke="rgb(255 255 255 / 0.12)" strokeWidth={4} />
-                <circle cx={size * 0.33} cy={size * 0.33} r={size * 0.3} fill="none" stroke={ringColor(clock)}
+              <svg className="absolute -rotate-90" width={rr * 2 + 6} height={rr * 2 + 6} viewBox={`0 0 ${rr * 2 + 6} ${rr * 2 + 6}`} aria-hidden="true">
+                <circle cx={rr + 3} cy={rr + 3} r={rr} fill="none" stroke="rgb(255 255 255 / 0.12)" strokeWidth={4} />
+                <circle cx={rr + 3} cy={rr + 3} r={rr} fill="none" stroke={ringColor(clock)}
                   strokeWidth={4} strokeLinecap="round" strokeDasharray={`${ring * clock.frac} ${ring}`}
                   className="transition-[stroke-dasharray] duration-300 ease-linear" />
               </svg>
               <span className={`tabular font-display leading-none font-black ${left <= 5 ? "text-zhong" : "text-ivory"}`}
-                style={{ fontSize: size * 0.24 }} aria-label={t("剩餘 {n} 秒", { n: left })}>{left}</span>
-              <span className="tabular mt-0.5 text-mist" style={{ fontSize: small }}>
+                style={{ fontSize: size * 0.21 }} aria-label={t("剩餘 {n} 秒", { n: left })}>{left}</span>
+              <span className="tabular mt-0.5 text-mist" style={{ fontSize: Math.max(9, size * 0.075) }}>
                 {t("餘 {n} 張", { n: view.drawable })}
               </span>
             </>
