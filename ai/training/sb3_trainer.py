@@ -202,8 +202,8 @@ def build_model(env: VecEnv, lr: float, n_steps: int, batch: int, seed: int,
         vf_coef=0.5, max_grad_norm=0.5, target_kl=0.03, seed=seed, device="cpu", verbose=0,
         policy_kwargs={"features_extractor_class": MahjongExtractor,
                        "features_extractor_kwargs": {"use_transformer": use_transformer},
-                       "net_arch": {"pi": [128], "vf": [128]},
-                       "share_features_extractor": True},
+                       "net_arch": {"pi": [], "vf": [128]},
+                       "share_features_extractor": True, "ortho_init": False},
     )
 
 
