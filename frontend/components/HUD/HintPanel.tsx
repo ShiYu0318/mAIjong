@@ -1,5 +1,6 @@
 "use client";
 
+import { GameButton } from "@/components/Game/GameButton";
 import { TileImage } from "@/components/Hand/TileImage";
 import { translate, useT } from "@/lib/i18n";
 import { useGame } from "@/store/gameStore";
@@ -17,9 +18,9 @@ export function HintButton() {
   const canDiscard = legal.some((a) => a.action_type === "DISCARD");
   if (!view || view.phase !== "DISCARD" || view.turn !== seat || !canDiscard) return null;
   return (
-    <button onClick={request} className="rounded-lg border border-jade bg-felt-deep px-4 py-2.5 text-ivory hover:bg-jade/30">
-      {t("提示")}
-    </button>
+    <GameButton variant="green" size="lg" onClick={request}>
+      <span aria-hidden="true">💡</span>{t("提示")}
+    </GameButton>
   );
 }
 

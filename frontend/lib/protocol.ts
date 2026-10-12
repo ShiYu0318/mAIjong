@@ -23,6 +23,8 @@ export interface PlayerView {
   melds: MeldView[];
   flowers: number[];
   discards: number[];
+  /** per discard: true when it was the tile just drawn (shown greyed out) */
+  tsumogiri?: boolean[];
   score: number;
   declared_ting: boolean;
 }

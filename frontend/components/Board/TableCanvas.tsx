@@ -1,29 +1,28 @@
 "use client";
 
-import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
+import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { useEffect, useRef } from "react";
 import type { GameView, MeldView, PlayerView } from "@/lib/protocol";
-import { TILE_H, TILE_W, ensureTileFont, tileCanvas } from "@/lib/tilePainter";
-import { translate, useLocale } from "@/lib/i18n";
-import { windName } from "@/lib/tiles";
+import { sfx } from "@/lib/sfx";
+import { type TableLayout, relSeat, tableLayout } from "@/lib/tableLayout";
+import { TILE_H, TILE_W, ensureTileFont, tileBack, tileCanvas } from "@/lib/tilePainter";
+import { useLocale } from "@/lib/i18n";
+import { useAccount } from "@/store/accountStore";
 import { useGame } from "@/store/gameStore";
 
 const COLORS = {
-  felt: 0x12302b,
-  feltDeep: 0x0c221e,
-  line: 0x24493f,
-  ivory: 0xf4efe1,
-  mist: 0xa9bdb4,
-  zhong: 0xb3192c,
-  jade: 0x1f6f57,
+  cyan: 0x38d0ff,
+  gold: 0xffcc3d,
+  shadow: 0x050619,
 };
 
-type Textures = Map<number | "back", Texture>;
+type Textures = Map<number | "back", Texture> & { back?: string };
 
 function buildTextures(font: string): Textures {
   const map: Textures = new Map();
   for (let id = 0; id < 42; id++) map.set(id, Texture.from(tileCanvas(id, font, 3)));
   map.set("back", Texture.from(tileCanvas(null, font, 3)));
+  map.back = tileBack();
   return map;
 }
 
@@ -44,6 +43,7 @@ export class SpritePool {
     s.alpha = 1;
     s.rotation = 0;
     s.visible = true;
+    s.tint = 0xffffff;
     s.eventMode = "passive";
     s.cursor = "default";
     s.removeAllListeners();
@@ -91,10 +91,53 @@ function tileSprite(tex: Textures, id: number | null, w: number): Sprite {
   return s;
 }
 
+/** Per-app memory of the last frame, to animate what changed (new discard, new draw). */
+interface Memory {
+  gameId: string | null;
+  rivers: number[];
+  handLen: number;
+  generation: number;
+}
+const memories = new WeakMap<Application, Memory>();
+
+/** Tween a sprite from an offset to its resting place; stops if the scene is redrawn. */
+function tweenIn(app: Application, mem: Memory, s: Sprite, from: { dx: number; dy: number; scale?: number },
+  ms: number) {
+  const gen = mem.generation;
+  const toX = s.x;
+  const toY = s.y;
+  const w = s.width;
+  const h = s.height;
+  const k0 = from.scale ?? 1;
+  let t = 0;
+  const step = (ticker: { deltaMS: number }) => {
+    if (mem.generation !== gen || s.destroyed) {
+      app.ticker.remove(step);
+      return;
+    }
+    t = Math.min(1, t + ticker.deltaMS / ms);
+    const e = 1 - (1 - t) ** 3;
+    const k = k0 + (1 - k0) * e;
+    s.width = w * k;
+    s.height = h * k;
+    s.x = toX + from.dx * (1 - e) - (w * k - w) / 2;
+    s.y = toY + from.dy * (1 - e) - (h * k - h) / 2;
+    s.alpha = Math.min(1, 0.3 + e);
+    if (t >= 1) app.ticker.remove(step);
+  };
+  step({ deltaMS: 0 });
+  app.ticker.add(step);
+}
+
+function outline(c: Container, s: Sprite, color: number, width = 2.5) {
+  c.addChild(new Graphics().roundRect(s.x - 1.5, s.y - 1.5, s.width + 3, s.height + 3, 6)
+    .stroke({ width, color, alpha: 0.95 }));
+}
+
 /** Draws melds left→right starting at x; returns the x after the last meld.
  * Concealed kongs show their two outer tiles face down (all four for opponents). */
-function drawMelds(c: Container, tex: Textures, melds: MeldView[], x: number, y: number,
-  w: number): number {
+function drawMelds(c: Container, tex: Textures, melds: MeldView[], x: number, y: number, w: number,
+  highlight: number | null): number {
   for (const m of melds) {
     m.tiles.forEach((t, i) => {
       const faceDown = t === null || (m.type === "AN_KONG" && (i === 0 || i === 3));
@@ -102,6 +145,7 @@ function drawMelds(c: Container, tex: Textures, melds: MeldView[], x: number, y:
       s.x = x;
       s.y = y;
       c.addChild(s);
+      if (!faceDown && t === highlight) outline(c, s, COLORS.cyan);
       x += w - 1;
     });
     x += w * 0.35;
@@ -114,73 +158,69 @@ interface Scene {
   selected: number | null;
   discardable: Set<number>;
   onTile: (tile: number) => void;
-  names: string[];
 }
 
 function render(app: Application, tex: Textures, sc: Scene) {
   const stage = app.stage;
   pool = poolFor(app);
-  pool.releaseAll(); // pooled tile sprites survive; containers, text and graphics are rebuilt
+  pool.releaseAll(); // pooled tile sprites survive; containers and graphics are rebuilt
   stage.removeChildren().forEach((ch) => ch.destroy({ children: true }));
-  const W = app.screen.width;
-  const H = app.screen.height;
+  let mem = memories.get(app);
+  if (!mem || mem.gameId !== sc.view.game_id) {
+    mem = { gameId: sc.view.game_id, rivers: sc.view.players.map((p) => p.discards.length),
+      handLen: 0, generation: 0 };
+    memories.set(app, mem);
+  }
+  mem.generation += 1;
+  const g = tableLayout(app.screen.width, app.screen.height);
   const me = sc.view.you ?? 0;
-  const handW = Math.min(52, (W - 40) / 23);
-  const handH = (handW * TILE_H) / TILE_W;
-  const tableH = H - handH - 40;
-  const L = Math.min(W, tableH);
-  const cx = W / 2;
-  const cy = tableH / 2 + 10;
-  const sd = Math.max(20, L / 24); // discard tile width
-  const sdH = (sd * TILE_H) / TILE_W;
-
-  // table outline
-  const table = new Graphics()
-    .roundRect(cx - L / 2, cy - L / 2, L, L, 18)
-    .fill({ color: COLORS.feltDeep })
-    .stroke({ width: 1, color: COLORS.line });
-  stage.addChild(table);
-
-  const players = sc.view.players;
   const last = sc.view.last_discard;
-  drawCenter(stage, sc.view, cx, cy, L);
 
-  for (const p of players) {
-    const rel = (p.seat - me + 4) % 4;
+  for (const p of sc.view.players) {
+    const rel = relSeat(p.seat, me);
     const area = new Container();
-    area.x = cx;
-    area.y = cy;
+    area.x = g.cx;
+    area.y = g.cy;
     area.rotation = (-rel * Math.PI) / 2;
     stage.addChild(area);
-    drawRiver(area, tex, p, sd, sdH, L, last && last[0] === p.seat ? true : false);
-    if (rel !== 0) drawOpponent(area, tex, p, sd * 0.95, L);
-    drawSeatLabel(area, p, sc, L, rel);
+    drawRiver(app, mem, area, tex, p, g, !!last && last[0] === p.seat, sc.selected);
+    if (rel !== 0) drawOpponent(area, tex, p, g, sc.selected);
   }
-
-  drawMyHand(stage, tex, players[me], sc, W, H, handW, handH);
+  mem.rivers = sc.view.players.map((p) => p.discards.length);
+  drawMyHand(app, mem, stage, tex, sc.view.players[me], sc, g);
 }
 
-function drawRiver(area: Container, tex: Textures, p: PlayerView, w: number, h: number,
-  L: number, lastIsMine: boolean) {
+function drawRiver(app: Application, mem: Memory, area: Container, tex: Textures, p: PlayerView,
+  g: TableLayout, lastIsMine: boolean, highlight: number | null) {
   const perRow = 6;
+  const w = g.sd;
+  const h = g.sdH;
   const startX = -((perRow * w) / 2);
-  const startY = L * 0.15;
+  const startY = g.L * 0.13;
+  const isNew = p.discards.length === (mem.rivers[p.seat] ?? 0) + 1;
   p.discards.forEach((t, i) => {
     const s = tileSprite(tex, t, w);
     s.x = startX + (i % perRow) * w;
-    s.y = startY + Math.floor(i / perRow) * (h - 2);
+    s.y = startY + Math.floor(i / perRow) * (h - 3);
+    if (p.tsumogiri?.[i]) s.tint = 0xb4b8cf; // tsumogiri: drawn and discarded straight away
     area.addChild(s);
-    if (lastIsMine && i === p.discards.length - 1) {
-      const mark = new Graphics().roundRect(s.x - 1, s.y - 1, w + 2, h + 2, 4)
-        .stroke({ width: 2, color: COLORS.zhong });
-      area.addChild(mark);
+    const newest = i === p.discards.length - 1;
+    if (newest && lastIsMine) {
+      area.addChild(new Graphics().roundRect(s.x - 2, s.y - 2, w + 4, h + 4, 6)
+        .stroke({ width: 3, color: COLORS.gold, alpha: 0.95 }));
+    } else if (t === highlight) {
+      outline(area, s, COLORS.cyan);
     }
+    // fly in from the player's hand
+    if (newest && isNew) tweenIn(app, mem, s, { dx: -s.x, dy: g.L * 0.42 - s.y, scale: 1.6 }, 230);
   });
 }
 
-function drawOpponent(area: Container, tex: Textures, p: PlayerView, w: number, L: number) {
+function drawOpponent(area: Container, tex: Textures, p: PlayerView, g: TableLayout,
+  highlight: number | null) {
+  const w = g.sd * 0.98;
   const h = (w * TILE_H) / TILE_W;
-  const y = L / 2 - h - 10;
+  const y = g.L / 2 - h - 8;
   const meldCount = p.melds.reduce((n, m) => n + m.tiles.length, 0);
   const total = p.hand_count + meldCount + p.melds.length * 0.35;
   let x = -((total * (w - 1)) / 2);
@@ -193,67 +233,21 @@ function drawOpponent(area: Container, tex: Textures, p: PlayerView, w: number, 
     x += w - 1;
   }
   x += w * 0.5;
-  drawMelds(area, tex, p.melds, x, y, w);
-  // flowers on the left of the hand
+  drawMelds(area, tex, p.melds, x, y, w, highlight);
   p.flowers.forEach((f, i) => {
-    const s = tileSprite(tex, f, w * 0.7);
-    s.x = -L / 2 + 14 + i * (w * 0.7 - 1);
-    s.y = y - h * 0.8;
+    const s = tileSprite(tex, f, w * 0.72);
+    s.x = -g.L / 2 + 12 + i * (w * 0.72 - 1);
+    s.y = y - h * 0.85;
     area.addChild(s);
   });
 }
 
-function drawSeatLabel(area: Container, p: PlayerView, sc: Scene, L: number, rel: number) {
-  const acting = sc.view.acting.includes(p.seat);
-  const dealer = sc.view.dealer === p.seat;
-  const name = sc.names[p.seat] ?? "";
-  const tags = [dealer ? "莊" : "", p.declared_ting ? "聽" : ""].filter(Boolean).join("・");
-  const t = new Text({
-    text: `${acting ? "▶ " : ""}${windName(p.seat_wind)}　${name}\n${p.score}${tags ? "　" + tags : ""}`,
-    style: {
-      fontFamily: "PingFang TC, Noto Sans TC, sans-serif",
-      fontSize: 13,
-      fill: acting ? COLORS.ivory : COLORS.mist,
-      fontWeight: acting ? "700" : "400",
-      align: "center",
-      lineHeight: 18,
-    },
-  });
-  // each seat's label sits in the corner to its right, always upright
-  t.anchor.set(0.5);
-  t.x = L * 0.3;
-  t.y = L * 0.3;
-  t.rotation = (rel * Math.PI) / 2;
-  area.addChild(t);
-}
-
-function drawCenter(stage: Container, view: GameView, cx: number, cy: number, L: number) {
-  const size = L * 0.15;
-  const g = new Graphics().roundRect(cx - size / 2, cy - size / 2, size, size, 10)
-    .fill({ color: COLORS.felt }).stroke({ width: 1, color: COLORS.line });
-  stage.addChild(g);
-  const wind = new Text({
-    text: translate("{wind}風圈", { wind: windName(view.round_wind) }),
-    style: { fontFamily: "var(--font-wenkai), Kaiti TC, serif", fontSize: Math.max(16, size * 0.2), fill: COLORS.ivory },
-  });
-  wind.anchor.set(0.5);
-  wind.x = cx;
-  wind.y = cy - size * 0.18;
-  const info = new Text({
-    text: `剩 ${view.drawable} 張\n連莊 ${view.dealer_streak}`,
-    style: { fontFamily: "PingFang TC, sans-serif", fontSize: Math.max(11, size * 0.1), fill: COLORS.mist, align: "center" },
-  });
-  info.anchor.set(0.5);
-  info.x = cx;
-  info.y = cy + size * 0.2;
-  stage.addChild(wind, info);
-}
-
-function drawMyHand(stage: Container, tex: Textures, p: PlayerView, sc: Scene, W: number,
-  H: number, w: number, h: number) {
+function drawMyHand(app: Application, mem: Memory, stage: Container, tex: Textures, p: PlayerView,
+  sc: Scene, g: TableLayout) {
   const hand = p.hand ?? [];
+  const w = g.handW;
+  const h = g.handH;
   const lastDraw = sc.view.last_draw;
-  // keep the freshly drawn tile apart on the right
   let tiles = hand;
   let drawn: number | null = null;
   if (lastDraw !== null && sc.view.turn === p.seat && sc.view.phase === "DISCARD") {
@@ -263,25 +257,47 @@ function drawMyHand(stage: Container, tex: Textures, p: PlayerView, sc: Scene, W
       drawn = lastDraw;
     }
   }
+  const justDrew = drawn !== null && hand.length === mem.handLen + 1;
+  mem.handLen = hand.length;
   const meldTiles = p.melds.reduce((n, m) => n + m.tiles.length, 0);
-  const totalW = (tiles.length + (drawn !== null ? 1.4 : 0)) * w + meldTiles * w * 0.75 + p.melds.length * w * 0.3;
-  let x = Math.max(12, (W - totalW) / 2);
-  const y = H - h - 14;
+  const totalW = (tiles.length + (drawn !== null ? 1.4 : 0)) * w + meldTiles * w * 0.72
+    + p.melds.length * w * 0.3;
+  let x = Math.max(12, (g.W - totalW) / 2);
+  const y = g.H - h - 18;
   const selectedIdx = sc.selected === null ? -1 : tiles.indexOf(sc.selected);
+
+  // soft shadow under the hand row
+  stage.addChild(new Graphics().roundRect(x - 10, y + h - 6, totalW + 20, 16, 8)
+    .fill({ color: COLORS.shadow, alpha: 0.35 }));
 
   const place = (t: number, i: number | "drawn") => {
     const s = tileSprite(tex, t, w);
     const isSel = i === "drawn" ? sc.selected === t && selectedIdx === -1 : i === selectedIdx;
     s.x = x;
-    s.y = isSel ? y - 14 : y;
+    s.y = isSel ? y - h * 0.28 : y;
     const playable = sc.discardable.has(t);
-    s.alpha = sc.discardable.size === 0 || playable ? 1 : 0.55;
+    if (sc.discardable.size > 0 && !playable) s.tint = 0x9aa0bf;
+    stage.addChild(s);
+    if (isSel) {
+      stage.addChild(new Graphics().roundRect(s.x - 2, s.y - 2, w + 4, h + 4, 8)
+        .stroke({ width: 3, color: COLORS.cyan }));
+    }
     if (playable) {
       s.eventMode = "static";
       s.cursor = "pointer";
-      s.on("pointertap", () => sc.onTile(t));
+      const restY = s.y;
+      s.on("pointerover", () => {
+        if (!isSel) s.y = restY - 6;
+      });
+      s.on("pointerout", () => {
+        s.y = restY;
+      });
+      s.on("pointertap", () => {
+        if (!isSel) sfx.select();
+        sc.onTile(t);
+      });
     }
-    stage.addChild(s);
+    if (i === "drawn" && justDrew) tweenIn(app, mem, s, { dx: w * 1.2, dy: -h * 0.3 }, 200);
     x += w;
   };
   tiles.forEach((t, i) => place(t, i));
@@ -290,14 +306,7 @@ function drawMyHand(stage: Container, tex: Textures, p: PlayerView, sc: Scene, W
     place(drawn, "drawn");
   }
   x += w * 0.5;
-  drawMelds(stage, tex, p.melds, x, y + h * 0.25, w * 0.75);
-  // flowers above the hand, left aligned
-  p.flowers.forEach((f, i) => {
-    const s = tileSprite(tex, f, w * 0.6);
-    s.x = 14 + i * (w * 0.6);
-    s.y = y - h * 0.75;
-    stage.addChild(s);
-  });
+  drawMelds(stage, tex, p.melds, x, y + h * 0.28, w * 0.72, sc.selected);
 }
 
 /** A fixed view to render instead of the live game store (replays). */
@@ -312,20 +321,22 @@ export function TableCanvas({ fixed }: { fixed?: StaticTable } = {}) {
   fixedRef.current = fixed;
   const appRef = useRef<Application | null>(null);
   const texRef = useRef<Textures | null>(null);
+  const fontRef = useRef<string>("serif");
   const view = useGame((s) => s.view);
   const selected = useGame((s) => s.selected);
   const legal = useGame((s) => s.legal);
-  const room = useGame((s) => s.room);
   const locale = useLocale((s) => s.locale);
+  const back = useAccount((s) => s.profile?.equipped.tile_back);
 
   useEffect(() => {
     let disposed = false;
     const app = new Application();
     (async () => {
       const font = await ensureTileFont();
+      fontRef.current = font;
       await app.init({
         resizeTo: host.current!,
-        background: COLORS.felt,
+        backgroundAlpha: 0,
         antialias: true,
         resolution: window.devicePixelRatio || 1,
         autoDensity: true,
@@ -352,12 +363,14 @@ export function TableCanvas({ fixed }: { fixed?: StaticTable } = {}) {
 
   const redraw = () => {
     const app = appRef.current;
-    const tex = texRef.current;
+    let tex = texRef.current;
+    if (app && tex && tex.back !== tileBack()) {
+      tex = texRef.current = buildTextures(fontRef.current); // a new tile back was equipped
+    }
     const st = useGame.getState();
     const f = fixedRef.current;
     if (app && tex && f) {
-      render(app, tex, { view: f.view, selected: null, discardable: new Set(), names: f.names,
-        onTile: () => undefined });
+      render(app, tex, { view: f.view, selected: null, discardable: new Set(), onTile: () => undefined });
       return;
     }
     if (!app || !tex || !st.view) return;
@@ -369,7 +382,6 @@ export function TableCanvas({ fixed }: { fixed?: StaticTable } = {}) {
       view: st.view,
       selected: st.selected,
       discardable,
-      names: (st.room?.seats ?? []).map((s, i) => s?.name ?? `玩家${i + 1}`),
       onTile: (tile) => {
         const cur = useGame.getState();
         if (cur.selected === tile) {
@@ -387,7 +399,7 @@ export function TableCanvas({ fixed }: { fixed?: StaticTable } = {}) {
 
   useEffect(() => {
     redraw();
-  }, [view, selected, legal, room, fixed, locale]);
+  }, [view, selected, legal, fixed, locale, back]);
 
   return <div ref={host} className="absolute inset-0" aria-label="牌桌" role="img" />;
 }

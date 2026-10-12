@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Action, GameView, RoomInfo, ServerMessage, WinPayload } from "@/lib/protocol";
 import { translate } from "@/lib/i18n";
+import { sfx } from "@/lib/sfx";
 import { type ProgressEvent, useAccount } from "@/store/accountStore";
 import { tileName } from "@/lib/tiles";
 
@@ -35,6 +36,17 @@ export interface CoachNoteData {
   candidates: HintCandidate[];
 }
 
+/** A call / event shown as a stamp on the table (chi, pon, kong, ready, flower, win). */
+export interface TableEffect {
+  id: number;
+  kind: string;
+  seat: number;
+  tile: number | null;
+}
+
+/** For each discard that leaves the hand ready: [wait tile, copies not yet seen]. */
+export type Waits = Record<string, [number, number][]>;
+
 export interface GameEnd {
   final_scores: number[];
   ranks: number[];
@@ -49,6 +61,8 @@ interface GameState {
   view: GameView | null;
   legal: Action[];
   deadline: number | null;
+  waits: Waits;
+  effects: TableEffect[];
   selected: number | null;
   log: string[];
   chat: ChatLine[];
@@ -90,6 +104,24 @@ function eventLine(ev: Record<string, unknown>, names: string[]): string | null 
   }
 }
 
+let effectSeq = 0;
+const STAMPED = new Set(["PON", "CHI", "KONG", "TING", "FLOWER", "FLOWER_ROB"]);
+
+/** Sounds for every event; stamps for calls (removed again after the animation). */
+function effectFor(ev: Record<string, unknown>, get: () => GameState,
+  set: (s: Partial<GameState>) => void) {
+  const kind = String(ev.type);
+  const seat = ev.player as number | null;
+  if (kind === "DISCARD") sfx.discard();
+  else if (kind === "DRAW" && seat === get().seat) sfx.draw();
+  else if (kind === "TING") { sfx.discard(); sfx.ting(); }
+  else if (kind === "PON" || kind === "CHI" || kind === "KONG") sfx.call();
+  if (seat === null || seat === undefined || !STAMPED.has(kind)) return;
+  const id = ++effectSeq;
+  set({ effects: [...get().effects.slice(-4), { id, kind, seat, tile: (ev.tile as number | null) ?? null }] });
+  setTimeout(() => set({ effects: get().effects.filter((e) => e.id !== id) }), 1400);
+}
+
 const initial = {
   status: "idle" as Status,
   room: null,
@@ -97,6 +129,8 @@ const initial = {
   view: null,
   legal: [],
   deadline: null,
+  waits: {},
+  effects: [],
   selected: null,
   log: [],
   chat: [],
@@ -118,7 +152,7 @@ export const useGame = create<GameState>((set, get) => ({
   dismissResult: () => set({ win: null, drawn: false }),
   act: (a) => {
     get().sender?.({ type: "ACTION", payload: a });
-    set({ legal: [], deadline: null, selected: null, hint: null });
+    set({ legal: [], deadline: null, waits: {}, selected: null, hint: null });
   },
   requestHint: () => {
     set({ error: null });
@@ -162,16 +196,19 @@ export const useGame = create<GameState>((set, get) => ({
       }
       case "ACTION_REQUEST":
         if (p.player === get().seat) {
-          set({ legal: p.legal_actions as Action[], deadline: (p.deadline as number | null) ?? null });
+          set({ legal: p.legal_actions as Action[], deadline: (p.deadline as number | null) ?? null,
+            waits: (p.waits as Waits | undefined) ?? {} });
         }
         break;
       case "PLAYER_ACTION": {
-        const line = eventLine(p.event as Record<string, unknown>, names);
+        const ev = p.event as Record<string, unknown>;
+        const line = eventLine(ev, names);
         if (line) set({ log: [...get().log.slice(-60), line] });
+        effectFor(ev, get, set);
         break;
       }
       case "WIN_DECLARED":
-        set({ win: p as unknown as WinPayload, legal: [], deadline: null });
+        set({ win: p as unknown as WinPayload, legal: [], deadline: null, waits: {} });
         break;
       case "ROUND_DRAW":
         set({ drawn: true, legal: [], deadline: null });

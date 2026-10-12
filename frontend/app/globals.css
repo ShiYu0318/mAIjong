@@ -34,6 +34,7 @@
   --animate-pulse-glow: pulse-glow 1.6s ease-in-out infinite;
   --animate-stamp: stamp 520ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
   --animate-wiggle: wiggle 420ms ease-in-out;
+  --animate-burst: burst 1.6s cubic-bezier(0.15, 0.8, 0.3, 1) both;
 
   @keyframes pop-in {
     from { opacity: 0; transform: scale(0.6); }
@@ -59,6 +60,10 @@
     0% { opacity: 0; transform: scale(2.6) rotate(-8deg); }
     60% { opacity: 1; transform: scale(0.92) rotate(2deg); }
     100% { opacity: 1; transform: scale(1) rotate(0); }
+  }
+  @keyframes burst {
+    from { opacity: 1; transform: translate(0, 0) scale(1) rotate(0); }
+    to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.4) rotate(var(--rot)); }
   }
   @keyframes wiggle {
     0%, 100% { transform: rotate(0); }

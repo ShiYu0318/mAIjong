@@ -10,7 +10,8 @@ import { HintPanel } from "@/components/HUD/HintPanel";
 import { ResultOverlay } from "@/components/HUD/ResultOverlay";
 import { SidePanel } from "@/components/HUD/SidePanel";
 import { HandList, TableAnnouncer, useTableKeys } from "@/components/HUD/TableAccess";
-import { TurnTimer } from "@/components/HUD/TurnTimer";
+import { TableFelt, TableHud, useTableLayout } from "@/components/Board/TableOverlay";
+import { SoundToggle } from "@/components/Game/SoundToggle";
 import { WaitingRoom } from "@/components/HUD/WaitingRoom";
 import { ApiError, loadTicket, rooms, saveTicket } from "@/lib/api";
 import { LocaleToggle } from "@/components/I18n/LocaleToggle";
@@ -40,6 +41,7 @@ export default function RoomPage() {
   const seat = useGame((s) => s.seat);
   const error = useGame((s) => s.error);
   const t = useT();
+  const [tableRef, layout] = useTableLayout();
   useTableKeys();
 
   useEffect(() => {
@@ -89,8 +91,8 @@ export default function RoomPage() {
 
   return (
     <main className="flex h-dvh flex-col">
-      <header className="flex items-center gap-4 border-b border-felt-line px-4 py-2 text-sm">
-        <Link href="/" className="font-display text-xl">{t("麥醬")}</Link>
+      <header className="flex items-center gap-4 border-b border-white/10 bg-black/25 px-4 py-2 text-sm backdrop-blur">
+        <Link href="/" className="font-display text-xl font-black text-gold">{t("麥醬")}</Link>
         <span className="text-mist">{t("房間")} <span className="tabular text-ivory">{room.code}</span></span>
         {view && (
           <span className="text-mist">
@@ -98,14 +100,16 @@ export default function RoomPage() {
           </span>
         )}
         {STATUS_TEXT[status] && <span className="text-zhong">{t(STATUS_TEXT[status])}</span>}
-        <div className="ml-auto flex items-center gap-3"><TurnTimer /><LocaleToggle /></div>
+        <div className="ml-auto flex items-center gap-3"><SoundToggle /><LocaleToggle /></div>
       </header>
       <div className="flex min-h-0 flex-1">
-        <section className="relative min-w-0 flex-1">
+        <section ref={tableRef} className="relative min-w-0 flex-1 overflow-hidden">
+          {layout && <TableFelt g={layout} />}
           <TableCanvas />
+          {layout && view && <TableHud g={layout} view={view} names={names} />}
           <HandList />
           <TableAnnouncer />
-          <div className="absolute right-4 bottom-[118px] left-4 z-10">
+          <div className="absolute right-4 left-4 z-10" style={{ bottom: (layout?.handH ?? 80) + 40 }}>
             <ActionBar />
           </div>
           {error && (
