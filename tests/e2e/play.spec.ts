@@ -88,4 +88,33 @@ test.describe("phone screen", () => {
     await expect(page.getByRole("region", { name: "你的手牌" })).toBeAttached();
     expect(await overflow()).toBeLessThanOrEqual(1);
   });
+
+  test("account, sound and language fold into the phone menu", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: "切換語言" })).toBeHidden();
+    await page.getByRole("button", { name: "選單" }).click();
+    await expect(page.getByRole("button", { name: "切換語言" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "綁定帳號" })).toBeVisible();
+  });
+});
+
+test("level-up moment plays and closes on a tap", async ({ page }) => {
+  await page.goto("/dev/ui");
+  await page.getByRole("button", { name: "升級演出" }).click();
+  const show = page.getByRole("button", { name: "升級！等級 12" });
+  await expect(show).toBeVisible();
+  await expect(page.getByText("LEVEL UP")).toBeVisible();
+  await show.click();
+  await expect(show).toBeHidden();
+});
+
+test("result show counts down to the next hand and lists readiness on a draw", async ({ page }) => {
+  await page.goto("/dev/result");
+  await expect(page.getByRole("dialog", { name: "本手結果" })).toBeVisible();
+  await expect(page.getByText(/下一手 \d+ 秒後開始/)).toBeVisible();
+  await expect(page.getByText("總台數")).toBeVisible({ timeout: 10_000 });
+  await page.goto("/dev/result?draw");
+  await expect(page.getByText("海底流局")).toBeVisible();
+  await expect(page.getByText("聽牌 · 已宣告")).toBeVisible();
+  await expect(page.getByText("未聽").first()).toBeVisible();
 });
