@@ -14,6 +14,7 @@ import { TILE_BACKS, type TileBack } from "@/lib/tilePainter";
 import { useState } from "react";
 import { RANKS } from "@/lib/progression";
 import { useAccount } from "@/store/accountStore";
+import { Trophy, Zap } from "lucide-react";
 
 const HAND = [0, 1, 2, 12, 13, 14, 22, 22, 27, 27, 27, 31, 32, 33, 34, 40];
 
@@ -32,7 +33,7 @@ export default function UiGallery() {
       </div>
       <Panel title="按鈕">
         <div className="flex flex-wrap items-center gap-4">
-          <GameButton size="xl">⚡ 快速配對</GameButton>
+          <GameButton size="xl"><Zap size={26} strokeWidth={2.6} aria-hidden="true" />快速配對</GameButton>
           <GameButton variant="blue" size="lg">開桌</GameButton>
           <GameButton variant="green">碰</GameButton>
           <GameButton variant="danger" size="lg">胡</GameButton>
@@ -40,7 +41,7 @@ export default function UiGallery() {
           <GameButton variant="ghost">過</GameButton>
           <GameButton disabled>不能按</GameButton>
           <GameButton variant="green" onClick={() => setCoins((c) => c + 500)}>+500 金幣</GameButton>
-          <GameButton variant="blue" onClick={() => push({ icon: "🏆", title: "成就解鎖：初胡", body: "+200 金幣" })}>
+          <GameButton variant="blue" onClick={() => push({ icon: Trophy, tone: "gold", title: "成就解鎖：初胡", body: "+200 金幣" })}>
             通知
           </GameButton>
           <GameButton variant="pink" onClick={() => useAccount.setState({ levelUp: { level: 12, coins: 240 } })}>

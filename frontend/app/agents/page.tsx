@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { type AgentInfo, agentsApi, ApiError } from "@/lib/api";
 import { useAccount } from "@/store/accountStore";
+import { GameIcon } from "@/components/Game/GameIcon";
+import { Bot } from "lucide-react";
 
 const STATUS: Record<string, string> = {
   PENDING: "驗證中", ACTIVE: "已上場", REJECTED: "驗證未通過", BANNED: "已停權", DELETED: "已刪除",
@@ -25,7 +27,7 @@ export default function AgentsPage() {
   const mine = agents.filter((a) => user && a.owner_id === user.id);
 
   return (
-    <PageShell icon="🤖" title="社群 AI">
+    <PageShell icon={<GameIcon icon={Bot} tone="cyan" size={60} />} title="社群 AI">
       <p className="mt-3 max-w-2xl text-mist">
         用 <code>pip install maijong-sdk</code> 寫好代理程式後，執行 <code>maijong pack</code> 產生 submission.zip 再上傳。
         平台會在隔離環境跑 10 手測試，通過後以 rating 1500 加入競技場。

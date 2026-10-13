@@ -3,6 +3,8 @@
 import { PageShell } from "@/components/Game/PageShell";
 import { useState } from "react";
 import { ComparePanel, ReplayExplorer, SimulatorPanel, TrainingPanel } from "@/components/Lab/Panels";
+import { GameIcon } from "@/components/Game/GameIcon";
+import { FlaskConical } from "lucide-react";
 
 const TABS = [
   { id: "training", label: "訓練監控" },
@@ -14,7 +16,7 @@ const TABS = [
 export default function LabPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("training");
   return (
-    <PageShell icon="🧪" title="實驗室" wide>
+    <PageShell icon={<GameIcon icon={FlaskConical} tone="green" size={60} />} title="實驗室" wide>
       <div role="tablist" className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}

@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n";
 
 /** Common page frame: back to lobby, player bar, big title with an icon. */
 export function PageShell({ icon, title, subtitle, actions, children, wide = false, backHref = "/", backLabel }: {
-  icon?: string; title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; children: ReactNode; wide?: boolean;
+  icon?: ReactNode; title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; children: ReactNode; wide?: boolean;
   backHref?: string; backLabel?: string;
 }) {
   const t = useT();
@@ -21,7 +21,7 @@ export function PageShell({ icon, title, subtitle, actions, children, wide = fal
       </header>
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div className="flex items-center gap-4">
-          {icon && <span className="animate-pop-in text-6xl drop-shadow" aria-hidden="true">{icon}</span>}
+          {icon && <span className="animate-pop-in" aria-hidden="true">{icon}</span>}
           <div>
             <h1 className="font-display text-4xl font-black sm:text-5xl">{title}</h1>
             {subtitle && <p className="mt-1 max-w-2xl text-mist">{subtitle}</p>}

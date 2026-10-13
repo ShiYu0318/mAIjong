@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { TileImage } from "@/components/Hand/TileImage";
 import { type Analysis, ApiError, type MeldInput, tutor } from "@/lib/api";
 import { isNumber, rankOf, tileName } from "@/lib/tiles";
+import { GameIcon } from "@/components/Game/GameIcon";
+import { ScanSearch } from "lucide-react";
 
 type Mode = "hand" | "PON" | "CHI" | "AN_KONG";
 const MODES: { v: Mode; label: string }[] = [
@@ -60,7 +62,7 @@ export default function AnalyzePage() {
   }, [hand, melds, need]);
 
   return (
-    <PageShell icon="🔍" backHref="/tutor" backLabel="AI 教練" title="手牌分析">
+    <PageShell icon={<GameIcon icon={ScanSearch} tone="blue" size={60} />} backHref="/tutor" backLabel="AI 教練" title="手牌分析">
       <p className="mt-3 text-mist">點下方的牌組出手牌。湊滿 {need + 1} 張看聽牌與進張；{need + 2} 張則分析每張牌該不該打。</p>
 
       <div className="mt-6 flex flex-wrap gap-2" role="radiogroup" aria-label="輸入模式">

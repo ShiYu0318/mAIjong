@@ -12,6 +12,8 @@ import { useT } from "@/lib/i18n";
 import { sfx } from "@/lib/sfx";
 import type { TileBack } from "@/lib/tilePainter";
 import { useAccount } from "@/store/accountStore";
+import { Check, Palette } from "lucide-react";
+import { GameIcon } from "@/components/Game/GameIcon";
 
 const SLOTS: CosmeticSlot[] = ["tile_back", "table", "win_effect"];
 
@@ -31,8 +33,11 @@ function Preview({ slot, id }: { slot: CosmeticSlot; id: string }) {
   }
   const fx = WIN_EFFECTS[id] ?? WIN_EFFECTS.gold;
   return (
-    <span className="flex h-16 w-28 items-center justify-center rounded-2xl text-4xl"
-      style={{ background: `radial-gradient(circle, ${fx.colors[0]}55, transparent 70%)` }}>{fx.icon}</span>
+    <span className="flex h-16 w-28 items-center justify-center rounded-2xl"
+      style={{ background: `radial-gradient(circle, ${fx.colors[0]}55, transparent 70%)` }}>
+      <fx.icon size={40} strokeWidth={2.2} color={fx.colors[0]} style={{ filter: `drop-shadow(0 0 8px ${fx.colors[0]})` }}
+        aria-hidden="true" />
+    </span>
   );
 }
 
@@ -68,7 +73,9 @@ export default function ShopPage() {
         <Link href="/" className="font-bold text-mist hover:text-ivory">← {t("大廳")}</Link>
         <PlayerBar compact />
       </header>
-      <h1 className="mt-6 font-display text-5xl font-black">{t("外觀商店")}</h1>
+      <h1 className="mt-6 flex items-center gap-4 font-display text-5xl font-black">
+        <GameIcon icon={Palette} tone="pink" size={60} className="animate-pop-in" />{t("外觀商店")}
+      </h1>
       <p className="mt-2 text-mist">{t("用遊玩得到的金幣解鎖外觀；金幣不能兌現，也沒有抽獎。")}</p>
       <div className="mt-6 flex gap-2" role="tablist">
         {SLOTS.map((s) => (
@@ -86,7 +93,7 @@ export default function ShopPage() {
             <Preview slot={slot} id={it.id} />
             <h2 className="font-display text-xl font-black">{t(it.name)}</h2>
             {it.equipped ? (
-              <span className="rounded-full bg-jade/25 px-4 py-2 font-black text-jade">✓ {t("使用中")}</span>
+              <span className="flex items-center gap-1 rounded-full bg-jade/25 px-4 py-2 font-black text-jade"><Check size={16} strokeWidth={3} aria-hidden="true" />{t("使用中")}</span>
             ) : it.owned ? (
               <GameButton variant="green" onClick={() => act(() => profileApi.equip(slot, it.id), sfx.select)}>
                 {t("裝備")}

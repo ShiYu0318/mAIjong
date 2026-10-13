@@ -1,11 +1,14 @@
 "use client";
 
 import { create } from "zustand";
+import type { LucideIcon } from "lucide-react";
+import { GameIcon, type IconTone } from "@/components/Game/GameIcon";
 
 
 export interface Toast {
   id: number;
-  icon: string;
+  icon: LucideIcon;
+  tone?: IconTone;
   title: string;
   body?: string;
 }
@@ -37,7 +40,7 @@ export function Toasts() {
       {toasts.map((t) => (
         <button key={t.id} type="button" onClick={() => dismiss(t.id)}
           className="panel pointer-events-auto flex animate-pop-in items-center gap-3 p-3 text-left">
-          <span className="text-3xl">{t.icon}</span>
+          <GameIcon icon={t.icon} tone={t.tone ?? "gold"} size={40} />
           <span>
             <span className="block font-black">{t.title}</span>
             {t.body && <span className="block text-sm text-mist">{t.body}</span>}

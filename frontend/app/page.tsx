@@ -13,6 +13,8 @@ import { ApiError, profileApi, rooms, saveTicket } from "@/lib/api";
 import { translate, useT } from "@/lib/i18n";
 import { sfx } from "@/lib/sfx";
 import { useAccount } from "@/store/accountStore";
+import { GameIcon } from "@/components/Game/GameIcon";
+import { Award, Bot, Check, FlaskConical, Gift, GraduationCap, type LucideIcon, Palette, Target, Trophy, Users, Zap } from "lucide-react";
 
 // a real 平胡 hand: 123萬 456萬 789筒 234條 678條 + 55筒
 const SAMPLE_HAND = [0, 1, 2, 3, 4, 5, 24, 25, 26, 10, 11, 12, 14, 15, 16, 22, 22];
@@ -116,7 +118,7 @@ export default function Lobby() {
       )}
 
       <section className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px]">
-        <ModeCard tone="amber" icon="⚡" className="lg:row-span-2">
+        <ModeCard tone="amber" icon={Zap} className="lg:row-span-2">
           <h2 className="font-display text-3xl font-black">{t("快速配對")}</h2>
           <p className="mt-2 text-white/85">{t("和正在等待的玩家湊一桌；30 秒內沒湊滿就由 AI 補位。")}</p>
           <div className="relative my-6 flex min-h-28 flex-1 scale-75 items-center justify-center sm:scale-100" aria-hidden="true">
@@ -139,7 +141,7 @@ export default function Lobby() {
           </div>
         </ModeCard>
 
-        <ModeCard tone="blue" icon="🀄" className="lg:row-span-2">
+        <ModeCard tone="blue" icon={Users} className="lg:row-span-2">
           <h2 className="font-display text-3xl font-black">{t("開一桌")}</h2>
           <fieldset className="mt-4">
             <legend className="text-sm text-white/80">{t("座位")}</legend>
@@ -195,9 +197,9 @@ export default function Lobby() {
       </section>
 
       <section className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-        <SmallCard href="/practice" tone="green" icon="🎯" title={t("單人練習")} desc={t("情境、速度、防守三種練習")} />
-        <SmallCard href="/tutor" tone="pink" icon="📘" title={t("AI 教練")} desc={t("第一次玩？從 AI 教練開始")} />
-        <SmallCard href="/leaderboard" tone="violet" icon="🏆" title={t("排位賽")} desc={t("挑戰段位、登上排行榜")}
+        <SmallCard href="/practice" tone="green" icon={Target} title={t("單人練習")} desc={t("情境、速度、防守三種練習")} />
+        <SmallCard href="/tutor" tone="pink" icon={GraduationCap} title={t("AI 教練")} desc={t("第一次玩？從 AI 教練開始")} />
+        <SmallCard href="/leaderboard" tone="violet" icon={Trophy} title={t("排位賽")} desc={t("挑戰段位、登上排行榜")}
           className="col-span-2 sm:col-span-1" />
         <Panel className="col-span-2 flex flex-col justify-between sm:col-span-1">
           <h2 className="font-display text-xl font-black">{t("用房間碼加入")}</h2>
@@ -217,15 +219,15 @@ export default function Lobby() {
       </section>
 
       <nav className="mt-8 flex flex-wrap justify-center gap-3 text-sm" aria-label={t("更多")}>
-        {[
-          ["/shop", "🎨", t("外觀商店")],
-          ["/profile", "🎖️", t("成就與檔案")],
-          ["/agents", "🤖", t("社群 AI")],
-          ["/lab", "🧪", t("實驗室")],
-        ].map(([href, icon, label]) => (
+        {([
+          ["/shop", Palette, t("外觀商店")],
+          ["/profile", Award, t("成就與檔案")],
+          ["/agents", Bot, t("社群 AI")],
+          ["/lab", FlaskConical, t("實驗室")],
+        ] as const).map(([href, Icon, label]) => (
           <Link key={href} href={href}
-            className="rounded-full bg-black/25 px-4 py-2 font-bold text-ivory-dim transition hover:-translate-y-0.5 hover:bg-black/40 hover:text-ivory">
-            <span aria-hidden="true">{icon}</span> {label}
+            className="flex items-center gap-1.5 rounded-full bg-black/25 px-4 py-2 font-bold text-ivory-dim transition hover:-translate-y-0.5 hover:bg-black/40 hover:text-ivory">
+            <Icon size={16} strokeWidth={2.4} aria-hidden="true" />{label}
           </Link>
         ))}
       </nav>
@@ -241,26 +243,28 @@ const TONES = {
   violet: "from-[#7454ff] to-[#196cf4]",
 } as const;
 
-function ModeCard({ tone, icon, className = "", children }: {
-  tone: keyof typeof TONES; icon: string; className?: string; children: React.ReactNode;
+function ModeCard({ tone, icon: Icon, className = "", children }: {
+  tone: keyof typeof TONES; icon: LucideIcon; className?: string; children: React.ReactNode;
 }) {
   return (
     <section className={`relative flex animate-rise flex-col overflow-hidden rounded-3xl bg-gradient-to-br p-6 shadow-[0_14px_40px_rgb(5_6_25/0.5)] ring-1 ring-white/15 ${TONES[tone]} ${className}`}>
-      <span className="pointer-events-none absolute -top-6 -right-4 text-[9rem] leading-none opacity-20" aria-hidden="true">
-        {icon}
-      </span>
+      <Icon className="pointer-events-none absolute -top-5 -right-5 rotate-12 opacity-20" size={150} strokeWidth={1.6}
+        aria-hidden="true" />
       <div className="relative flex flex-1 flex-col">{children}</div>
     </section>
   );
 }
 
-function SmallCard({ href, tone, icon, title, desc, className = "" }: {
-  href: string; tone: keyof typeof TONES; icon: string; title: string; desc: string; className?: string;
+function SmallCard({ href, tone, icon: Icon, title, desc, className = "" }: {
+  href: string; tone: keyof typeof TONES; icon: LucideIcon; title: string; desc: string; className?: string;
 }) {
   return (
     <Link href={href} onClick={() => sfx.tap()}
       className={`group relative flex animate-rise flex-col items-start gap-2 overflow-hidden rounded-3xl bg-gradient-to-br p-4 shadow-[0_10px_30px_rgb(5_6_25/0.45)] ring-1 ring-white/15 transition hover:-translate-y-1 active:translate-y-0.5 sm:flex-row sm:items-center sm:gap-4 sm:p-5 ${TONES[tone]} ${className}`}>
-      <span className="text-4xl drop-shadow transition group-hover:scale-110 sm:text-5xl" aria-hidden="true">{icon}</span>
+      <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_4px_10px_rgb(0_0_0/0.2)] ring-1 ring-white/30 transition group-hover:scale-110 sm:size-14"
+        aria-hidden="true">
+        <Icon size={28} strokeWidth={2.4} />
+      </span>
       <span>
         <span className="block font-display text-lg font-black sm:text-xl">{title}</span>
         <span className="block text-xs text-white/85 sm:text-sm">{desc}</span>
@@ -279,7 +283,7 @@ function DailyBonus() {
   return (
     <Panel className={`relative overflow-hidden ${bonus.available ? "ring-2 ring-gold/70" : ""}`}>
       <div className="flex items-center gap-4">
-        <span className={`text-5xl ${bonus.available ? "animate-float" : "grayscale"}`} aria-hidden="true">🎁</span>
+        <span className={bonus.available ? "animate-float" : ""}><GameIcon icon={Gift} tone={bonus.available ? "orange" : "slate"} size={56} /></span>
         <div className="flex-1">
           <h2 className="font-display text-xl font-black">{t("每日補助")}</h2>
           <p className="text-sm text-mist">
@@ -330,7 +334,7 @@ function Missions() {
                 <ProgressBar value={m.progress} max={m.target} className="flex-1"
                   color={done ? "linear-gradient(90deg,#43e0a3,#16a874)" : undefined} label={translate(m.name)} />
                 {m.claimed ? (
-                  <span className="text-sm text-jade">✓ {t("已領")}</span>
+                  <span className="flex items-center gap-1 text-sm text-jade"><Check size={14} strokeWidth={3} aria-hidden="true" />{t("已領")}</span>
                 ) : done ? (
                   <GameButton size="sm" variant="green" className="animate-pulse-glow" onClick={async () => {
                     try {

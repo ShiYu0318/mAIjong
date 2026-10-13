@@ -10,14 +10,16 @@ import { ApiError, type DefenseState, practice, saveTicket, type Scenario, type 
 import { useT } from "@/lib/i18n";
 import { sfx } from "@/lib/sfx";
 import { tileName } from "@/lib/tiles";
+import { GameIcon } from "@/components/Game/GameIcon";
+import { Ear, Hand as HandIcon, type LucideIcon, Shield, Sprout, Target } from "lucide-react";
 
 type Tab = "scenario" | "speed" | "defense";
-const CATEGORY: Record<string, { label: string; icon: string; tone: string }> = {
-  one_away: { label: "一向聽", icon: "🎯", tone: "from-[#17845d] to-[#0e817d]" },
-  ready_choice: { label: "聽牌選擇", icon: "🀄", tone: "from-[#196aff] to-[#6a3fe0]" },
-  defense: { label: "防守", icon: "🛡️", tone: "from-[#e60057] to-[#9542ff]" },
-  call: { label: "吃碰判斷", icon: "🤔", tone: "from-[#d14200] to-[#e31f4a]" },
-  early: { label: "早巡整理", icon: "🌱", tone: "from-[#007fa6] to-[#196cf4]" },
+const CATEGORY: Record<string, { label: string; icon: LucideIcon; tone: string }> = {
+  one_away: { label: "一向聽", icon: Target, tone: "from-[#17845d] to-[#0e817d]" },
+  ready_choice: { label: "聽牌選擇", icon: Ear, tone: "from-[#196aff] to-[#6a3fe0]" },
+  defense: { label: "防守", icon: Shield, tone: "from-[#e60057] to-[#9542ff]" },
+  call: { label: "吃碰判斷", icon: HandIcon, tone: "from-[#d14200] to-[#e31f4a]" },
+  early: { label: "早巡整理", icon: Sprout, tone: "from-[#007fa6] to-[#196cf4]" },
 };
 
 function Hand({ tiles, drawn, onPick, disabled, mark }: {
@@ -62,7 +64,7 @@ function ScenarioPanel() {
           return (
             <section key={key}>
               <h3 className="flex items-center gap-2 font-display text-2xl font-black">
-                <span aria-hidden="true">{cat.icon}</span>{t(cat.label)}
+                <cat.icon size={24} strokeWidth={2.4} aria-hidden="true" />{t(cat.label)}
                 <span className="rounded-full bg-black/25 px-2 text-sm text-mist">{items.length}</span>
               </h3>
               <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -80,7 +82,7 @@ function ScenarioPanel() {
                       }
                     }} className={`group relative h-full w-full animate-rise overflow-hidden rounded-2xl bg-gradient-to-br p-4 text-left shadow-[0_8px_20px_rgb(5_6_25/0.4)] ring-1 ring-white/15 transition hover:-translate-y-1 ${cat.tone}`}
                       style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
-                      <span className="absolute -right-2 -bottom-4 text-6xl opacity-20 transition group-hover:scale-110" aria-hidden="true">{cat.icon}</span>
+                      <cat.icon className="absolute -right-2 -bottom-3 opacity-20 transition group-hover:scale-110" size={72} strokeWidth={1.8} aria-hidden="true" />
                       <span className="relative block font-black">{s.title}</span>
                       <span className="relative mt-1 block text-sm text-white/85">{s.description}</span>
                     </button>
@@ -203,7 +205,7 @@ export default function PracticePage() {
   const t = useT();
   const [tab, setTab] = useState<Tab>("scenario");
   return (
-    <PageShell icon="🎯" title={t("單人練習")}
+    <PageShell icon={<GameIcon icon={Target} tone="green" size={60} />} title={t("單人練習")}
       subtitle={t("想自選三位 AI 對手的自由練習，請回大廳用「開一桌」。這裡的練習不影響 rating。")}>
       <PillTabs<Tab> value={tab} onChange={(v) => { sfx.tap(); setTab(v); }} tabs={[
         { id: "scenario", label: t("情境練習") },

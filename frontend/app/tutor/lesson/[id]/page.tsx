@@ -7,6 +7,8 @@ import { useState } from "react";
 import { TileImage } from "@/components/Hand/TileImage";
 import { LESSONS, lessonById } from "@/content/lessons";
 import { markLessonDone } from "@/lib/progress";
+import { GameIcon } from "@/components/Game/GameIcon";
+import { BookOpen } from "lucide-react";
 
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,7 +21,7 @@ export default function LessonPage() {
   const correct = lesson.quiz.filter((q, i) => answers[i] === q.answer).length;
 
   return (
-    <PageShell icon="📘" backHref="/tutor" backLabel="AI 教練" title={lesson.title} subtitle={`第 ${idx + 1} 課`}>
+    <PageShell icon={<GameIcon icon={BookOpen} tone="pink" size={60} />} backHref="/tutor" backLabel="AI 教練" title={lesson.title} subtitle={`第 ${idx + 1} 課`}>
       {lesson.sections.map((s) => (
         <section key={s.heading} className="mt-10">
           <h2 className="font-display text-2xl font-black">{s.heading}</h2>

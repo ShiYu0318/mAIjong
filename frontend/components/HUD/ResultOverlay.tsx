@@ -12,6 +12,8 @@ import { taiName, useT } from "@/lib/i18n";
 import { sfx } from "@/lib/sfx";
 import { useAccount } from "@/store/accountStore";
 import { useGame } from "@/store/gameStore";
+import { Medal } from "@/components/Game/Medal";
+import { Check } from "lucide-react";
 
 /** Confetti-like burst in the colours of the equipped win effect. */
 function Burst({ effect, big }: { effect: string; big: boolean }) {
@@ -33,8 +35,11 @@ function Burst({ effect, big }: { effect: string; big: boolean }) {
             borderRadius: p.round ? "50%" : 2, animationDelay: `${p.delay}s`,
             ["--dx" as string]: p.dx, ["--dy" as string]: p.dy, ["--rot" as string]: p.rot }} />
       ))}
-      <span className="absolute -translate-x-1/2 -translate-y-1/2 animate-burst text-8xl"
-        style={{ ["--dx" as string]: "0px", ["--dy" as string]: "-40px", ["--rot" as string]: "0deg" }}>{fx.icon}</span>
+      <span className="absolute -translate-x-1/2 -translate-y-1/2 animate-burst"
+        style={{ ["--dx" as string]: "0px", ["--dy" as string]: "-40px", ["--rot" as string]: "0deg" }}>
+        <fx.icon size={110} strokeWidth={1.8} color={fx.colors[0]}
+          style={{ filter: `drop-shadow(0 0 18px ${fx.colors[0]}) drop-shadow(0 4px 0 rgb(0 0 0 / 0.3))` }} />
+      </span>
     </div>
   );
 }
@@ -174,7 +179,7 @@ function Rewards() {
           <li key={m.id} className="text-xs">
             <span className="flex justify-between">
               <span className={m.progress >= m.target ? "font-black text-jade" : "text-mist"}>
-                {m.progress >= m.target ? "✓ " : ""}{t(m.name)}
+                {m.progress >= m.target && <Check size={12} strokeWidth={3.4} className="mr-0.5 inline" aria-hidden="true" />}{t(m.name)}
               </span>
               <span className="tabular text-mist">{Math.min(m.progress, m.target)}/{m.target}</span>
             </span>
@@ -215,7 +220,6 @@ function NextHandBar() {
   );
 }
 
-const MEDALS = ["🥇", "🥈", "🥉", "🎖️"];
 // two grey swells for the exhaustive-draw band; animate-wave slides it one period (240px)
 const WAVE = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='80' viewBox='0 0 240 80'%3E%3Cpath d='M0 40 Q30 10 60 40 T120 40 T180 40 T240 40' fill='none' stroke='%23a3a9d6' stroke-width='10' stroke-linecap='round'/%3E%3Cpath d='M0 62 Q30 36 60 62 T120 62 T180 62 T240 62' fill='none' stroke='%23a3a9d6' stroke-opacity='0.5' stroke-width='6'/%3E%3C/svg%3E\")";
 
@@ -351,7 +355,7 @@ export function ResultOverlay({ names }: { names: string[] }) {
                 <li key={seat} className={`flex animate-rise items-center justify-between rounded-2xl px-4 py-2 ${
                   seat === mySeat ? "bg-gold/20 ring-1 ring-gold/60" : "bg-black/20"}`} style={{ animationDelay: `${i * 90}ms` }}>
                   <span className="flex items-center gap-3">
-                    <span className="text-2xl" aria-hidden="true">{MEDALS[gameEnd.ranks[seat] - 1]}</span>
+                    <Medal place={gameEnd.ranks[seat]} size={26} />
                     {t("第 {n} 名　{who}", { n: gameEnd.ranks[seat], who: names[seat] })}
                   </span>
                   <span className="tabular font-black">{gameEnd.final_scores[seat]}</span>

@@ -4,6 +4,7 @@ import { GameButton } from "@/components/Game/GameButton";
 import { TileImage } from "@/components/Hand/TileImage";
 import { translate, useT } from "@/lib/i18n";
 import { useGame } from "@/store/gameStore";
+import { Lightbulb, X } from "lucide-react";
 
 function shantenLabel(sh: number) {
   return sh === 0 ? translate("聽牌") : translate("{n} 向聽", { n: sh });
@@ -19,7 +20,7 @@ export function HintButton() {
   if (!view || view.phase !== "DISCARD" || view.turn !== seat || !canDiscard) return null;
   return (
     <GameButton variant="green" size="lg" onClick={request}>
-      <span aria-hidden="true">💡</span>{t("提示")}
+      <Lightbulb size={22} strokeWidth={2.6} aria-hidden="true" />{t("提示")}
     </GameButton>
   );
 }
@@ -36,7 +37,7 @@ export function HintPanel() {
       className="absolute top-3 left-3 z-10 max-h-[70%] w-80 overflow-y-auto rounded-xl border border-felt-line bg-felt-deep/95 p-4 text-sm shadow-xl">
       <div className="flex items-start justify-between gap-2">
         <p className="leading-relaxed">{hint.explanation}</p>
-        <button onClick={close} aria-label={t("關閉提示")} className="shrink-0 text-mist hover:text-ivory">✕</button>
+        <button onClick={close} aria-label={t("關閉提示")} className="shrink-0 text-mist hover:text-ivory"><X size={18} strokeWidth={2.6} aria-hidden="true" /></button>
       </div>
       {hint.remaining !== null && (
         <p className="mt-1 text-xs text-mist">{t("本場還能用 {n} 次提示", { n: hint.remaining })}</p>

@@ -11,6 +11,8 @@ import { ProgressBar } from "@/components/Game/ProgressBar";
 import { RankBadge } from "@/components/Game/RankBadge";
 import { useT } from "@/lib/i18n";
 import { useAccount } from "@/store/accountStore";
+import { GameIcon } from "@/components/Game/GameIcon";
+import { Lock, Trophy } from "lucide-react";
 
 export default function ProfilePage() {
   const t = useT();
@@ -67,7 +69,7 @@ export default function ProfilePage() {
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {profile.achievements.map((a) => (
                 <li key={a.id} className={`flex items-center gap-3 rounded-2xl p-3 ${a.unlocked ? "bg-gold/15 ring-1 ring-gold/50" : "bg-black/20 opacity-60"}`}>
-                  <span className={`text-3xl ${a.unlocked ? "" : "grayscale"}`} aria-hidden="true">{a.unlocked ? "🏆" : "🔒"}</span>
+                  <GameIcon icon={a.unlocked ? Trophy : Lock} tone={a.unlocked ? "gold" : "slate"} size={44} />
                   <span className="flex-1">
                     <span className="block font-black">{t(a.name)}</span>
                     <span className="block text-sm text-mist">{t(a.description)}</span>

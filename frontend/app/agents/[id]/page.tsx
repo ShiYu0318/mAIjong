@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { LineChart } from "@/components/Lab/LineChart";
 import { type AgentInfo, agentsApi, ApiError, competition } from "@/lib/api";
 import { useAccount } from "@/store/accountStore";
+import { GameIcon } from "@/components/Game/GameIcon";
+import { Bot } from "lucide-react";
 
 export default function AgentDetail() {
   const { id } = useParams<{ id: string }>();
@@ -42,7 +44,7 @@ export default function AgentDetail() {
   const history = (agent.elo_history ?? []).map((h, i) => ({ x: i + 1, y: h.elo }));
 
   return (
-    <PageShell icon="🤖" backHref="/leaderboard" backLabel="排行榜"
+    <PageShell icon={<GameIcon icon={Bot} tone="cyan" size={60} />} backHref="/leaderboard" backLabel="排行榜"
       title={<>{agent.name} <span className="text-3xl text-mist">v{agent.version}</span></>}>
       <p className="mt-2 text-mist">作者：{agent.owner ?? "官方"}・rating {agent.elo.toFixed(0)}・{agent.games_played} 場</p>
       {agent.description && <p className="mt-3">{agent.description}</p>}

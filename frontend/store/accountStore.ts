@@ -4,6 +4,7 @@ import { account, authToken, profileApi, setAuthToken, type Profile, type UserIn
 import { translate } from "@/lib/i18n";
 import { sfx } from "@/lib/sfx";
 import { setTileBack, type TileBack } from "@/lib/tilePainter";
+import { CircleCheck, Trophy } from "lucide-react";
 
 /** A progression event pushed by the server after a hand (backend/progression.py). */
 export interface ProgressEvent {
@@ -88,11 +89,11 @@ export const useAccount = create<AccountState>((set, get) => ({
           set({ levelUp: { level: Number(e.level), coins: Number(e.coins) } });
           break;
         case "MISSION_DONE":
-          push({ icon: "✅", title: translate("任務完成：{name}", { name: String(e.name) }),
+          push({ icon: CircleCheck, tone: "green", title: translate("任務完成：{name}", { name: String(e.name) }),
             body: translate("到大廳領取 {n} 金幣", { n: Number(e.coins) }) });
           break;
         case "ACHIEVEMENT":
-          push({ icon: "🏆", title: translate("成就解鎖：{name}", { name: String(e.name) }),
+          push({ icon: Trophy, tone: "gold", title: translate("成就解鎖：{name}", { name: String(e.name) }),
             body: translate("+{n} 金幣", { n: Number(e.coins) }) });
           break;
         case "MATCH_REWARD":

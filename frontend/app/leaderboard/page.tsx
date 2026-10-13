@@ -12,13 +12,16 @@ import { type AiVsHumans, ApiError, type BoardRow, competition, saveTicket, type
 import { useT } from "@/lib/i18n";
 import { sfx } from "@/lib/sfx";
 import { useAccount } from "@/store/accountStore";
+import { GameIcon } from "@/components/Game/GameIcon";
+import { Medal } from "@/components/Game/Medal";
+import { Swords, Trophy } from "lucide-react";
 
 const fmtDate = (s: string) => new Date(s).toLocaleDateString("zh-TW");
 type Kind = "agent" | "human";
 const PODIUM = [
-  { order: "order-2", medal: "🥇", height: "h-36", tone: "from-[#ffe27a] to-[#d39a12]" },
-  { order: "order-1", medal: "🥈", height: "h-28", tone: "from-[#e3e8f4] to-[#8a93ad]" },
-  { order: "order-3", medal: "🥉", height: "h-24", tone: "from-[#f0a777] to-[#8a4f2a]" },
+  { order: "order-2", height: "h-36", tone: "from-[#ffe27a] to-[#d39a12]" },
+  { order: "order-1", height: "h-28", tone: "from-[#e3e8f4] to-[#8a93ad]" },
+  { order: "order-3", height: "h-24", tone: "from-[#f0a777] to-[#8a4f2a]" },
 ];
 
 export default function LeaderboardPage() {
@@ -48,7 +51,7 @@ export default function LeaderboardPage() {
     : r.name;
 
   return (
-    <PageShell icon="🏆" title={t("排行榜")}
+    <PageShell icon={<GameIcon icon={Trophy} tone="gold" size={60} />} title={t("排行榜")}
       subtitle={current ? `${current.status === "ACTIVE" ? t("本賽季") : t("已結束賽季")}：${fmtDate(current.starts_at)} – ${fmtDate(current.ends_at)}` : undefined}
       actions={kind === "human" && (
         <GameButton variant="danger" size="lg" disabled={!user || busy} onClick={async () => {
@@ -64,7 +67,7 @@ export default function LeaderboardPage() {
             setBusy(false);
           }
         }}>
-          ⚔️ {busy ? t("配對中…") : t("挑戰 AI 競技場")}
+          <Swords size={22} strokeWidth={2.6} aria-hidden="true" />{busy ? t("配對中…") : t("挑戰 AI 競技場")}
         </GameButton>
       )}>
       <div className="flex flex-wrap items-center gap-4">
@@ -86,7 +89,7 @@ export default function LeaderboardPage() {
           {rows.slice(0, 3).map((r, i) => (
             <div key={r.id} className={`flex w-40 animate-rise flex-col items-center ${PODIUM[i].order}`}
               style={{ animationDelay: `${i * 120}ms` }}>
-              <span className="text-4xl" aria-hidden="true">{PODIUM[i].medal}</span>
+              <Medal place={i + 1} size={44} />
               <Avatar name={r.name} size={i === 0 ? 64 : 52} />
               <span className="mt-1 max-w-full truncate font-black">{nameOf(r)}</span>
               {kind === "human" && <RankBadge rating={r.elo} size={20} />}

@@ -6,6 +6,8 @@ import { TileImage } from "@/components/Hand/TileImage";
 import { type QuizAnswer, type QuizPosition, tutor } from "@/lib/api";
 import { difficultyFor, quizRate, recordQuiz } from "@/lib/progress";
 import { WINDS } from "@/lib/tiles";
+import { GameIcon } from "@/components/Game/GameIcon";
+import { CircleHelp } from "lucide-react";
 
 const VERDICT = { best: "最佳選擇", good: "不錯的選擇", worse: "還有更好的打法" };
 const DIFF = ["", "入門", "中等", "進階"];
@@ -51,7 +53,7 @@ export default function QuizPage() {
   };
 
   return (
-    <PageShell icon="❓" backHref="/tutor" backLabel="AI 教練" title="決策問答">
+    <PageShell icon={<GameIcon icon={CircleHelp} tone="pink" size={60} />} backHref="/tutor" backLabel="AI 教練" title="決策問答">
       <p className="mt-3 text-mist">輪到你打牌，選一張打出。難度：{DIFF[difficulty]}（依答對率自動調整）</p>
       {error && <p role="alert" className="mt-4 text-zhong">{error}</p>}
       {!pos && !error && <p className="mt-10 text-mist">從牌局中抽題…</p>}
