@@ -104,3 +104,31 @@ def test_scheduled_arena_task_needs_two_agents(client):
     from backend.tasks.training_tasks import run_one_arena_match
 
     assert run_one_arena_match() is None  # no eligible agents yet: nothing to play
+
+
+def test_ai_vs_humans_counts_people_and_bots_of_a_level(client):
+    from tests.backend.test_rooms_ws import create
+
+    empty = client.get("/api/v1/stats/ai-vs-humans").json()
+    assert empty["hands"] == 0 and empty["bot_win_rate"] is None
+    assert empty["target_bot_win_rate"] == 0.30
+    token, _ = register(client)
+    room = create(client, [None, 5, 5, 3], token)
+    j = client.post(f"/api/v1/rooms/{room['room_id']}/join", json={}, headers=auth(token)).json()
+    from tests.backend.test_rooms_ws import play_until_game_end
+
+    with client.websocket_connect(f"/ws/game/{room['room_id']}?token={j['ws_token']}") as ws:
+        ws.receive_json()
+        client.post(f"/api/v1/rooms/{room['room_id']}/start", headers=auth(token))
+        play_until_game_end(ws, j["seat"], [])
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        out = client.get("/api/v1/stats/ai-vs-humans?level=5").json()
+        if out["hands"] >= 4:
+            break
+        time.sleep(0.2)
+    assert out["hands"] >= 4
+    assert out["bot_seat_hands"] == 2 * out["hands"] and out["human_seat_hands"] == out["hands"]
+    assert 0 <= out["bot_win_rate"] <= 1 and 0 <= out["human_win_rate"] <= 1
+    assert client.get("/api/v1/stats/ai-vs-humans?level=4").json()["hands"] == 0
+    assert client.get("/api/v1/stats/ai-vs-humans?level=9").status_code == 422

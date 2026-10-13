@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from backend.arena import ensure_house_agents, play_match, run_arena_match
 from backend.db import session_factory
 from backend.deps import SessionDep, UserDep
-from backend.models import Agent, Challenge, EloHistory, Season, User, new_id
+from backend.models import Agent, Challenge, EloHistory, Game, Season, User, new_id
 from backend.security import create_ws_token
 from backend.ws.hub import RoomConfig, RoomManager
 
@@ -93,6 +93,38 @@ def leaderboard(db: SessionDep, season: str = "current", kind: str = "agent"
         raise HTTPException(404, "season not found")
     key = "agents" if kind == "agent" else "humans"
     return {"season": season_out(past), "rows": (past.final_ranking or {}).get(key, [])}
+
+
+HUMAN_TARGET_WIN_RATE = 0.30  # SPEC 05.7 D: Lv5 should win > 30% of hands against people
+
+
+@router.get("/stats/ai-vs-humans")
+def ai_vs_humans(db: SessionDep, level: int = 5, limit: int = 5000) -> dict[str, Any]:
+    """Hands where a person sat with a bot of `level`: each side's win rate. Seats a bot
+    took over after a disconnect do not count as people."""
+    if not 1 <= level <= 5:
+        raise HTTPException(422, "level must be 1-5")
+    games = db.scalars(select(Game).order_by(Game.created_at.desc()).limit(min(limit, 20000)))
+    hands = bot_seats = bot_wins = human_seats = human_wins = 0
+    for g in games:
+        seats = [s for s in (g.seats or []) if s]
+        humans = [s["seat"] for s in seats if not s.get("is_bot") and not s.get("taken_over")]
+        bots = [s["seat"] for s in seats if s.get("is_bot") and s.get("bot_level") == level]
+        if not humans or not bots:
+            continue
+        hands += 1
+        bot_seats += len(bots)
+        human_seats += len(humans)
+        winner = (g.result or {}).get("winner") if (g.result or {}).get("kind") == "HU" else None
+        bot_wins += winner in bots
+        human_wins += winner in humans
+    return {
+        "level": level, "hands": hands,
+        "bot_win_rate": bot_wins / bot_seats if bot_seats else None,
+        "human_win_rate": human_wins / human_seats if human_seats else None,
+        "bot_seat_hands": bot_seats, "human_seat_hands": human_seats,
+        "target_bot_win_rate": HUMAN_TARGET_WIN_RATE,
+    }
 
 
 @router.get("/seasons")
