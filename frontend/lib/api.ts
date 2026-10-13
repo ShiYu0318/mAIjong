@@ -391,7 +391,17 @@ export const competition = {
   getChallenge: (id: string) =>
     api<{ id: string; status: string; result: { total_score?: Record<string, number>; first_places?: Record<string, number>; winner?: string; error?: string } }>(`/challenges/${id}`),
   joinHumanArena: () => api<JoinResult>("/arena/human/join", { method: "POST" }),
+  aiVsHumans: (level = 5) => api<AiVsHumans>(`/stats/ai-vs-humans?level=${level}`),
 };
+
+/** How a bot level fares against people at the same table (SPEC 05.7 D). */
+export interface AiVsHumans {
+  level: number;
+  hands: number;
+  bot_win_rate: number | null;
+  human_win_rate: number | null;
+  target_bot_win_rate: number;
+}
 
 export interface SpeedState {
   token: string;

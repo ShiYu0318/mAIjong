@@ -8,7 +8,7 @@ import { GameButton } from "@/components/Game/GameButton";
 import { PageShell, PillTabs } from "@/components/Game/PageShell";
 import { Panel } from "@/components/Game/Panel";
 import { RankBadge } from "@/components/Game/RankBadge";
-import { ApiError, type BoardRow, competition, saveTicket, type SeasonInfo } from "@/lib/api";
+import { type AiVsHumans, ApiError, type BoardRow, competition, saveTicket, type SeasonInfo } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { sfx } from "@/lib/sfx";
 import { useAccount } from "@/store/accountStore";
@@ -98,6 +98,8 @@ export default function LeaderboardPage() {
         </section>
       )}
 
+      {kind === "human" && <AiVsHumansCard />}
+
       <Panel className="mt-6 overflow-x-auto p-0">
         <table className="w-full min-w-[640px] text-left">
           <thead className="text-sm text-mist">
@@ -131,5 +133,41 @@ export default function LeaderboardPage() {
         </table>
       </Panel>
     </PageShell>
+  );
+}
+
+/** Lv5 against people at the same tables, with the SPEC 05.7 D target. */
+function AiVsHumansCard() {
+  const t = useT();
+  const [stats, setStats] = useState<AiVsHumans | null>(null);
+  useEffect(() => {
+    competition.aiVsHumans(5).then(setStats).catch(() => undefined);
+  }, []);
+  if (!stats) return null;
+  const pct = (x: number | null) => (x === null ? "—" : `${(x * 100).toFixed(1)}%`);
+  const met = stats.bot_win_rate !== null && stats.bot_win_rate > stats.target_bot_win_rate;
+  return (
+    <Panel className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3">
+      <div>
+        <p className="font-display text-lg font-black">{t("高手 AI 對真人")}</p>
+        <p className="text-sm text-mist">
+          {stats.hands > 0
+            ? t("同桌 {n} 手；目標是 AI 胡牌率超過 {target}", { n: stats.hands, target: pct(stats.target_bot_win_rate) })
+            : t("還沒有真人和高手 AI 同桌的牌局。開一桌把座位設成「AI 高手」就會開始累計。")}
+        </p>
+      </div>
+      {stats.hands > 0 && (
+        <div className="flex gap-6">
+          <div className="text-center">
+            <p className="text-xs text-mist">{t("AI 胡牌率")}</p>
+            <p className={`tabular font-display text-3xl font-black ${met ? "text-jade" : "text-gold"}`}>{pct(stats.bot_win_rate)}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-mist">{t("真人胡牌率")}</p>
+            <p className="tabular font-display text-3xl font-black">{pct(stats.human_win_rate)}</p>
+          </div>
+        </div>
+      )}
+    </Panel>
   );
 }
