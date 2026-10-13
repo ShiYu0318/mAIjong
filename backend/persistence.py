@@ -34,6 +34,17 @@ def read_replay(game_id: str) -> list[dict[str, Any]]:
     return [json.loads(line) for line in text.splitlines() if line.strip()]
 
 
+def result_row(s: GameState, duration_s: float | None = None) -> dict[str, Any]:
+    """games.result (SPEC 08): the engine result plus total tai, scores after the hand and
+    how long it took. The replay header keeps the bare engine result for verification."""
+    assert s.result is not None
+    r = s.result
+    tai = sum(i["tai"] for i in r.get("tai_breakdown") or []) + (r.get("dealer_tai") or 0) \
+        if r.get("kind") == "HU" else 0
+    return {**r, "tai": tai, "final_scores": list(s.scores),
+            "duration_s": None if duration_s is None else round(duration_s, 1)}
+
+
 def save_hand(
     db: Session,
     s: GameState,
@@ -45,6 +56,7 @@ def save_hand(
     actions: list[list[int]] | None = None,
     is_public: bool = False,
     scenario: dict[str, int] | None = None,
+    duration_s: float | None = None,
 ) -> Game:
     """Store a finished hand. `decisions` maps event seq → AI decision details."""
     assert s.result is not None
@@ -74,7 +86,7 @@ def save_hand(
         dealer_streak=s.dealer_streak,
         seed=str(s.seed),
         seats=seats,
-        result=s.result,
+        result=result_row(s, duration_s),
         replay_url=location,
         is_public=is_public,
     )

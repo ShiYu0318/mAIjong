@@ -17,7 +17,19 @@ def test_replay_frames_download_and_annotations(client):
     data = client.get(f"/api/v1/games/{gid}/frames").json()
     frames = data["frames"]
     assert frames[0]["action"] is None and len(frames) > 10
-    assert frames[-1]["view"]["result"] == data["game"]["result"]
+    engine_result = frames[-1]["view"]["result"]
+    stored = data["game"]["result"]
+    assert {k: stored[k] for k in engine_result} == engine_result
+    # SPEC 08 games.result extras
+    if stored["kind"] == "HU":
+        tai = sum(i["tai"] for i in stored["tai_breakdown"]) + stored["dealer_tai"]
+        assert stored["tai"] == tai
+    assert sum(stored["final_scores"]) == 0 and stored["duration_s"] >= 0
+    seats = data["game"]["seats"]
+    assert sorted(st["seat_wind"] for st in seats) == [0, 1, 2, 3]
+    me = next(st for st in seats if st["user_id"] == user["id"])
+    assert me["initial_elo"] == 1500 and all("agent_id" in st for st in seats)
+    assert all(st["initial_elo"] is None for st in seats if st["is_bot"])
     assert all(p["hand"] is not None for p in frames[1]["view"]["players"])
     assert any(f["decision"] for f in frames)  # bot decisions are kept
 

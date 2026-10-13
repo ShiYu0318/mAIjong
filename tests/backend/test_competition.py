@@ -96,6 +96,14 @@ def test_human_arena_updates_human_rating(client, monkeypatch):
             break
         time.sleep(0.2)
     assert me["games_played"] == 1 and me["elo_human"] != 1500
+    from sqlalchemy import select
+
+    from backend.models import Game
+
+    with dbmod.session_factory()() as db:
+        seats = db.scalars(select(Game)).first().seats
+    agents = [st for st in seats if st and st.get("agent_id")]
+    assert agents and all(isinstance(st["initial_elo"], float) for st in agents)
     humans = client.get("/api/v1/leaderboard?kind=human").json()["rows"]
     assert humans and humans[0]["name"] == "alice"
 

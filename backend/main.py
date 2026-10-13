@@ -9,6 +9,7 @@ import asyncio
 import hmac
 import logging
 import os
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -44,16 +45,38 @@ from engine.game import GameState
 API_PREFIX = "/api/v1"
 
 
+def _seat_rows(db: Any, g: GameState, seats: list[Any]) -> list[Any]:
+    """games.seats (SPEC 08): add each seat's wind and its rating when the hand started."""
+    from backend.models import Agent, User
+
+    out: list[Any] = []
+    for i, st in enumerate(seats):
+        if st is None:
+            out.append(None)
+            continue
+        elo = None
+        if st.get("agent_id"):
+            row = db.get(Agent, st["agent_id"])
+            elo = row.elo if row else None
+        elif st.get("user_id") and not st.get("is_bot"):
+            user = db.get(User, st["user_id"])
+            elo = user.elo_human if user else None
+        out.append({**st, "seat_wind": g.seat_wind(i), "initial_elo": elo})
+    return out
+
+
 def _save_hand(room: Room, g: GameState, hand_index: int, seats: list[Any],
                decisions: dict[int, dict[str, Any]], actions: list[list[int]]) -> None:
+    duration = time.time() - room.hand_started_at if room.hand_started_at else None
     with session_factory()() as db:
+        seats = _seat_rows(db, g, seats)
         if db.get(RoomRow, room.id) is None:  # quick-match / arena rooms live only in memory
             db.add(RoomRow(id=room.id, code=room.code, type=room.kind,
                            config=room.public()["config"], created_by=room.host_id))
             db.flush()
         game = save_hand(db, g, room_id=room.id, hand_index=hand_index, seats=seats,
                          decisions=decisions, actions=actions, is_public=room.config.public,
-                         scenario=room.scenario)
+                         scenario=room.scenario, duration_s=duration)
         # already off the event loop (asyncio.to_thread): re-run the hand right away
         verify_game(db, game)
 

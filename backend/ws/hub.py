@@ -79,6 +79,7 @@ class Seat:
     name: str = ""
     bot_level: int | None = None  # set for bot seats
     agent: Agent | None = None
+    agent_id: str | None = None  # a stored (community or house) agent seated here
     sockets: list[Socket] = field(default_factory=list)
     disconnected_at: float | None = None
     taken_over: bool = False  # bot temporarily plays for a disconnected human
@@ -98,7 +99,7 @@ class Seat:
         return {
             "seat": self.index, "name": self.name, "is_bot": self.is_bot,
             "bot_level": self.bot_level, "connected": bool(self.sockets) or self.is_bot,
-            "taken_over": self.taken_over, "user_id": self.user_id,
+            "taken_over": self.taken_over, "user_id": self.user_id, "agent_id": self.agent_id,
         }
 
 
@@ -133,6 +134,7 @@ class Room:
         self.match_end_hook: Any = None
         self.store: RoomStore = NullStore()
         self.hand_seed: int | None = None  # seed of the current hand (for recovery)
+        self.hand_started_at: float | None = None  # wall clock, for games.result duration_s
         self._dirty = False
         self._writer_task: asyncio.Task[None] | None = None
         for i, lvl in enumerate(config.bot_levels):
@@ -146,7 +148,7 @@ class Room:
         from backend.arena import agent_for_room
 
         self.seats[seat] = Seat(seat, name=agent_row.name, bot_level=3,
-                                agent=agent_for_room(agent_row))
+                                agent=agent_for_room(agent_row), agent_id=agent_row.id)
         self.config.bot_levels[seat] = 3
 
     def seat_of(self, user_id: str | None) -> int | None:
@@ -285,6 +287,7 @@ class Room:
             self.game = start_hand(self.match, seed=self.hand_seed)
         self.decisions = {}
         self.actions = []
+        self.hand_started_at = time.time()
         self.version += 1
         for seat in range(4):
             await self._send_seat(seat, "DEAL", {
