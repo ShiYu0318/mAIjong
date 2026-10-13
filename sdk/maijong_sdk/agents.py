@@ -63,3 +63,16 @@ class GreedyAgent(BaseAgent):
             if after < base:
                 return a
         return Action(ActionType.PASS)
+
+
+OPPONENT_NAMES = ("rule", "greedy", "random")
+
+
+def make_opponent(name: str, seed: int = 0) -> BaseAgent:
+    """Built-in opponents by name. "rule" is the greedy shanten/effective-tile player
+    (the platform's rule agent); "greedy" is kept as an alias."""
+    if name in ("rule", "greedy"):
+        return GreedyAgent()
+    if name == "random":
+        return RandomAgent(seed)
+    raise ValueError(f"unknown opponent {name!r}; choose from {', '.join(OPPONENT_NAMES)}")

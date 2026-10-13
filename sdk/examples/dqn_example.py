@@ -1,6 +1,6 @@
 """Train a small DQN with the SDK environment (pip install maijong-sdk[rl] torch).
 
-python dqn_example.py --episodes 2000 --output my_model.pt --seed 42
+python dqn_example.py --episodes 2000 --opponent rule --output my_model.pt --seed 42
 Then submit with:  maijong submit --agent dqn_agent.py:DQNAgent --model my_model.pt --name "MyDQN"
 """
 
@@ -11,6 +11,7 @@ import random
 
 import numpy as np
 import torch
+from maijong_sdk.agents import OPPONENT_NAMES, make_opponent
 from maijong_sdk.env import MahjongEnv
 from torch import nn
 
@@ -28,12 +29,15 @@ class QNet(nn.Module):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--episodes", type=int, default=2000)
+    ap.add_argument("--opponent", choices=OPPONENT_NAMES, default="rule",
+                    help="the three other seats while training")
     ap.add_argument("--output", default="my_model.pt")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
     random.seed(args.seed)
     torch.manual_seed(args.seed)
-    env = MahjongEnv(seed=args.seed)
+    opponents = [make_opponent(args.opponent, args.seed + i) for i in range(3)]
+    env = MahjongEnv(opponents, seed=args.seed)
     q, target = QNet(), QNet()
     target.load_state_dict(q.state_dict())
     opt = torch.optim.Adam(q.parameters(), lr=1e-3)

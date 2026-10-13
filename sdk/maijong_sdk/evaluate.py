@@ -1,6 +1,6 @@
 """Evaluate an agent locally against reference opponents.
 
-python -m maijong_sdk.evaluate --agent my_agent.py:MyAgent --opponent greedy --games 1000
+python -m maijong_sdk.evaluate --agent my_agent.py:MyAgent --opponent rule --games 1000
 (`my_module:MyAgent` on the import path works too)
 """
 
@@ -12,7 +12,7 @@ import importlib.util
 import sys
 from pathlib import Path
 
-from maijong_sdk.agents import GreedyAgent, RandomAgent
+from maijong_sdk.agents import OPPONENT_NAMES, make_opponent
 from maijong_sdk.base_agent import BaseAgent
 from maijong_sdk.runner import play_hand
 
@@ -38,10 +38,10 @@ def load_agent(spec: str) -> BaseAgent:
 
 
 def opponent(name: str, seed: int) -> BaseAgent:
-    return GreedyAgent() if name == "greedy" else RandomAgent(seed)
+    return make_opponent(name, seed)
 
 
-def evaluate(agent: BaseAgent, opponent_name: str = "greedy", games: int = 100,
+def evaluate(agent: BaseAgent, opponent_name: str = "rule", games: int = 100,
              seed: int = 0) -> dict[str, float]:
     wins = deal_ins = 0
     score = 0
@@ -63,7 +63,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--agent", required=True, help="file.py:ClassName or module:ClassName")
-    ap.add_argument("--opponent", choices=["greedy", "random"], default="greedy")
+    ap.add_argument("--opponent", choices=OPPONENT_NAMES, default="rule")
     ap.add_argument("--games", type=int, default=100)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()

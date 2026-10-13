@@ -70,3 +70,28 @@ def test_load_agent_from_file_path_and_module():
     by_path = load_agent(f"{examples / 'greedy_agent.py'}:MyGreedyAgent")
     assert type(by_path).__name__ == "MyGreedyAgent"
     assert type(load_agent("maijong_sdk.agents:GreedyAgent")).__name__ == "GreedyAgent"
+
+
+def test_opponents_by_name_match_the_docs():
+    import subprocess
+    import sys
+
+    from maijong_sdk.agents import OPPONENT_NAMES, make_opponent
+
+    assert set(OPPONENT_NAMES) == {"rule", "greedy", "random"}
+    assert isinstance(make_opponent("rule"), GreedyAgent)
+    assert isinstance(make_opponent("random", 3), RandomAgent)
+    with pytest.raises(ValueError):
+        make_opponent("ppo")
+    res = evaluate(GreedyAgent(), "rule", games=4)
+    assert res["games"] == 4
+    # the commands as SPEC 06.3 writes them
+    out = subprocess.run([sys.executable, "-m", "maijong_sdk.evaluate", "--agent",
+                          f"{EXAMPLES / 'greedy_agent.py'}:MyGreedyAgent", "--opponent", "rule",
+                          "--games", "4"], capture_output=True, text=True, timeout=120)
+    assert out.returncode == 0 and "vs rule" in out.stdout, out.stderr
+    pytest.importorskip("torch")
+    out = subprocess.run([sys.executable, str(EXAMPLES / "dqn_example.py"), "--episodes", "2",
+                          "--opponent", "random", "--output", "/dev/null"],
+                         capture_output=True, text=True, timeout=300, cwd=EXAMPLES)
+    assert out.returncode == 0, out.stderr[-2000:]

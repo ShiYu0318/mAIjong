@@ -9,6 +9,7 @@ import argparse
 
 import gymnasium as gym
 import numpy as np
+from maijong_sdk.agents import OPPONENT_NAMES, make_opponent
 from maijong_sdk.env import MahjongEnv
 
 
@@ -32,8 +33,11 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--steps", type=int, default=200_000)
     ap.add_argument("--output", default="ppo_model.zip")
+    ap.add_argument("--opponent", choices=OPPONENT_NAMES, default="rule",
+                    help="the three other seats while training")
     args = ap.parse_args()
-    model = MaskablePPO("MlpPolicy", Flatten(MahjongEnv(seed=0)), verbose=1)
+    env = MahjongEnv([make_opponent(args.opponent, i) for i in range(3)], seed=0)
+    model = MaskablePPO("MlpPolicy", Flatten(env), verbose=1)
     model.learn(total_timesteps=args.steps)
     model.save(args.output)
 
