@@ -129,30 +129,30 @@ const EVAL: ChartSpec[] = [
 const CHARTS: Record<string, ChartSpec[]> = {
   ppo: [
     ...EVAL,
-    { key: "policy_loss", title: "策略損失" },
-    { key: "value_loss", title: "價值損失" },
-    { key: "entropy", title: "策略熵" },
-    { key: "kl_to_init", title: "與初始策略的 KL" },
-    { key: "explained_variance", title: "解釋變異" },
+    { key: "policy_loss", title: "Policy loss" },
+    { key: "value_loss", title: "Value loss" },
+    { key: "entropy", title: "Policy entropy" },
+    { key: "kl_to_init", title: "KL to initial policy" },
+    { key: "explained_variance", title: "Explained variance" },
   ],
   sb3: [
     ...EVAL,
-    { key: "mean_episode_reward", title: "每手平均獎勵" },
-    { key: "value_loss", title: "價值損失" },
-    { key: "entropy", title: "策略熵" },
-    { key: "approx_kl", title: "近似 KL" },
-    { key: "clip_fraction", title: "裁切比例", fmt: pct },
-    { key: "sps", title: "每秒步數", fmt: (v) => v.toFixed(0) },
+    { key: "mean_episode_reward", title: "Mean episode reward" },
+    { key: "value_loss", title: "Value loss" },
+    { key: "entropy", title: "Policy entropy" },
+    { key: "approx_kl", title: "Approx KL" },
+    { key: "clip_fraction", title: "Clip fraction", fmt: pct },
+    { key: "sps", title: "Steps / s", fmt: (v) => v.toFixed(0) },
   ],
   dqn: [
     ...EVAL.slice(0, 2),
-    { key: "loss", title: "TD 損失" },
-    { key: "epsilon", title: "探索率 ε", fmt: (v) => v.toFixed(2) },
+    { key: "loss", title: "TD loss" },
+    { key: "epsilon", title: "ε (exploration)", fmt: (v) => v.toFixed(2) },
   ],
   bc: [
-    { key: "val_acc", title: "驗證集準確率", fmt: pct },
-    { key: "train_loss", title: "訓練損失" },
-    { key: "val_loss", title: "驗證損失" },
+    { key: "val_acc", title: "Validation accuracy", fmt: pct },
+    { key: "train_loss", title: "Train loss" },
+    { key: "val_loss", title: "Validation loss" },
   ],
 };
 
@@ -264,9 +264,9 @@ export function TrainingPanel() {
             setAmount(e.target.value === "dqn" ? 50000 : e.target.value === "sb3" ? 200000 : 50);
           }} className={field}>
             <option value="sb3">SB3 MaskablePPO 自我對弈（多行程）</option>
-            <option value="ppo">PPO 自對弈</option>
+            <option value="ppo">PPO self-play</option>
             <option value="dqn">Dueling DQN</option>
-            <option value="bc">行為克隆</option>
+            <option value="bc">Behavior Cloning (BC)</option>
           </select>
           {kind !== "bc" && (
             <label className="flex flex-col text-mist">{kind === "ppo" ? "更新次數" : "環境步數"}
@@ -275,7 +275,7 @@ export function TrainingPanel() {
           )}
           {(kind === "ppo" || kind === "sb3") && (
             <label className="flex flex-col text-mist">
-              {kind === "ppo" ? "初始權重（BC 檢查點路徑，可留空）" : "接續訓練的模型（.zip，可留空）"}
+              {kind === "ppo" ? "初始權重（BC checkpoint 路徑，可留空）" : "接續訓練的模型（.zip，可留空）"}
               <input value={init} onChange={(e) => setInit(e.target.value)}
                 placeholder={kind === "ppo" ? "checkpoints/bc_v2.pt" : "checkpoints/sb3_best.zip"} className={`${field} text-ivory`} />
             </label>
@@ -336,7 +336,7 @@ export function TrainingPanel() {
                   setSelected(null);
                   setTimeout(() => setSelected({ type: "job", id: detail.id }), 50);
                   refresh();
-                }} className="rounded border border-ivory/30 px-3 py-1 text-sm">從檢查點繼續</button>
+                }} className="rounded border border-ivory/30 px-3 py-1 text-sm">從 checkpoint 繼續</button>
               )}
             </div>
             {charts.length === 0 && <p className="mt-4 text-mist">還沒有資料點，訓練開始後會自動更新。</p>}
