@@ -109,4 +109,10 @@ cd frontend && pnpm lint && pnpm typecheck && pnpm e2e
 
 ## 授權
 
-主程式 Apache-2.0；`sdk/`（maijong-sdk）MIT。
+主程式（引擎、後端、訓練 pipeline、前端）採 Apache-2.0（`LICENSE`）；`sdk/`（maijong-sdk）採 MIT（`sdk/LICENSE`）。第三方依賴與字型的授權列在 `NOTICE`（`uv run python scripts/generate_notice.py` 重新產生）。
+
+### 貢獻者協議
+
+送出 Pull Request 即表示同意：
+- 平台程式碼的貢獻以 Apache-2.0 授權提交；`sdk/` 內的貢獻以 MIT 授權提交。
+- 貢獻者保留其貢獻的著作權，並授予 mAIjong 專案永久、不可撤銷的使用授權。

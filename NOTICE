@@ -1,0 +1,43 @@
+mAIjong
+Copyright 2026-present ShiYu Huang (黃士育) and mAIjong contributors
+
+The platform (engine, backend, AI training pipeline and frontend) is licensed under the
+Apache License, Version 2.0 (see LICENSE). The sdk/ directory (maijong-sdk) is licensed
+under the MIT License (see sdk/LICENSE).
+
+This product includes the third-party software listed below, each under its own licence.
+
+Python packages
+---------------
+alembic 1.20.0: MIT
+bcrypt 5.0.0: Apache Software License
+boto3 1.43.111: Apache-2.0
+fastapi 0.143.0: MIT
+gymnasium 1.4.0: MIT License
+httpx 0.28.1: BSD License
+numpy 2.5.3: BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0
+pettingzoo 1.27.0: MIT License
+psycopg 3.3.6: LGPL-3.0-only
+pydantic 2.14.0: MIT
+pyjwt 2.15.1: MIT
+python-multipart 0.0.32: Apache-2.0
+redis 8.1.0: MIT
+sb3-contrib 2.9.0: MIT
+sqlalchemy 2.1.4: MIT
+stable-baselines3 2.9.0: MIT
+torch 2.14.1: Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND MIT
+uvicorn 0.54.0: BSD-3-Clause
+
+JavaScript packages (frontend)
+------------------------------
+lucide-react 1.56.0: ISC
+next 15.5.27: MIT
+pixi.js 8.22.0: MIT
+react 19.1.0: MIT
+react-dom 19.1.0: MIT
+zustand 5.0.15: MIT
+
+Fonts
+-----
+Noto Sans TC: SIL Open Font License 1.1 (loaded through Google Fonts)
+LXGW WenKai TC: SIL Open Font License 1.1 (loaded through Google Fonts)
