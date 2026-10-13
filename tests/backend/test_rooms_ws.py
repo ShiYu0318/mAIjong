@@ -171,7 +171,29 @@ def test_every_request_carries_the_deadline_when_timed(client):
                 assert msg["payload"]["deadline"] is not None
                 seen += 1
                 legal = msg["payload"]["legal_actions"]
-                pick = next((a for a in legal if a["action_type"] == "PASS"), None) or legal[-1]
+                # never declare ready: a ready hand's forced discards are auto-played, untimed
+                pick = next((a for a in legal if a["action_type"] == "PASS"), None) \
+                    or next((a for a in legal if a["action_type"] == "DISCARD"), None) or legal[0]
                 ws.send_json({"type": "ACTION", "payload": pick})
     assert seen > 0
 
+
+
+def test_join_handshake_and_timeout_notice(client):
+    token, _ = register(client)
+    room = create(client, [None, 1, 1, 1], token, time_limit=1)
+    j = client.post(f"/api/v1/rooms/{room['room_id']}/join", json={}, headers=auth(token)).json()
+    with client.websocket_connect(f"/ws/game/{room['room_id']}?token={j['ws_token']}") as ws:
+        assert ws.receive_json()["type"] == "JOINED"
+        ws.send_json({"type": "JOIN", "payload": {"seat": j["seat"]}})
+        while (msg := ws.receive_json())["type"] != "JOINED":
+            pass
+        assert msg["payload"]["seat"] == j["seat"] and msg["payload"]["room_code"] == room["code"]
+        client.post(f"/api/v1/rooms/{room['room_id']}/start", headers=auth(token))
+        # never answer: the 1 s clock runs out and the server says so before moving for us
+        while True:
+            msg = ws.receive_json()
+            if msg["type"] == "ERROR":
+                assert msg["payload"]["code"] == "TIMEOUT"
+                break
+            assert msg["type"] not in ("WIN_DECLARED", "ROUND_DRAW", "GAME_END")

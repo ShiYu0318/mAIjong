@@ -298,6 +298,10 @@ class Room:
         if kind == "PING":
             await self._send_seat(seat, "PONG", {})
             return
+        if kind == "JOIN":  # the seat comes from the ws token; answer the handshake again
+            await self._send_seat(seat, "JOINED", {"seat": seat, "room_code": self.code,
+                                                   "room": self.public()})
+            return
         async with self.lock:
             if kind == "CHAT":
                 text = clean_text(str(payload.get("message", "")))
@@ -509,6 +513,7 @@ class Room:
             pending = [p for p in acting_players(g)
                        if (st := self.seats[p]) is not None and not st.bot_controlled]
             for seat in pending:
+                await self._error(seat, "TIMEOUT", "時間到，已替你自動行動")
                 await self._auto_move_locked(seat, timeout=True)
 
     def _spawn(self, coro: Any) -> None:
