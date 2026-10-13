@@ -1,7 +1,16 @@
 import type { RoomInfo } from "./protocol";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? API_URL.replace(/^http/, "ws");
+/** Backend base URL. Without NEXT_PUBLIC_API_URL the page talks to port 8000 on whatever host
+ * served it, so opening the dev server by LAN address (or from a phone) still works. */
+export function apiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") return `${window.location.protocol}//${window.location.hostname}:8000`;
+  return "http://localhost:8000";
+}
+
+export function wsUrl(): string {
+  return process.env.NEXT_PUBLIC_WS_URL ?? apiUrl().replace(/^http/, "ws");
+}
 
 const TOKEN_KEY = "maijong.token";
 
@@ -33,7 +42,7 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
   const token = authToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   if (init.json !== undefined) headers["Content-Type"] = "application/json";
-  const res = await fetch(`${API_URL}/api/v1${path}`, {
+  const res = await fetch(`${apiUrl()}/api/v1${path}`, {
     ...init,
     headers,
     body: init.json !== undefined ? JSON.stringify(init.json) : init.body,
@@ -377,7 +386,7 @@ export const agentsApi = {
     body.append("file", file);
     return api<AgentInfo>("/agents/submit", { method: "POST", body });
   },
-  remove: (id: string) => fetch(`${API_URL}/api/v1/agents/${id}`, {
+  remove: (id: string) => fetch(`${apiUrl()}/api/v1/agents/${id}`, {
     method: "DELETE", headers: { Authorization: `Bearer ${authToken()}` },
   }),
 };

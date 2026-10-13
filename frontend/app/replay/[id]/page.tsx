@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { type Annotation, API_URL, authToken, games, type GameSummary, type ReplayFrame } from "@/lib/api";
+import { type Annotation, apiUrl, authToken, games, type GameSummary, type ReplayFrame } from "@/lib/api";
 import { actionLabel, describeAction } from "@/lib/actions";
 import { WINDS } from "@/lib/tiles";
 
@@ -94,7 +94,7 @@ export default function ReplayPage() {
         <div className="ml-auto flex gap-2">
           <button onClick={async () => {
             const { url } = await games.replayUrl(id);
-            window.location.href = url.startsWith("http") ? url : `${API_URL}${url}`;
+            window.location.href = url.startsWith("http") ? url : `${apiUrl()}${url}`;
           }} className="rounded border border-ivory/30 px-3 py-1 hover:bg-ivory/10">下載錄影檔</button>
           <button onClick={() => navigator.clipboard?.writeText(window.location.href).then(() => setCopied(true))}
             className="rounded border border-ivory/30 px-3 py-1 hover:bg-ivory/10">{copied ? "已複製" : "分享連結"}</button>

@@ -1,6 +1,6 @@
 import { useGame } from "@/store/gameStore";
 import type { ServerMessage } from "./protocol";
-import { WS_URL } from "./api";
+import { wsUrl } from "./api";
 
 /** WebSocket with automatic reconnection and keep-alive pings. */
 export class GameSocket {
@@ -16,7 +16,7 @@ export class GameSocket {
     store.setStatus(this.retries ? "reconnecting" : "connecting");
     // batch=1: the server packs each burst of messages into one BATCH frame (SPEC P11-7)
     const q = this.token ? `?token=${encodeURIComponent(this.token)}&batch=1` : "?batch=1";
-    const ws = new WebSocket(`${WS_URL}/ws/game/${this.roomId}${q}`);
+    const ws = new WebSocket(`${wsUrl()}/ws/game/${this.roomId}${q}`);
     this.ws = ws;
     ws.onopen = () => {
       this.retries = 0;

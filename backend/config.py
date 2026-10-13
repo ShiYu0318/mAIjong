@@ -10,6 +10,12 @@ from pathlib import Path
 DATA_DIR = Path(os.environ.get("MAIJONG_DATA_DIR", "data"))
 
 
+# Local development: the page may be opened as localhost, 127.0.0.1 or the machine's LAN
+# address (another device on the same Wi-Fi), on any port.
+DEV_ORIGIN_REGEX = (r"https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+"
+                    r"|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?")
+
+
 def _csv(value: str) -> list[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
 
@@ -20,6 +26,8 @@ class Settings:
     secret_key: str = "dev-only-secret-key-change-me-in-production"
     redis_url: str | None = None
     cors_origins: list[str] = field(default_factory=lambda: ["http://localhost:3000"])
+    # extra allowed origins as a regex; defaults to local/LAN addresses on a SQLite (dev) setup
+    cors_origin_regex: str | None = None
     debug: bool = False
     token_ttl_hours: int = 24 * 7
     replay_dir: Path = DATA_DIR / "replays"
@@ -38,8 +46,14 @@ class Settings:
 def get_settings() -> Settings:
     env = os.environ
     defaults = Settings()
+    database_url = env.get("DATABASE_URL", defaults.database_url)
+    if "CORS_ORIGIN_REGEX" in env:
+        origin_regex = env["CORS_ORIGIN_REGEX"] or None
+    else:
+        origin_regex = DEV_ORIGIN_REGEX if database_url.startswith("sqlite") else None
     return Settings(
-        database_url=env.get("DATABASE_URL", defaults.database_url),
+        database_url=database_url,
+        cors_origin_regex=origin_regex,
         secret_key=env.get("SECRET_KEY", defaults.secret_key),
         redis_url=env.get("REDIS_URL") or None,
         cors_origins=_csv(env["CORS_ORIGINS"]) if "CORS_ORIGINS" in env else defaults.cors_origins,
