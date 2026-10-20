@@ -1,0 +1,73 @@
+name: Train
+
+# SPEC 13 OQ-11: CI only trains tiny models on CPU; real training runs start here by hand.
+# Pick a self-hosted GPU runner through `runner` (e.g. its label "gpu"); on GitHub's own
+# runners it trains on the CPU.
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner label (ubuntu-latest, or a self-hosted GPU runner's label)"
+        default: ubuntu-latest
+      device:
+        description: "Training device"
+        type: choice
+        options: [auto, cuda, cpu]
+        default: auto
+      selfplay_hands:
+        description: "Rule-agent self-play hands for behaviour cloning"
+        default: "20000"
+      bc_epochs:
+        description: "BC epochs"
+        default: "10"
+      ppo_updates:
+        description: "PPO updates (0 skips PPO)"
+        default: "200"
+
+jobs:
+  train:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 720
+    env:
+      DEVICE: ${{ inputs.device }}
+      HANDS: ${{ inputs.selfplay_hands }}
+      BC_EPOCHS: ${{ inputs.bc_epochs }}
+      PPO_UPDATES: ${{ inputs.ppo_updates }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: uv sync --all-extras --group dev
+      - name: Rule-agent self-play data
+        run: |
+          uv run python scripts/simulate_batch.py --agents rule rule rule rule \
+            -n "$HANDS" --workers 4 --save data/bc/rule_selfplay.jsonl.gz
+      - name: Behaviour cloning
+        run: |
+          uv run python -m ai.training.bc_trainer --data data/bc/rule_selfplay.jsonl.gz \
+            --out checkpoints/bc_train.pt --epochs "$BC_EPOCHS" --device "$DEVICE" --run bc-train
+      - name: PPO fine-tune from BC
+        if: inputs.ppo_updates != '0'
+        run: |
+          uv run python -m ai.training.ppo_trainer --init checkpoints/bc_train.pt \
+            --out checkpoints/ppo_train.pt --updates "$PPO_UPDATES" --device "$DEVICE" --run ppo-train
+      - name: Head-to-head against the rule agent
+        run: |
+          cands=checkpoints/bc_train.pt
+          [ -f checkpoints/ppo_train.pt ] && cands="$cands checkpoints/ppo_train.pt"
+          {
+            echo "## 1000 hands, same deals"
+            echo '```'
+            uv run python -m ai.training.promote $cands --hands 1000 --workers 4 --dry-run
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: training-${{ github.run_id }}
+          path: |
+            checkpoints/
+            runs/
+          if-no-files-found: warn
