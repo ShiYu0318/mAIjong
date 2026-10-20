@@ -77,7 +77,12 @@ def make_agent(spec: str, seed: int) -> Agent:
         parts = arg.split(",") if arg else []
         samples = int(parts[0]) if parts and parts[0] else 32
         params = tuned_params(None) if "tuned" in parts[1:] else None
-        return SearchAgent(samples=samples, seed=seed, params=params)
+        if "lv5" in parts[1:]:
+            from ai.agents import LEVEL5_PARAMS
+
+            params = LEVEL5_PARAMS
+        return SearchAgent(samples=samples, seed=seed, params=params,
+                           defense="defense" in parts[1:])
     if name.startswith("lv") and name[2:].isdigit():
         return create_agent(int(name[2:]), seed)
     if name in _REGISTRY:

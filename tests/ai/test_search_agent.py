@@ -68,3 +68,49 @@ def test_search_takes_the_win_and_defers_claims():
             assert agent.act(s, p, legal).type is ActionType.HU
         if s.phase is not Phase.DISCARD:
             assert not agent._should_search(s, p, legal)
+
+
+def test_ready_hand_is_ready_and_avoids_safe_tiles():
+    from ai.agents.search_agent import _ready_hand
+    from engine import tiles
+    from engine.ting import waiting_tiles
+
+    rng = random.Random(3)
+    avail = [4] * 34
+    safe = {0, 9, 18}
+    built = 0
+    for _ in range(30):
+        hand = _ready_hand(avail, 16, 0, safe, rng)
+        if hand is None:
+            continue
+        built += 1
+        assert len(hand) == 16
+        waits = waiting_tiles(tiles.to_counts(hand), 0)
+        assert waits and not safe.intersection(waits)
+        assert all(tiles.to_counts(hand)[t] <= 4 for t in range(34))
+    assert built >= 25
+
+
+def test_determinize_gives_declared_players_ready_hands():
+    from engine import tiles
+    from engine.ting import waiting_tiles
+
+    checked = 0
+    for seed in range(60):
+        s = _midgame(seed, steps=70)
+        if s.phase is Phase.ENDED or s.phase is not Phase.DISCARD:
+            continue
+        seat = s.turn
+        declared = [p for p in range(4) if p != seat and s.declared_ting[p]]
+        if not declared:
+            continue
+        w = determinize(s, seat, random.Random(seed), ready=True)
+
+        def unseen(g, seat=seat):
+            return Counter([t for p in range(4) if p != seat for t in g.hands[p]] + list(g.wall))
+
+        assert unseen(w) == unseen(s)
+        for p in declared:
+            assert waiting_tiles(tiles.to_counts(w.hands[p]), len(w.melds[p]))
+        checked += 1
+    assert checked > 0

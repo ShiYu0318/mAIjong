@@ -19,15 +19,63 @@ import random
 import time
 
 from ai.agents.rule_agent import RuleAgent, RuleParams
+from ai.danger import safe_against
 from engine import tiles
 from engine.actions import Action, ActionType
 from engine.game import GameState, Phase, acting_players, apply_action, get_legal_actions
 from engine.hand import MeldType
+from engine.ting import waiting_tiles
 
 
-def determinize(state: GameState, seat: int, rng: random.Random) -> GameState:
+def _ready_hand(avail: list[int], size: int, n_melds: int, safe: set[int],
+                rng: random.Random, tries: int = 100) -> list[int] | None:
+    """A random concealed hand of `size` (3n+1) tiles that is ready, built from the
+    `avail` counts: n sets and a pair minus one tile. Its waits must avoid `safe` (tiles the
+    player let pass after declaring). None if no such hand turns up."""
+    n_sets = (size - 1) // 3
+    for _ in range(tries):
+        c = list(avail)
+        hand: list[int] = []
+        pairs = [t for t in range(34) if c[t] >= 2]
+        if not pairs:
+            return None
+        pr = rng.choice(pairs)
+        c[pr] -= 2
+        hand += [pr, pr]
+        ok = True
+        for _ in range(n_sets):
+            for _ in range(20):
+                if rng.random() < 0.75:
+                    suit, r = rng.randrange(3), rng.randrange(7)
+                    trio = [suit * 9 + r, suit * 9 + r + 1, suit * 9 + r + 2]
+                    if all(c[t] for t in trio):
+                        for t in trio:
+                            c[t] -= 1
+                        hand += trio
+                        break
+                else:
+                    t = rng.randrange(34)
+                    if c[t] >= 3:
+                        c[t] -= 3
+                        hand += [t, t, t]
+                        break
+            else:
+                ok = False
+                break
+        if not ok:
+            continue
+        hand.remove(rng.choice(hand))
+        waits = waiting_tiles(tiles.to_counts(hand), n_melds)
+        if waits and not safe.intersection(waits):
+            return sorted(hand)
+    return None
+
+
+def determinize(state: GameState, seat: int, rng: random.Random,
+                ready: bool = False) -> GameState:
     """A copy of `state` where everything `seat` cannot see is redealt at random: the other
-    players' concealed tiles and the wall, each keeping its size."""
+    players' concealed tiles and the wall, each keeping its size. With `ready`, a player
+    who declared ready gets a ready hand consistent with what they let pass."""
     s = state.clone()
     others = [p for p in range(4) if p != seat]
     pool = [t for p in others for t in s.hands[p]] + list(s.wall)
@@ -35,13 +83,29 @@ def determinize(state: GameState, seat: int, rng: random.Random) -> GameState:
     # unseen playable tiles and every flower goes back into the wall
     playable = [t for t in pool if t < tiles.N_PLAYABLE]
     flowers = [t for t in pool if t >= tiles.N_PLAYABLE]
-    rng.shuffle(playable)
+    avail = tiles.to_counts(playable)
+    fixed: dict[int, list[int]] = {}
+    if ready:
+        for p in others:
+            if not s.declared_ting[p]:
+                continue
+            hand = _ready_hand(avail, len(s.hands[p]), len(s.melds[p]),
+                               safe_against(state, p), rng)
+            if hand is not None:
+                fixed[p] = hand
+                for t in hand:
+                    avail[t] -= 1
+    rest = [t for t in range(34) for _ in range(avail[t])]
+    rng.shuffle(rest)
     k = 0
     for p in others:
+        if p in fixed:
+            s.hands[p] = fixed[p]
+            continue
         n = len(s.hands[p])
-        s.hands[p] = sorted(playable[k:k + n])
+        s.hands[p] = sorted(rest[k:k + n])
         k += n
-    wall = playable[k:] + flowers
+    wall = rest[k:] + flowers
     rng.shuffle(wall)
     s.wall = wall
     return s
@@ -67,10 +131,13 @@ class SearchAgent:
 
     def __init__(self, samples: int = 32, top_k: int = 3, seed: int | None = None,
                  time_budget: float | None = None, z: float = 2.0,
-                 params: RuleParams | None = None) -> None:
+                 params: RuleParams | None = None, defense: bool = False) -> None:
         self.samples = samples
         self.top_k = top_k
         self.z = z  # how sure (paired t) the search must be before overriding the rule agent
+        # defense: search only under a declared threat or late in the hand (short, low-noise
+        # rollouts where push/fold matters most), with declared hands sampled as ready
+        self.defense = defense
         self.time_budget = time_budget  # seconds per decision; None = all samples
         self.rng = random.Random(seed)
         # `params` (e.g. tuned ones) drive both the default choice and the rollouts
@@ -83,9 +150,12 @@ class SearchAgent:
             return False
         if any(a.type is ActionType.HU for a in legal):
             return False  # always take the win
-        if any(state.declared_ting[p] for p in range(4) if p != seat):
-            return False  # defence: see the module docstring
-        return not _hidden_kongs(state, seat)  # a concealed kong's tiles are not ours to see
+        if _hidden_kongs(state, seat):
+            return False  # a concealed kong's tiles are not ours to see
+        threat = any(state.declared_ting[p] for p in range(4) if p != seat)
+        if self.defense:
+            return threat or state.drawable() < self.rule.params.late_wall
+        return not threat  # uniform hands are rarely ready: leave declared threats alone
 
     def _rollout_value(self, s: GameState, seat: int) -> float:
         while s.phase is not Phase.ENDED:
@@ -107,7 +177,7 @@ class SearchAgent:
         values: list[list[float]] = [[] for _ in cands]
         start = time.perf_counter()
         for _ in range(self.samples):
-            world = determinize(state, seat, self.rng)
+            world = determinize(state, seat, self.rng, ready=self.defense)
             for i, a in enumerate(cands):
                 after, _ = apply_action(world, seat, a)
                 values[i].append(self._rollout_value(after, seat))
