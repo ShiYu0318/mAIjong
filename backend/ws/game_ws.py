@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -80,7 +81,13 @@ async def game_socket(ws: WebSocket, room_id: str, token: str | None = None,
     bucket = TokenBucket(_limit("RATE_LIMIT_WS_PER_SEC", "20"), 1)  # per socket
     try:
         while True:
-            msg: Any = await ws.receive_json()
+            raw = await ws.receive_text()
+            try:
+                msg: Any = json.loads(raw)
+            except ValueError:  # a broken message must not cost the player their seat
+                await sock.send_json({"type": "ERROR", "payload": {
+                    "code": "BAD_MESSAGE", "message": "訊息格式錯誤"}})
+                continue
             if seat is None or not isinstance(msg, dict):
                 continue
             if not bucket.allow("ws"):

@@ -299,7 +299,9 @@ class Room:
 
     async def handle(self, seat: int, msg: dict[str, Any]) -> None:
         kind = msg.get("type")
-        payload = msg.get("payload") or {}
+        payload = msg.get("payload")
+        if not isinstance(payload, dict):  # e.g. a bare string: treat as no payload
+            payload = {}
         if kind == "PING":
             await self._send_seat(seat, "PONG", {})
             return

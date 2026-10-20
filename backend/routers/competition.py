@@ -6,9 +6,9 @@ import os
 import random
 import threading
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Header, HTTPException, Request, status
+from fastapi import APIRouter, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -82,8 +82,8 @@ def leaderboard_rows(db: Session, season: Season, kind: str = "agent") -> list[d
 
 
 @router.get("/leaderboard")
-def leaderboard(db: SessionDep, season: str = "current", kind: str = "agent"
-                ) -> dict[str, Any]:
+def leaderboard(db: SessionDep, season: str = "current",
+                kind: Literal["agent", "human"] = "agent") -> dict[str, Any]:
     ensure_house_agents(db)
     if season == "current":
         s = current_season(db)
@@ -99,12 +99,13 @@ HUMAN_TARGET_WIN_RATE = 0.30  # SPEC 05.7 D: Lv5 should win > 30% of hands again
 
 
 @router.get("/stats/ai-vs-humans")
-def ai_vs_humans(db: SessionDep, level: int = 5, limit: int = 5000) -> dict[str, Any]:
+def ai_vs_humans(db: SessionDep, level: int = 5,
+                 limit: Annotated[int, Query(ge=1, le=20000)] = 5000) -> dict[str, Any]:
     """Hands where a person sat with a bot of `level`: each side's win rate. Seats a bot
     took over after a disconnect do not count as people."""
     if not 1 <= level <= 5:
         raise HTTPException(422, "level must be 1-5")
-    games = db.scalars(select(Game).order_by(Game.created_at.desc()).limit(min(limit, 20000)))
+    games = db.scalars(select(Game).order_by(Game.created_at.desc()).limit(limit))
     hands = bot_seats = bot_wins = human_seats = human_wins = 0
     for g in games:
         seats = [s for s in (g.seats or []) if s]

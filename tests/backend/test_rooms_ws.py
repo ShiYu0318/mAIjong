@@ -228,3 +228,21 @@ def test_quick_match_pairs_players_within_200_rating(client):
     # the first table is now full and has started; the next 1500 player gets a new one
     nxt = quick(player("erin", 1500))
     assert nxt["room"]["room_id"] not in (first["room"]["room_id"], far["room"]["room_id"])
+
+
+def test_malformed_messages_keep_the_connection(client):
+    token, _ = register(client)
+    room = create(client, [None, 1, 1, 1], token)
+    j = client.post(f"/api/v1/rooms/{room['room_id']}/join", json={}, headers=auth(token)).json()
+    with client.websocket_connect(f"/ws/game/{room['room_id']}?token={j['ws_token']}") as ws:
+        assert ws.receive_json()["type"] == "JOINED"
+        ws.send_text("{not json")
+        while (msg := ws.receive_json())["type"] != "ERROR":
+            pass
+        assert msg["payload"]["code"] == "BAD_MESSAGE"
+        for bad in ({"type": "CHAT", "payload": "x"}, {"type": "ACTION", "payload": ["x"]},
+                    {"type": "HINT_REQUEST", "payload": 3}):
+            ws.send_json(bad)
+        ws.send_json({"type": "PING"})
+        while (msg := ws.receive_json())["type"] != "PONG":
+            pass  # still connected and answering

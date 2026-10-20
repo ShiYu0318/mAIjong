@@ -140,3 +140,10 @@ def test_ai_vs_humans_counts_people_and_bots_of_a_level(client):
     assert 0 <= out["bot_win_rate"] <= 1 and 0 <= out["human_win_rate"] <= 1
     assert client.get("/api/v1/stats/ai-vs-humans?level=4").json()["hands"] == 0
     assert client.get("/api/v1/stats/ai-vs-humans?level=9").status_code == 422
+
+
+def test_leaderboard_and_stats_reject_bad_query_values(client):
+    assert client.get("/api/v1/leaderboard?kind=nope").status_code == 422
+    assert client.get("/api/v1/leaderboard?kind=human").status_code == 200
+    assert client.get("/api/v1/stats/ai-vs-humans?limit=-1").status_code == 422
+    assert client.get("/api/v1/stats/ai-vs-humans?limit=0").status_code == 422
