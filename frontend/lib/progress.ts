@@ -10,6 +10,25 @@ export function completedLessons(): Set<string> {
   }
 }
 
+/** Lessons done on this device plus those the server has for the signed-in player, so the
+ * course map is the same on every device; local-only completions are sent up. */
+export async function syncLessons(): Promise<Set<string>> {
+  const done = completedLessons();
+  if (!authToken()) return done;
+  try {
+    const rows = await tutor.progress();
+    const server = new Set(rows.filter((r) => r.status === "COMPLETED").map((r) => r.lesson_id));
+    for (const id of done) {
+      if (!server.has(id)) tutor.setProgress(id, "COMPLETED", 1).catch(() => undefined);
+    }
+    const merged = new Set([...done, ...server]);
+    localStorage.setItem(KEY, JSON.stringify([...merged]));
+    return merged;
+  } catch {
+    return done;
+  }
+}
+
 export function markLessonDone(id: string, score: number) {
   const done = completedLessons();
   done.add(id);

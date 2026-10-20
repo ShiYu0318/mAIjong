@@ -160,6 +160,8 @@ export const tutor = {
     api<QuizAnswer>("/tutor/quiz/answer", { method: "POST", json: { quiz_token, tile } }),
   setProgress: (lessonId: string, status: "STARTED" | "COMPLETED", quiz_score?: number) =>
     api(`/tutor/progress/${lessonId}`, { method: "PUT", json: { status, quiz_score } }),
+  progress: () =>
+    api<{ lesson_id: string; status: string; quiz_score: number | null }[]>("/tutor/progress"),
 };
 
 /** Start a guided game against beginner AI with coach notes, returning the room id. */

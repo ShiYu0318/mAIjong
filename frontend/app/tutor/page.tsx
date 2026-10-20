@@ -10,7 +10,7 @@ import { ProgressBar } from "@/components/Game/ProgressBar";
 import { LESSONS } from "@/content/lessons";
 import { startGuidedGame } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import { completedLessons } from "@/lib/progress";
+import { completedLessons, syncLessons } from "@/lib/progress";
 import { sfx } from "@/lib/sfx";
 import { GameIcon } from "@/components/Game/GameIcon";
 import { Check, CircleHelp, GraduationCap, ScanSearch, Users } from "lucide-react";
@@ -23,6 +23,7 @@ export default function TutorHome() {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     setDone(completedLessons());
+    void syncLessons().then(setDone);
   }, []);
   const finished = LESSONS.filter((l) => done.has(l.id)).length;
   const next = LESSONS.find((l) => !done.has(l.id));

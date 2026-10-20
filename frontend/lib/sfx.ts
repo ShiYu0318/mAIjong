@@ -36,6 +36,11 @@ let noiseBuf: AudioBuffer | null = null;
 
 function audio(): AudioContext | null {
   if (typeof window === "undefined" || useSound.getState().muted) return null;
+  // browsers refuse to start audio before the first click or key press on the page (and
+  // warn about it); stay silent until then instead of creating a blocked context
+  const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } })
+    .userActivation;
+  if (activation && !activation.hasBeenActive && !ctx) return null;
   try {
     ctx ??= new AudioContext();
     if (ctx.state === "suspended") void ctx.resume();

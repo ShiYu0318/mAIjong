@@ -29,8 +29,8 @@ export default function ReplayPage() {
     games.frames(id).then((d) => {
       setFrames(d.frames);
       setGame(d.game);
+      return games.annotations(id).then(setNotes).catch(() => undefined);  // only for real games
     }).catch(() => setError("找不到這段錄影。"));
-    games.annotations(id).then(setNotes).catch(() => undefined);
   }, [id]);
 
   const last = frames ? frames.length - 1 : 0;
