@@ -72,8 +72,9 @@ def load_model(path: Path) -> tuple[torch.nn.Module, str]:
 def save_checkpoint(path: Path, model: torch.nn.Module, kind: str,
                     model_config: dict[str, Any], **extra: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"kind": kind, "model_config": model_config,
-                "state_dict": model.state_dict(), **extra}, path)
+    # always CPU tensors, so a checkpoint trained on a GPU loads on any machine
+    state = {k: v.detach().cpu() for k, v in model.state_dict().items()}
+    torch.save({"kind": kind, "model_config": model_config, "state_dict": state, **extra}, path)
 
 
 def agent_from_checkpoint(path: str | Path, temperature: float = 0.1,

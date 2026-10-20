@@ -27,6 +27,7 @@ from ai.agents.neural_agent import save_checkpoint
 from ai.features import encode, mask_for
 from ai.models.ppo_model import ActorCritic
 from ai.simulate import read_records, replay_states
+from ai.training.device import DEVICE_CHOICES, pick_device
 from ai.training.metrics import MetricsLogger
 
 
@@ -79,8 +80,10 @@ def dataset_from_records(records: list[dict[str, Any]], workers: int = 4
 
 def train_bc(data: dict[str, np.ndarray], out: Path, epochs: int = 50, batch: int = 512,
              lr: float = 1e-3, target_acc: float = 0.6, hierarchical: bool = True,
-             run: str = "bc", seed: int = 0, log_every: int = 1) -> dict[str, float]:
+             run: str = "bc", seed: int = 0, log_every: int = 1,
+             device: str = "auto") -> dict[str, float]:
     torch.manual_seed(seed)
+    dev = pick_device(device)
     n = len(data["actions"])
     rng = np.random.default_rng(seed)
     idx = rng.permutation(n)
@@ -88,15 +91,16 @@ def train_bc(data: dict[str, np.ndarray], out: Path, epochs: int = 50, batch: in
     val, tr = idx[:n_val], idx[n_val:]
     tensors = {k: torch.from_numpy(v) for k, v in data.items()}
     config = {"hierarchical": hierarchical, "use_transformer": False}
-    model = ActorCritic(**config)
+    model = ActorCritic(**config).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
-    logger = MetricsLogger(run, {"kind": "bc", "samples": n, "epochs": epochs, **config})
+    logger = MetricsLogger(run, {"kind": "bc", "samples": n, "epochs": epochs, "device": str(dev),
+                                 **config})
 
     def run_batch(ids: np.ndarray, train: bool) -> tuple[float, float]:
-        t = tensors["tiles"][ids]
-        s = tensors["scalars"][ids]
-        m = tensors["masks"][ids]
-        a = tensors["actions"][ids]
+        t = tensors["tiles"][ids].to(dev)
+        s = tensors["scalars"][ids].to(dev)
+        m = tensors["masks"][ids].to(dev)
+        a = tensors["actions"][ids].to(dev)
         logp, _ = model(t, s, m)
         loss = torch.nn.functional.nll_loss(logp, a)
         if train:
@@ -132,28 +136,31 @@ def train_bc(data: dict[str, np.ndarray], out: Path, epochs: int = 50, batch: in
 def train_bc_stream(path: Path, out: Path, epochs: int = 3, chunk_hands: int = 5000,
                     val_hands: int = 1000, batch: int = 512, lr: float = 1e-3,
                     hierarchical: bool = True, run: str = "bc", workers: int = 4,
-                    seed: int = 0) -> dict[str, float]:
+                    seed: int = 0, device: str = "auto") -> dict[str, float]:
     """Behaviour cloning over a record file too large for memory: the first `val_hands`
     hands are the validation set; the rest are streamed `chunk_hands` at a time."""
     torch.manual_seed(seed)
+    dev = pick_device(device)
     rng = np.random.default_rng(seed)
     val = dataset_from_records(list(itertools.islice(read_records(path), val_hands)), workers)
     vt = {k: torch.from_numpy(v) for k, v in val.items()}
     config = {"hierarchical": hierarchical, "use_transformer": False}
-    model = ActorCritic(**config)
+    model = ActorCritic(**config).to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
-    logger = MetricsLogger(run, {"kind": "bc", "stream": True, "chunk_hands": chunk_hands,
-                                 "epochs": epochs, **config})
+    logger = MetricsLogger(run, {"kind": "bc", "stream": True, "device": str(dev),
+                                 "chunk_hands": chunk_hands, "epochs": epochs, **config})
 
     def step(t: dict[str, torch.Tensor], ids: np.ndarray, train: bool) -> tuple[float, float]:
-        logp, _ = model(t["tiles"][ids], t["scalars"][ids], t["masks"][ids])
-        loss = torch.nn.functional.nll_loss(logp, t["actions"][ids])
+        acts = t["actions"][ids].to(dev)
+        logp, _ = model(t["tiles"][ids].to(dev), t["scalars"][ids].to(dev),
+                        t["masks"][ids].to(dev))
+        loss = torch.nn.functional.nll_loss(logp, acts)
         if train:
             opt.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
-        return float(loss.detach()), float((logp.argmax(1) == t["actions"][ids]).float().mean())
+        return float(loss.detach()), float((logp.argmax(1) == acts).float().mean())
 
     best = {"val_acc": 0.0, "epoch": 0}
     n_val = len(val["actions"])
@@ -194,17 +201,20 @@ def main() -> None:
     ap.add_argument("--chunk-hands", type=int, default=0,
                     help="stream the records this many hands at a time (large files)")
     ap.add_argument("--val-hands", type=int, default=1000)
+    ap.add_argument("--device", choices=DEVICE_CHOICES, default="auto",
+                    help="auto = CUDA when available, else CPU")
     args = ap.parse_args()
     if args.chunk_hands:
         best = train_bc_stream(args.data, args.out, epochs=args.epochs,
                                chunk_hands=args.chunk_hands, val_hands=args.val_hands,
-                               run=args.run, workers=args.workers)
+                               run=args.run, workers=args.workers, device=args.device)
         print(f"best val accuracy {best['val_acc']:.3f} at epoch {best['epoch']} → {args.out}")
         return
     t0 = time.time()
     data = build_dataset(args.data, args.limit, args.workers)
     print(f"{len(data['actions'])} samples in {time.time() - t0:.0f}s")
-    best = train_bc(data, args.out, epochs=args.epochs, run=args.run, target_acc=args.target_acc)
+    best = train_bc(data, args.out, epochs=args.epochs, run=args.run, target_acc=args.target_acc,
+                    device=args.device)
     print(f"best val accuracy {best['val_acc']:.3f} at epoch {best['epoch']} → {args.out}")
 
 

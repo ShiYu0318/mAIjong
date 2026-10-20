@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import random
 from typing import Any
 
@@ -24,7 +23,7 @@ class League:
         self.rng = random.Random(seed)
 
     def add(self, model: torch.nn.Module) -> None:
-        self.snapshots.append(copy.deepcopy(model.state_dict()))
+        self.snapshots.append({k: v.detach().cpu().clone() for k, v in model.state_dict().items()})
 
     def _snapshot_agent(self, state: dict[str, torch.Tensor]) -> Agent:
         model = ActorCritic(**self.model_config)

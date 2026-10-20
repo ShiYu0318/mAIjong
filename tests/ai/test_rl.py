@@ -15,7 +15,7 @@ from ai.features import N_SCALARS, encode, mask_for  # noqa: E402
 from ai.models.dqn_model import DuelingDQN  # noqa: E402
 from ai.models.ppo_model import ActorCritic  # noqa: E402
 from ai.reward import GameResult, StepData, compute_shaped_reward  # noqa: E402
-from engine.game import acting_players, new_game  # noqa: E402
+from engine.game import acting_players, get_legal_actions, new_game  # noqa: E402
 
 
 def test_env_passes_gymnasium_checker():
@@ -158,3 +158,45 @@ def test_potential_shaping_cannot_be_farmed():
     paid = GameResult(1, 3, None, 0, False, payment=-250)
     # Φ(before) = -0.05·1 + 0.005·10 = 0 and Φ(end) = 0, so only the -250 points remain
     assert compute_shaped_reward(final, [], paid, cfg) == pytest.approx(-1.25)
+
+
+def test_pick_device_choices():
+    from ai.training.device import pick_device
+
+    assert pick_device("cpu").type == "cpu"
+    assert pick_device("auto").type == ("cuda" if torch.cuda.is_available() else "cpu")
+    if not torch.cuda.is_available():
+        with pytest.raises(SystemExit):
+            pick_device("cuda")
+    with pytest.raises(SystemExit):
+        pick_device("tpu")
+
+
+@pytest.mark.skipif(not (torch.cuda.is_available() or torch.backends.mps.is_available()),
+                    reason="no GPU (CUDA or Apple MPS) on this machine")
+def test_bc_and_ppo_train_on_an_accelerator_and_load_on_cpu(tmp_path, monkeypatch):
+    """SPEC 13 OQ-11: real runs go to a GPU; no tensor may stay on the wrong device and the
+    checkpoints must load on a CPU-only server."""
+    monkeypatch.chdir(tmp_path)
+    from ai.agents.neural_agent import agent_from_checkpoint
+    from ai.simulate import run_batch
+    from ai.training import bc_trainer, ppo_trainer
+
+    device = "cuda" if torch.cuda.is_available() else "mps"
+    records = tmp_path / "rule.jsonl.gz"
+    run_batch(["rule"] * 4, 4, seed=2, save_path=records)
+    data = bc_trainer.build_dataset(records, workers=1)
+    bc_ckpt = tmp_path / "bc.pt"
+    bc_trainer.train_bc(data, bc_ckpt, epochs=1, run="bc-gpu", device=device)
+    state = torch.load(bc_ckpt, map_location="cpu", weights_only=False)["state_dict"]
+    assert all(v.device.type == "cpu" for v in state.values())
+
+    cfg = ppo_trainer.PPOConfig(n_envs=2, rollout_steps=16, updates=2, mini_batch=16,
+                                eval_every=2, eval_hands=4, snapshot_every=1, device=device)
+    ppo_ckpt = tmp_path / "ppo.pt"
+    res = ppo_trainer.train_ppo(cfg, ppo_ckpt, init=bc_ckpt, run="ppo-gpu")
+    assert ppo_ckpt.exists() and "eval_win_rate" in res
+    agent = agent_from_checkpoint(ppo_ckpt, temperature=0.1, seed=0)
+    s = new_game(seed=3)
+    p = acting_players(s)[0]
+    assert agent.act(s, p, get_legal_actions(s, p)) in get_legal_actions(s, p)

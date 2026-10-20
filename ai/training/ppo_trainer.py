@@ -20,6 +20,7 @@ from ai.agents.neural_agent import PolicyAgent, save_checkpoint
 from ai.env import MahjongEnv
 from ai.models.ppo_model import ActorCritic
 from ai.reward import REWARD_PRESETS
+from ai.training.device import DEVICE_CHOICES, pick_device
 from ai.training.evaluate import evaluate
 from ai.training.metrics import MetricsLogger
 from ai.training.self_play import League
@@ -51,6 +52,7 @@ class PPOConfig:
     hierarchical: bool = True
     seed: int = 0
     extra: dict[str, Any] = field(default_factory=dict)
+    device: str = "auto"  # see ai.training.device
 
 
 def _stack(obs: list[dict[str, np.ndarray]]) -> tuple[torch.Tensor, torch.Tensor]:
@@ -73,17 +75,19 @@ def masked_entropy(logp: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
 def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "ppo"
               ) -> dict[str, float]:
     torch.manual_seed(cfg.seed)
+    dev = pick_device(cfg.device)
     model_config = {"hierarchical": cfg.hierarchical, "use_transformer": False}
     model = ActorCritic(**model_config)
     if init is not None:
         state = torch.load(init, map_location="cpu", weights_only=False)["state_dict"]
         model.load_state_dict(state)
+    model.to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
     reference: ActorCritic | None = None
     if init is not None:
         reference = ActorCritic(**model_config)
         reference.load_state_dict(model.state_dict())
-        reference.eval()
+        reference.to(dev).eval()
     value_params = {id(p) for p in model.value.parameters()}
     league = League(model_config, rule_share=cfg.rule_share, seed=cfg.seed)
     league.add(model)
@@ -117,8 +121,9 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
         for _ in range(cfg.rollout_steps):
             t, s = _stack(obs)
             m = torch.from_numpy(np.stack(masks))
-            with torch.no_grad():
-                logp, val = model(t, s, m)
+            with torch.no_grad():  # the buffer stays on the CPU; only the forward pass moves
+                logp, val = model(t.to(dev), s.to(dev), m.to(dev))
+                logp, val = logp.cpu(), val.cpu()
                 act = torch.distributions.Categorical(logits=logp).sample()
             buf["tiles"].append(t)
             buf["scalars"].append(s)
@@ -146,7 +151,8 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
         # GAE over the rollout (per env column)
         with torch.no_grad():
             t, s = _stack(obs)
-            _, next_val = model(t, s, torch.from_numpy(np.stack(masks)))
+            _, next_val = model(t.to(dev), s.to(dev), torch.from_numpy(np.stack(masks)).to(dev))
+            next_val = next_val.cpu()
         T = cfg.rollout_steps
         vals = torch.stack(buf["val"])
         rews = torch.stack(buf["rew"])
@@ -175,20 +181,21 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
             perm = torch.randperm(n)
             for i in range(0, n, cfg.mini_batch):
                 b = perm[i:i + cfg.mini_batch]
-                logp_all, v = model(flat["tiles"][b], flat["scalars"][b], flat["mask"][b])
-                logp = logp_all.gather(1, flat["act"][b][:, None]).squeeze(1)
-                ratio = (logp - flat["logp"][b]).exp()
-                a = flat["adv"][b]
+                mb = {k: v[b].to(dev) for k, v in flat.items()}
+                logp_all, v = model(mb["tiles"], mb["scalars"], mb["mask"])
+                logp = logp_all.gather(1, mb["act"][:, None]).squeeze(1)
+                ratio = (logp - mb["logp"]).exp()
+                a = mb["adv"]
                 clipped = ratio.clamp(1 - cfg.clip_eps, 1 + cfg.clip_eps)
                 pg = -torch.min(ratio * a, clipped * a).mean()
-                v_clip = flat["val"][b] + (v - flat["val"][b]).clamp(-cfg.clip_eps, cfg.clip_eps)
-                vf = torch.max((v - flat["ret"][b]) ** 2, (v_clip - flat["ret"][b]) ** 2).mean()
-                ent = masked_entropy(logp_all, flat["mask"][b]).mean()
-                kl = torch.zeros(())
+                v_clip = mb["val"] + (v - mb["val"]).clamp(-cfg.clip_eps, cfg.clip_eps)
+                vf = torch.max((v - mb["ret"]) ** 2, (v_clip - mb["ret"]) ** 2).mean()
+                ent = masked_entropy(logp_all, mb["mask"]).mean()
+                kl = torch.zeros((), device=dev)
                 if reference is not None:
-                    m = flat["mask"][b]
+                    m = mb["mask"]
                     with torch.no_grad():
-                        ref_logp, _ = reference(flat["tiles"][b], flat["scalars"][b], m)
+                        ref_logp, _ = reference(mb["tiles"], mb["scalars"], m)
                     diff = torch.where(m, ref_logp - logp_all, torch.zeros_like(logp_all))
                     kl = (ref_logp.exp() * m * diff).sum(dim=1).mean()
                 if warmup:
@@ -250,11 +257,13 @@ def main() -> None:
     ap.add_argument("--reward", choices=["potential", "spec"], default="potential",
                     help="potential-based shaping + points (default) or the SPEC 05.4 shaping")
     ap.add_argument("--run", default=f"ppo-{int(time.time())}")
+    ap.add_argument("--device", choices=DEVICE_CHOICES, default="auto",
+                    help="auto = CUDA when available, else CPU (rollouts always step on the CPU)")
     args = ap.parse_args()
     cfg = PPOConfig(n_envs=args.envs, rollout_steps=args.rollout, updates=args.updates,
                     eval_every=args.eval_every, eval_hands=args.eval_hands, lr=args.lr,
                     kl_coeff=args.kl, value_warmup=args.warmup, rule_share=args.rule_share,
-                    reward=args.reward)
+                    reward=args.reward, device=args.device)
     print(train_ppo(cfg, args.out, args.init, args.run))
 
 
