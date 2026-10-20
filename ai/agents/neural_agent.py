@@ -99,6 +99,19 @@ def latest_checkpoint(kind: str, min_win_rate: float = MIN_EVAL_WIN_RATE) -> Pat
     return p if float(meta.get("eval_win_rate", 0.0)) >= min_win_rate else None
 
 
+def level5_spec() -> str | None:
+    """The agent spec promoted to Lv5 when it is not a network (kind "spec"), else None."""
+    import json
+
+    promoted = CHECKPOINT_DIR / "level5.json"
+    try:
+        rec = json.loads(promoted.read_text())
+    except (OSError, ValueError):
+        return None
+    spec = rec.get("path")
+    return spec if rec.get("kind") == "spec" and isinstance(spec, str) else None
+
+
 def best_level5(min_win_rate: float = MIN_EVAL_WIN_RATE) -> tuple[str, Path] | None:
     """Strongest deployable Lv5 model: the custom PPO checkpoint or the SB3 MaskablePPO
     best model, whichever recorded the higher win rate against rule agents."""
@@ -138,5 +151,5 @@ def best_level5(min_win_rate: float = MIN_EVAL_WIN_RATE) -> tuple[str, Path] | N
     return kind, path
 
 
-__all__ = ["PolicyAgent", "best_level5", "agent_from_checkpoint", "decide_with_temperature",
-           "latest_checkpoint", "load_model", "save_checkpoint"]
+__all__ = ["PolicyAgent", "agent_from_checkpoint", "best_level5", "decide_with_temperature",
+           "latest_checkpoint", "level5_spec", "load_model", "save_checkpoint"]

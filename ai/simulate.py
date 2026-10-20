@@ -30,6 +30,17 @@ def register_agent(prefix: str, factory: AgentFactory) -> None:
     _REGISTRY[prefix] = factory
 
 
+def tuned_params(path: str | None) -> Any:
+    """RuleParams saved by ai.training.tune (checkpoints/rule_tuned.json by default)."""
+    import json
+    from pathlib import Path
+
+    from ai.agents.rule_agent import RuleParams
+
+    data = json.loads(Path(path or "checkpoints/rule_tuned.json").read_text())
+    return RuleParams(**data["params"])
+
+
 def make_agent(spec: str, seed: int) -> Agent:
     name, _, arg = spec.partition(":")
     if name == "random":
@@ -49,17 +60,14 @@ def make_agent(spec: str, seed: int) -> Agent:
                     opts[k] = v
         return RuleAgent(0.0, seed, **opts)  # type: ignore[arg-type]
     if name == "tuned":  # tuned[:path], rule agent with parameters from ai.training.tune
-        import json
-        from pathlib import Path
-
-        from ai.agents.rule_agent import RuleParams
-
-        data = json.loads(Path(arg or "checkpoints/rule_tuned.json").read_text())
-        return RuleAgent(0.0, seed, params=RuleParams(**data["params"]))
-    if name == "search":  # search[:samples], PIMC over the rule agent
+        return RuleAgent(0.0, seed, params=tuned_params(arg or None))
+    if name == "search":  # search[:samples[,tuned]], PIMC over the (tuned) rule agent
         from ai.agents.search_agent import SearchAgent
 
-        return SearchAgent(samples=int(arg) if arg else 32, seed=seed)
+        parts = arg.split(",") if arg else []
+        samples = int(parts[0]) if parts and parts[0] else 32
+        params = tuned_params(None) if "tuned" in parts[1:] else None
+        return SearchAgent(samples=samples, seed=seed, params=params)
     if name.startswith("lv") and name[2:].isdigit():
         return create_agent(int(name[2:]), seed)
     if name in _REGISTRY:

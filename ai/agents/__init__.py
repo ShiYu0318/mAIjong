@@ -19,9 +19,19 @@ def create_agent(level: int, seed: int | None = None) -> Agent:
     temperature = LEVEL_TEMPERATURE.get(level, 1.5)
     if level >= 4:
         try:
-            from ai.agents.neural_agent import agent_from_checkpoint, best_level5, latest_checkpoint
+            from ai.agents.neural_agent import (
+                agent_from_checkpoint,
+                best_level5,
+                latest_checkpoint,
+                level5_spec,
+            )
 
             if level == 5:
+                spec = level5_spec()
+                if spec is not None:  # a promoted rule-tuned or search agent
+                    from ai.simulate import make_agent
+
+                    return make_agent(spec, seed if seed is not None else 0)
                 best = best_level5()
                 if best is not None and best[0] == "sb3":
                     from ai.agents.sb3_agent import Sb3Agent

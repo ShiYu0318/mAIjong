@@ -18,7 +18,7 @@ from __future__ import annotations
 import random
 import time
 
-from ai.agents.rule_agent import RuleAgent
+from ai.agents.rule_agent import RuleAgent, RuleParams
 from engine import tiles
 from engine.actions import Action, ActionType
 from engine.game import GameState, Phase, acting_players, apply_action, get_legal_actions
@@ -66,14 +66,16 @@ class SearchAgent:
     name = "search"
 
     def __init__(self, samples: int = 32, top_k: int = 3, seed: int | None = None,
-                 time_budget: float | None = None, z: float = 2.0) -> None:
+                 time_budget: float | None = None, z: float = 2.0,
+                 params: RuleParams | None = None) -> None:
         self.samples = samples
         self.top_k = top_k
         self.z = z  # how sure (paired t) the search must be before overriding the rule agent
         self.time_budget = time_budget  # seconds per decision; None = all samples
         self.rng = random.Random(seed)
-        self.rule = RuleAgent(0.0, seed)
-        self._rollout = [RuleAgent(0.0, (seed or 0) * 7 + i) for i in range(4)]
+        # `params` (e.g. tuned ones) drive both the default choice and the rollouts
+        self.rule = RuleAgent(0.0, seed, params=params)
+        self._rollout = [RuleAgent(0.0, (seed or 0) * 7 + i, params=params) for i in range(4)]
         self.stats = {"searched": 0, "deferred": 0}
 
     def _should_search(self, state: GameState, seat: int, legal: list[Action]) -> bool:

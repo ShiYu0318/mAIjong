@@ -28,3 +28,17 @@ def test_spec_round_trip_and_alternatives():
     for name, value in asdict(RuleParams()).items():
         assert value not in alternatives(name, value)
     assert alternatives("declare", "always") == ["never", 3, 4, 5, 6]
+
+
+def test_level5_can_be_a_promoted_agent_spec(tmp_path, monkeypatch):
+    import json
+
+    import ai.agents.neural_agent as na
+    from ai.agents import RuleAgent, create_agent
+
+    monkeypatch.setattr(na, "CHECKPOINT_DIR", tmp_path)
+    (tmp_path / "level5.json").write_text(json.dumps({"kind": "spec", "path": "rulex:flush=13"}))
+    agent = create_agent(5, seed=1)
+    assert isinstance(agent, RuleAgent) and agent.params.flush == 13
+    (tmp_path / "level5.json").write_text(json.dumps({"kind": "rule", "path": "rule"}))
+    assert na.level5_spec() is None
