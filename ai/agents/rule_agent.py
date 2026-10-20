@@ -12,8 +12,6 @@ import math
 import random
 from dataclasses import dataclass, replace
 
-import numpy as np
-
 from ai.danger import suspected_danger, suspected_threats, tile_danger
 from engine import tiles
 from engine.actions import Action, ActionType
@@ -125,7 +123,7 @@ class RuleAgent:
                 if P.dm_always:
                     fold = {0: P.dm_ready, 1: P.dm_one}.get(current, P.dm_far)
                 else:
-                    probs = np.minimum(1.0, probs * P.dm_scale)
+                    probs = [min(1.0, float(x) * P.dm_scale) for x in probs]
                 suspects = []
             self.last_fold = fold  # read by agents that build on this one
             for a in legal:
