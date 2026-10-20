@@ -36,6 +36,30 @@ def make_agent(spec: str, seed: int) -> Agent:
         return RandomAgent(seed)
     if name == "rule":
         return RuleAgent(float(arg) if arg else 0.0, seed)
+    if name == "rulex":  # rulex:declare=6,calls=ready — rule agent variants (see RuleAgent)
+        opts: dict[str, str | int | float] = {}
+        for kv in filter(None, arg.split(",")):
+            k, _, v = kv.partition("=")
+            try:
+                opts[k] = int(v)
+            except ValueError:
+                try:
+                    opts[k] = float(v)
+                except ValueError:
+                    opts[k] = v
+        return RuleAgent(0.0, seed, **opts)  # type: ignore[arg-type]
+    if name == "tuned":  # tuned[:path], rule agent with parameters from ai.training.tune
+        import json
+        from pathlib import Path
+
+        from ai.agents.rule_agent import RuleParams
+
+        data = json.loads(Path(arg or "checkpoints/rule_tuned.json").read_text())
+        return RuleAgent(0.0, seed, params=RuleParams(**data["params"]))
+    if name == "search":  # search[:samples], PIMC over the rule agent
+        from ai.agents.search_agent import SearchAgent
+
+        return SearchAgent(samples=int(arg) if arg else 32, seed=seed)
     if name.startswith("lv") and name[2:].isdigit():
         return create_agent(int(name[2:]), seed)
     if name in _REGISTRY:

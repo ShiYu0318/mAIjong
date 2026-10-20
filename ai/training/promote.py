@@ -34,6 +34,10 @@ def load_candidate(path: str, seed: int, temperature: float = 0.1) -> Agent:
         from ai.agents import RuleAgent
 
         return RuleAgent(0.0, seed)
+    if path.startswith(("search", "rulex")):  # agent specs, see ai.simulate.make_agent
+        from ai.simulate import make_agent
+
+        return make_agent(path, seed)
     if path.endswith(".zip"):
         from ai.agents.sb3_agent import Sb3Agent
 
@@ -101,7 +105,8 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=Path("checkpoints/level5.json"))
     ap.add_argument("--dry-run", action="store_true", help="only print the table")
     args = ap.parse_args()
-    missing = [c for c in args.candidates if c != BASELINE and not Path(c).exists()]
+    missing = [c for c in args.candidates
+               if c != BASELINE and not c.startswith(("search", "rulex")) and not Path(c).exists()]
     if missing:
         raise SystemExit(f"missing: {', '.join(missing)}")
     candidates = [BASELINE, *[c for c in args.candidates if c != BASELINE]]
