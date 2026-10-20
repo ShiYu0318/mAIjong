@@ -12,6 +12,8 @@ import math
 import random
 from dataclasses import dataclass, replace
 
+import numpy as np
+
 from ai.danger import suspected_danger, suspected_threats, tile_danger
 from engine import tiles
 from engine.actions import Action, ActionType
@@ -72,6 +74,14 @@ class RuleParams:
     threat_melds: int = 0  # this many melds marks an opponent as a threat
     threat_turn: int = 0  # ... or this many discards
     threat_scale: float = 0.5  # fold weight against such a threat, relative to a declared one
+    # learned danger (ai.danger_model): replaces the hand-made danger and applies on every
+    # discard, weighted by how far our own hand is from ready
+    danger_model: str = ""
+    dm_ready: float = 10.0
+    dm_one: float = 25.0
+    dm_far: float = 60.0
+    dm_always: bool = True  # False: keep the usual fold triggers, use the model only then
+    dm_scale: float = 2.0  # model probability → hand-made danger range when dm_always is off
 
 
 class RuleAgent:
@@ -107,6 +117,16 @@ class RuleAgent:
                 elif state.drawable() < P.late_wall:
                     fold = P.fold_late_near if current <= 1 else P.fold_late_far
             flush_suit = self._flush_suit(state, seat, counts)
+            probs = None
+            if P.danger_model and (P.dm_always or fold):
+                from ai.danger_model import predict
+
+                probs = predict(P.danger_model, state, seat)
+                if P.dm_always:
+                    fold = {0: P.dm_ready, 1: P.dm_one}.get(current, P.dm_far)
+                else:
+                    probs = np.minimum(1.0, probs * P.dm_scale)
+                suspects = []
             self.last_fold = fold  # read by agents that build on this one
             for a in legal:
                 score = self._turn_score(a, counts, n_melds, seen, table)
@@ -114,8 +134,12 @@ class RuleAgent:
                         a.type in (ActionType.DISCARD, ActionType.TING):
                     score += self._flush_bonus(a.tile, flush_suit, counts)
                 if fold and a.type in (ActionType.DISCARD, ActionType.TING) and a.tile is not None:
-                    danger = suspected_danger(state, a.tile, seen, suspects) if suspects \
-                        else tile_danger(state, seat, a.tile, seen)
+                    if probs is not None:
+                        danger = float(probs[a.tile]) if a.tile < 34 else 0.0
+                    elif suspects:
+                        danger = suspected_danger(state, a.tile, seen, suspects)
+                    else:
+                        danger = tile_danger(state, seat, a.tile, seen)
                     score -= fold * danger
                 out[a] = score
         else:

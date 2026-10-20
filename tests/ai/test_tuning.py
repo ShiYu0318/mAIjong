@@ -42,3 +42,12 @@ def test_level5_can_be_a_promoted_agent_spec(tmp_path, monkeypatch):
     assert isinstance(agent, RuleAgent) and agent.params.flush == 13
     (tmp_path / "level5.json").write_text(json.dumps({"kind": "rule", "path": "rule"}))
     assert na.level5_spec() is None
+
+
+def test_level5_defaults_to_the_tuned_rule_agent_without_a_record(tmp_path, monkeypatch):
+    import ai.agents.neural_agent as na
+    from ai.agents import LEVEL5_PARAMS, RuleAgent, create_agent
+
+    monkeypatch.setattr(na, "CHECKPOINT_DIR", tmp_path)  # no level5.json, no checkpoints
+    agent = create_agent(5, seed=0)
+    assert isinstance(agent, RuleAgent) and agent.params == LEVEL5_PARAMS

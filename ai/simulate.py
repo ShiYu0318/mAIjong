@@ -51,6 +51,9 @@ def make_agent(spec: str, seed: int) -> Agent:
         opts: dict[str, str | int | float] = {}
         for kv in filter(None, arg.split(",")):
             k, _, v = kv.partition("=")
+            if v in ("True", "False"):
+                opts[k] = v == "True"
+                continue
             try:
                 opts[k] = int(v)
             except ValueError:
