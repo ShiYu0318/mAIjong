@@ -82,12 +82,15 @@ def _room_or_404(manager: RoomManager, room_id: str) -> Room:
 
 @router.post("/quick/join", response_model=JoinOut)
 async def quick_join(body: JoinIn, user: OptionalUserDep, manager: ManagerDep) -> JoinOut:
-    """Quick match: join a waiting room or open one; bots fill after `quick_wait` seconds."""
-    room = manager.find_quick()
+    """Quick match: join a waiting room of players within ±200 rating, or open one; bots fill
+    the empty seats after `quick_wait` seconds (SPEC 13 OQ-09)."""
+    rating = float(user.elo_human) if user else 1500.0
+    room = manager.find_quick(rating)
     created = room is None
     if room is None:
         room = manager.create(new_id(), "QUICK", RoomConfig(), None)
     out = _join(room, user, JoinIn(seat=None, name=body.name))
+    room.quick_ratings.append(rating)
     if created:
         await manager.schedule_quick_start(room)
     elif all(s is not None for s in room.seats):

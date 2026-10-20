@@ -197,3 +197,34 @@ def test_join_handshake_and_timeout_notice(client):
                 assert msg["payload"]["code"] == "TIMEOUT"
                 break
             assert msg["type"] not in ("WIN_DECLARED", "ROUND_DRAW", "GAME_END")
+
+
+def test_quick_match_pairs_players_within_200_rating(client):
+    from backend.models import User
+
+    def player(name: str, elo: float) -> str:
+        token, info = register(client, name)
+        with dbmod.session_factory()() as db:
+            u = db.get(User, info["id"])
+            assert u is not None
+            u.elo_human = elo
+            db.commit()
+        return token
+
+    def quick(token: str | None) -> dict:
+        headers = auth(token) if token else {}
+        r = client.post("/api/v1/rooms/quick/join", json={"name": "Q"}, headers=headers)
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    first = quick(player("alice", 1500))
+    near = quick(player("bob", 1650))  # 150 away: same table
+    far = quick(player("carol", 1900))  # 325 away from the table's 1575 average: new table
+    guest = quick(None)  # no account counts as 1500
+    assert near["room"]["room_id"] == first["room"]["room_id"]
+    assert far["room"]["room_id"] != first["room"]["room_id"]
+    assert guest["room"]["room_id"] == first["room"]["room_id"]
+    assert quick(player("dave", 1450))["room"]["room_id"] == first["room"]["room_id"]
+    # the first table is now full and has started; the next 1500 player gets a new one
+    nxt = quick(player("erin", 1500))
+    assert nxt["room"]["room_id"] not in (first["room"]["room_id"], far["room"]["room_id"])

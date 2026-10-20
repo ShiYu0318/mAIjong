@@ -51,6 +51,7 @@ log = logging.getLogger("maijong.hub")
 
 HINT_COOLDOWN = 5.0
 HINT_LIMIT_RANKED = 3
+QUICK_RATING_RANGE = 200.0  # SPEC 13 OQ-09: quick match pairs within ±200 before bots fill
 
 
 class Socket(Protocol):
@@ -135,6 +136,7 @@ class Room:
         self.store: RoomStore = NullStore()
         self.hand_seed: int | None = None  # seed of the current hand (for recovery)
         self.hand_started_at: float | None = None  # wall clock, for games.result duration_s
+        self.quick_ratings: list[float] = []  # ratings of people who joined a quick match
         self._dirty = False
         self._writer_task: asyncio.Task[None] | None = None
         for i, lvl in enumerate(config.bot_levels):
@@ -669,6 +671,7 @@ class Room:
             "hand_seed": self.hand_seed, "actions": list(self.actions),
             "game_id": self.game.game_id if self.game is not None else None,
             "public": self.public(),
+            "quick_ratings": list(self.quick_ratings),
         }
 
     def _persist(self) -> None:
@@ -711,6 +714,7 @@ class Room:
         if m is not None:
             self.match = MatchState(**{**m, "rules": Rules(**m["rules"])})
         self.hand_seed = snap["hand_seed"]
+        self.quick_ratings = list(snap.get("quick_ratings") or [])
         if self.status == "IN_GAME" and self.match is not None and self.hand_seed is not None:
             g = start_hand(self.match, seed=self.hand_seed)
             if snap.get("game_id"):
@@ -808,11 +812,18 @@ class RoomManager:
         rid = self.by_code.get(code.upper())
         return self.rooms.get(rid) if rid else None
 
-    def find_quick(self) -> Room | None:
+    def find_quick(self, rating: float = 1500.0) -> Room | None:
+        """A waiting quick-match room whose players average within ±QUICK_RATING_RANGE of
+        `rating` (the closest one); None means open a new room."""
+        best: tuple[float, Room] | None = None
         for r in self.rooms.values():
-            if r.kind == "QUICK" and r.status == "WAITING" and any(s is None for s in r.seats):
-                return r
-        return None
+            if r.kind != "QUICK" or r.status != "WAITING" or all(s is not None for s in r.seats):
+                continue
+            avg = sum(r.quick_ratings) / len(r.quick_ratings) if r.quick_ratings else rating
+            gap = abs(avg - rating)
+            if gap <= QUICK_RATING_RANGE and (best is None or gap < best[0]):
+                best = (gap, r)
+        return best[1] if best else None
 
     async def schedule_quick_start(self, room: Room) -> None:
         async def later() -> None:
