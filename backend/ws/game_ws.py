@@ -93,6 +93,10 @@ async def game_socket(ws: WebSocket, room_id: str, token: str | None = None,
             if not bucket.allow("ws"):
                 await sock.send_json({"type": "ERROR", "payload": {
                     "code": "RATE_LIMIT", "message": "訊息太頻繁，請稍候"}})
+                if msg.get("type") == "ACTION":
+                    # the dropped move cleared the client's buttons: send the request again
+                    # so the hand cannot stall waiting for a move that never arrives
+                    await room.handle(seat, {"type": "READY"})
                 continue
             await room.handle(seat, msg)
     except (WebSocketDisconnect, RuntimeError):

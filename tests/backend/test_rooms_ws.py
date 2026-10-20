@@ -246,3 +246,26 @@ def test_malformed_messages_keep_the_connection(client):
         ws.send_json({"type": "PING"})
         while (msg := ws.receive_json())["type"] != "PONG":
             pass  # still connected and answering
+
+
+def test_rate_limited_move_is_asked_for_again(client, monkeypatch):
+    monkeypatch.setenv("RATE_LIMIT_WS_PER_SEC", "2")
+    token, _ = register(client)
+    room = create(client, [None, 1, 1, 1], token)
+    j = client.post(f"/api/v1/rooms/{room['room_id']}/join", json={}, headers=auth(token)).json()
+    with client.websocket_connect(f"/ws/game/{room['room_id']}?token={j['ws_token']}") as ws:
+        ws.receive_json()
+        client.post(f"/api/v1/rooms/{room['room_id']}/start", headers=auth(token))
+        while not ((msg := ws.receive_json())["type"] == "ACTION_REQUEST"
+                   and msg["payload"]["player"] == j["seat"]):
+            pass
+        for _ in range(4):  # well over 2 per second; nothing legal, so no move is made
+            ws.send_json({"type": "ACTION", "payload": {"action_type": "PON", "tile": 0}})
+        limited = False
+        while True:
+            msg = ws.receive_json()
+            if msg["type"] == "ERROR" and msg["payload"]["code"] == "RATE_LIMIT":
+                limited = True
+            elif limited and msg["type"] == "ACTION_REQUEST" \
+                    and msg["payload"]["player"] == j["seat"]:
+                break  # asked again after the dropped move
