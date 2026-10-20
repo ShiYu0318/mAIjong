@@ -21,7 +21,7 @@ on:
         description: "BC epochs"
         default: "10"
       ppo_updates:
-        description: "PPO updates (0 skips PPO)"
+        description: "PPO updates (0 skips PPO; the first 10 only fit the value head, so use > 10)"
         default: "200"
 
 jobs:
