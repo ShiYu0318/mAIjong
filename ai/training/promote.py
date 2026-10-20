@@ -34,7 +34,7 @@ def load_candidate(path: str, seed: int, temperature: float = 0.1) -> Agent:
         from ai.agents import RuleAgent
 
         return RuleAgent(0.0, seed)
-    if path.startswith(("search", "rulex", "tuned")):  # agent specs, see ai.simulate.make_agent
+    if path.startswith(("search", "rulex", "tuned", "eff")):  # specs, see ai.simulate.make_agent
         from ai.simulate import make_agent
 
         return make_agent(path, seed)
@@ -88,7 +88,7 @@ def head_to_head(paths: list[str], hands: int = 1000, workers: int = 4,
 def promote(rows: list[dict[str, Any]], out: Path) -> dict[str, Any]:
     best = rows[0]
     kind = "rule" if best["path"] == BASELINE else \
-        "spec" if best["path"].startswith(("search", "rulex", "tuned")) else \
+        "spec" if best["path"].startswith(("search", "rulex", "tuned", "eff")) else \
         "sb3" if best["path"].endswith(".zip") else "ppo"
     record = {**best, "kind": kind,
               "promoted_at": time.time(), "candidates": rows}
@@ -106,7 +106,7 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=Path("checkpoints/level5.json"))
     ap.add_argument("--dry-run", action="store_true", help="only print the table")
     args = ap.parse_args()
-    specs = ("search", "rulex", "tuned")
+    specs = ("search", "rulex", "tuned", "eff")
     missing = [c for c in args.candidates
                if c != BASELINE and not c.startswith(specs) and not Path(c).exists()]
     if missing:

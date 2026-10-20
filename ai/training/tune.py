@@ -29,9 +29,11 @@ CHOICES: dict[str, list[Any]] = {
     "flush": [0, 11, 12, 13, 14],
     "late_wall": [12, 18, 24, 30, 36],
     "value_pon": [0.0, 1.0, 3.0],
+    "threat_melds": [0, 2, 3, 4],
+    "threat_turn": [0, 8, 10, 12],
 }
 SCALED = ["w_live", "honor_discard", "ting_bonus", "flush_far", "flush_near", "fold_ready",
-          "fold_one", "fold_far", "fold_late_near", "fold_late_far"]
+          "fold_one", "fold_far", "fold_late_near", "fold_late_far", "threat_scale"]
 
 
 def spec(params: dict[str, Any]) -> str:

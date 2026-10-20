@@ -61,6 +61,13 @@ def make_agent(spec: str, seed: int) -> Agent:
         return RuleAgent(0.0, seed, **opts)  # type: ignore[arg-type]
     if name == "tuned":  # tuned[:path], rule agent with parameters from ai.training.tune
         return RuleAgent(0.0, seed, params=tuned_params(arg or None))
+    if name == "eff":  # eff[:samples[,tuned]] — rule agent with own-draw look-ahead
+        from ai.agents.efficiency_agent import EfficiencyAgent
+
+        parts = arg.split(",") if arg else []
+        samples = int(parts[0]) if parts and parts[0] else 48
+        params = tuned_params(None) if "tuned" in parts[1:] else None
+        return EfficiencyAgent(0.0, seed, samples=samples, params=params)
     if name == "search":  # search[:samples[,tuned]], PIMC over the (tuned) rule agent
         from ai.agents.search_agent import SearchAgent
 

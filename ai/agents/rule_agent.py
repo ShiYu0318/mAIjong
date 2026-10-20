@@ -12,7 +12,7 @@ import math
 import random
 from dataclasses import dataclass, replace
 
-from ai.danger import tile_danger
+from ai.danger import suspected_danger, suspected_threats, tile_danger
 from engine import tiles
 from engine.actions import Action, ActionType
 from engine.game import GameState, Phase
@@ -57,7 +57,7 @@ class RuleParams:
     honor_discard: float = 0.05  # small push to let go of isolated honours early
     ting_bonus: float = 0.5  # declaring ready (+1 tai)
     declare: str | int = "always"  # "always" | "never" | N = only with >= N unseen waits
-    calls: str = "shanten"  # "shanten" | "near" | "ready" | "never"
+    calls: str = "shanten"  # "shanten" | "keep" | "near" | "ready" | "never"
     value_pon: float = 0.0  # bonus for ponning a dragon or our seat/round wind (1 tai)
     flush: int = 0  # chase a one-suit hand once this many tiles fit it; 0 = off
     flush_far: float = 4.0  # discard bonus for a stray tile while many remain
@@ -68,6 +68,10 @@ class RuleParams:
     late_wall: int = 24  # drawable tiles left when the late-game caution starts
     fold_late_near: float = 2.0
     fold_late_far: float = 6.0
+    # undeclared opponents that look ready (humans often stay silent); 0 turns a sign off
+    threat_melds: int = 0  # this many melds marks an opponent as a threat
+    threat_turn: int = 0  # ... or this many discards
+    threat_scale: float = 0.5  # fold weight against such a threat, relative to a declared one
 
 
 class RuleAgent:
@@ -92,18 +96,27 @@ class RuleAgent:
             current = min(sh for sh, _ in table.values())
             # defence weight: 0 while pushing, large when far from tenpai under threat
             fold = 0.0
+            suspects: list[int] = []
             if any(state.declared_ting[p] for p in range(4) if p != seat):
                 fold = {0: P.fold_ready, 1: P.fold_one}.get(current, P.fold_far)
-            elif state.drawable() < P.late_wall:
-                fold = P.fold_late_near if current <= 1 else P.fold_late_far
+            else:
+                suspects = suspected_threats(state, seat, P.threat_melds, P.threat_turn)
+                if suspects:
+                    fold = P.threat_scale * {0: P.fold_ready, 1: P.fold_one}.get(
+                        current, P.fold_far)
+                elif state.drawable() < P.late_wall:
+                    fold = P.fold_late_near if current <= 1 else P.fold_late_far
             flush_suit = self._flush_suit(state, seat, counts)
+            self.last_fold = fold  # read by agents that build on this one
             for a in legal:
                 score = self._turn_score(a, counts, n_melds, seen, table)
                 if flush_suit is not None and a.tile is not None and \
                         a.type in (ActionType.DISCARD, ActionType.TING):
                     score += self._flush_bonus(a.tile, flush_suit, counts)
                 if fold and a.type in (ActionType.DISCARD, ActionType.TING) and a.tile is not None:
-                    score -= fold * tile_danger(state, seat, a.tile, seen)
+                    danger = suspected_danger(state, a.tile, seen, suspects) if suspects \
+                        else tile_danger(state, seat, a.tile, seen)
+                    score -= fold * danger
                 out[a] = score
         else:
             base = shanten(counts, n_melds)
@@ -198,6 +211,8 @@ class RuleAgent:
             return 2.0 if after <= 0 < base else -1.0
         if P.calls == "near":
             return 2.0 if after < base and after <= 1 else -1.0
+        if P.calls == "keep":  # also when the call keeps shanten (more chances to win fast)
+            return 2.0 if after < base else (0.5 if after == base else -1.0)
         return 2.0 if after < base else -1.0
 
     # -------------------------------------------------------------- policy
