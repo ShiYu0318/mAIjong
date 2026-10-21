@@ -99,7 +99,7 @@ test("joining a table that already started explains why, in the interface langua
 test("every page reads in English once switched", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("maijong.locale", "en"));
   const pages = ["/", "/agents", "/lab", "/offline", "/practice", "/tutor", "/tutor/analyze", "/tutor/quiz",
-    "/tutor/lesson/calls", "/tutor/lesson/nope", "/leaderboard", "/profile", "/shop"];
+    "/tutor/lesson/calls", "/tutor/lesson/nope", "/leaderboard", "/profile", "/shop", "/no-such-page"];
   for (const path of pages) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
@@ -107,6 +107,80 @@ test("every page reads in English once switched", async ({ page }) => {
     const chinese = (await page.locator("body").innerText()).match(/[\u4e00-\u9fff]{2,}/g) ?? [];
     expect(chinese.filter((w) => w !== "中文"), path).toEqual([]);
   }
+});
+
+const API = "http://localhost:8010/api/v1";
+
+test("missing pages say what is missing and lead back", async ({ page }) => {
+  const annotationCalls: string[] = [];
+  page.on("request", (r) => { if (r.url().includes("/annotations")) annotationCalls.push(r.url()); });
+  const cases: [string, string][] = [
+    ["/no-such-page", "找不到這個頁面"],
+    ["/agents/does-not-exist", "找不到這個代理程式。"],
+    ["/replay/does-not-exist", "找不到這段錄影。"],
+    ["/tutor/lesson/does-not-exist", "找不到這堂課。"],
+  ];
+  for (const [path, text] of cases) {
+    await page.goto(path);
+    await expect(page.getByText(text), path).toBeVisible();
+  }
+  await page.goto("/no-such-page");
+  await page.getByRole("link", { name: "回大廳" }).click();
+  await expect(page.getByRole("heading", { name: "快速配對" })).toBeVisible();
+  expect(annotationCalls).toEqual([]);  // notes are only fetched for replays that exist
+});
+
+test("no sound starts before the first tap", async ({ page }) => {
+  const warnings: string[] = [];
+  page.on("console", (m) => { if (/AudioContext/.test(m.text())) warnings.push(m.text()); });
+  await page.goto("/dev/result");  // the result show plays sounds on its own
+  await page.waitForTimeout(3000);
+  expect(warnings).toEqual([]);
+});
+
+test("lesson progress follows the account to another device", async ({ page, request }) => {
+  const id = Date.now() % 1_000_000;
+  const reg = await (await request.post(`${API}/auth/register`, {
+    data: { username: `prog${id}`, email: `prog${id}@example.com`, password: "secret123" },
+  })).json();
+  await request.put(`${API}/tutor/progress/tiles`, {
+    headers: { Authorization: `Bearer ${reg.token}` }, data: { status: "COMPLETED", quiz_score: 1 },
+  });
+  // a fresh browser that only knows the account, not the local lesson record
+  await page.addInitScript((token) => localStorage.setItem("maijong.token", token), reg.token);
+  await page.goto("/tutor");
+  await expect(page.getByText("1 / 8")).toBeVisible();
+});
+
+test("decision quiz tiles are named for screen readers", async ({ page }) => {
+  await page.goto("/tutor/quiz");
+  const first = page.getByRole("button", { name: /^打出 / }).first();
+  await expect(first).toBeVisible({ timeout: 15_000 });
+  expect(await first.getAttribute("aria-label")).not.toMatch(/^打出 \d+$/);
+});
+
+test("the header keeps the hand number while its result shows", async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.goto("/");
+  await page.getByRole("button", { name: "開桌" }).click();
+  await page.waitForURL(/\/room\//);
+  await page.getByRole("button", { name: "開始", exact: true }).click();
+  const header = page.locator("header").first();
+  await expect(header).toContainText("第 1 手", { timeout: 30_000 });
+  // the round is named once, in the header, not over the discards
+  await expect(page.getByText(/東風圈・第 1 手/)).toHaveCount(1);
+  const result = page.getByRole("dialog", { name: "本手結果" });
+  while (!(await result.isVisible())) {
+    const pass = page.getByRole("button", { name: "過", exact: true });
+    if (await pass.isVisible()) await pass.click().catch(() => {});
+    else if (await page.getByRole("button", { name: "提示", exact: true }).isVisible()) {
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("Enter");
+    }
+    await page.waitForTimeout(150);
+  }
+  await page.waitForTimeout(800);  // the room update with the new count arrives after the result
+  await expect(header).toContainText("第 1 手");
 });
 
 test.describe("phone screen", () => {

@@ -349,6 +349,8 @@ const EN: Record<string, string> = {
   "還沒有真人和高手 AI 同桌的牌局。開一桌把座位設成「AI 高手」就會開始累計。": "No hands with people and the Expert AI yet. Open a table with an “AI Expert” seat to start counting.",
   "AI 胡牌率": "AI win rate",
   "真人胡牌率": "People's win rate",
+  "找不到這個頁面": "Page not found",
+  "網址可能打錯了，或這個頁面已經移除。": "The address may be mistyped, or the page was removed.",
   "牌局已經開始，無法加入。": "The game has already started; you can't join.",
   "牌局已經開始了。": "The game has already started.",
   "這個座位已經有人了。": "That seat is taken.",
