@@ -10,6 +10,7 @@ import { useLocale, useT } from "@/lib/i18n";
 import { markLessonDone } from "@/lib/progress";
 import { GameIcon } from "@/components/Game/GameIcon";
 import { BookOpen } from "lucide-react";
+import { MissingState } from "@/components/Game/MissingState";
 
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,11 +19,7 @@ export default function LessonPage() {
   const found = lessonById(id);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   if (!found) {
-    return (
-      <main className="p-10">
-        {t("找不到這堂課。")}<Link href="/tutor" className="underline">{t("回教練首頁")}</Link>
-      </main>
-    );
+    return <MissingState title={t("找不到這堂課。")} href="/tutor" linkLabel={t("回教練首頁")} />;
   }
   const lesson = localLesson(found, locale);
   const idx = LESSONS.findIndex((l) => l.id === id);

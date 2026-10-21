@@ -7,9 +7,9 @@ import { LineChart } from "@/components/Lab/LineChart";
 import { type AgentInfo, agentsApi, ApiError, competition } from "@/lib/api";
 import { localName, useT } from "@/lib/i18n";
 import { useAccount } from "@/store/accountStore";
-import Link from "next/link";
 import { GameIcon } from "@/components/Game/GameIcon";
 import { Bot } from "lucide-react";
+import { MissingState } from "@/components/Game/MissingState";
 
 export default function AgentDetail() {
   const { id } = useParams<{ id: string }>();
@@ -48,11 +48,7 @@ export default function AgentDetail() {
   }, [challenge, id, agent, others, t]);
 
   if (missing) {
-    return (
-      <main className="p-10 text-mist">
-        {t("找不到這個代理程式。")} <Link href="/agents" className="underline">{t("回社群 AI")}</Link>
-      </main>
-    );
+    return <MissingState title={t("找不到這個代理程式。")} href="/agents" linkLabel={t("回社群 AI")} />;
   }
   if (!agent) return <main className="p-10 text-mist">{t("載入中…")}</main>;
   const history = (agent.elo_history ?? []).map((h, i) => ({ x: i + 1, y: h.elo }));

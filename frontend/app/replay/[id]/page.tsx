@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { type Annotation, ApiError, apiUrl, authToken, games, type GameSummary, type ReplayFrame } from "@/lib/api";
 import { actionLabel, describeAction } from "@/lib/actions";
 import { localName, taiName, useT } from "@/lib/i18n";
+import { MissingState } from "@/components/Game/MissingState";
 import { windName } from "@/lib/tiles";
 
 const TableCanvas = dynamic(() => import("@/components/Board/TableCanvas").then((m) => m.TableCanvas), { ssr: false });
@@ -70,7 +71,9 @@ export default function ReplayPage() {
     return { view, names };
   }, [frame, seat, showAll, names]);
 
-  if (error) return <main className="p-10">{t(error)} <Link href="/" className="underline">{t("回大廳")}</Link></main>;
+  if (error) {
+    return <MissingState title={t(error)} message={t("錄影可能已經過期，或連結打錯了。")} linkLabel={t("回大廳")} />;
+  }
   if (!frames || !frame || !fixed) {
     return <main className="flex h-dvh items-center justify-center text-mist">{t("載入錄影…")}</main>;
   }

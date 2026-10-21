@@ -119,6 +119,7 @@ test("missing pages say what is missing and lead back", async ({ page }) => {
     ["/agents/does-not-exist", "找不到這個代理程式。"],
     ["/replay/does-not-exist", "找不到這段錄影。"],
     ["/tutor/lesson/does-not-exist", "找不到這堂課。"],
+    ["/room/does-not-exist", "找不到這個房間。"],
   ];
   for (const [path, text] of cases) {
     await page.goto(path);
@@ -128,6 +129,36 @@ test("missing pages say what is missing and lead back", async ({ page }) => {
   await page.getByRole("link", { name: "回大廳" }).click();
   await expect(page.getByRole("heading", { name: "快速配對" })).toBeVisible();
   expect(annotationCalls).toEqual([]);  // notes are only fetched for replays that exist
+});
+
+test("an invite link seats a friend while waiting and explains once the game started", async ({ page, browser }) => {
+  await page.goto("/");
+  await page.getByLabel("座位 2").selectOption("open");
+  await page.getByRole("button", { name: "開桌" }).click();
+  await page.waitForURL(/\/room\//);
+  const invite = page.url();
+  const code = (await page.locator(".tabular.text-gold").first().innerText()).trim();
+
+  const friend = await (await browser.newContext()).newPage();
+  await friend.goto(invite);
+  await expect(friend.getByText(code)).toBeVisible();
+  await friend.getByRole("button", { name: "入座" }).click();
+  await expect(friend.getByRole("heading", { name: "等待開局" })).toBeVisible();
+
+  await page.getByRole("button", { name: "開始", exact: true }).click();
+  await expect(page.getByRole("tab", { name: "牌局紀錄" })).toBeVisible({ timeout: 30_000 });
+  const late = await (await browser.newContext()).newPage();
+  await late.goto(invite);
+  await expect(late.getByRole("heading", { name: "牌局已經開始了。" })).toBeVisible();
+});
+
+test("an invite to a table with no open seat says it is full", async ({ page, browser }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "開桌" }).click();  // every other seat is an AI by default
+  await page.waitForURL(/\/room\//);
+  const friend = await (await browser.newContext()).newPage();
+  await friend.goto(page.url());
+  await expect(friend.getByRole("heading", { name: "這桌已經坐滿了。" })).toBeVisible();
 });
 
 test("no sound starts before the first tap", async ({ page }) => {
@@ -198,6 +229,15 @@ test.describe("phone screen", () => {
     await expect(page.locator("canvas")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("region", { name: "你的手牌" })).toBeAttached();
     expect(await overflow()).toBeLessThanOrEqual(1);
+  });
+
+  test("the leaderboard podium fits in English", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("maijong.locale", "en"));
+    await page.goto("/leaderboard");
+    const podium = page.getByRole("region", { name: "Top three" }).or(page.locator("section[aria-label='Top three']"));
+    await expect(podium.first()).toBeVisible();
+    const box = await podium.first().evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+    expect(box.scroll).toBeLessThanOrEqual(box.client + 1);
   });
 
   test("account, sound and language fold into the phone menu", async ({ page }) => {

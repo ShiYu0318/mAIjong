@@ -86,9 +86,9 @@ export default function LeaderboardPage() {
       {error && <p role="alert" className="mt-4 font-bold text-zhong">{error}</p>}
 
       {rows.length >= 1 && (
-        <section className="mt-8 flex items-end justify-center gap-4" aria-label={t("前三名")}>
+        <section className="mt-8 flex items-end justify-center gap-2 sm:gap-4" aria-label={t("前三名")}>
           {rows.slice(0, 3).map((r, i) => (
-            <div key={r.id} className={`flex w-40 animate-rise flex-col items-center ${PODIUM[i].order}`}
+            <div key={r.id} className={`flex w-28 min-w-0 animate-rise flex-col items-center sm:w-40 ${PODIUM[i].order}`}
               style={{ animationDelay: `${i * 120}ms` }}>
               <Medal place={i + 1} size={44} />
               <Avatar name={r.name} size={i === 0 ? 64 : 52} />

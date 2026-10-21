@@ -12,8 +12,11 @@ import { SidePanel } from "@/components/HUD/SidePanel";
 import { HandList, TableAnnouncer, useTableKeys } from "@/components/HUD/TableAccess";
 import { TableFelt, TableHud, useTableLayout } from "@/components/Board/TableOverlay";
 import { SoundToggle } from "@/components/Game/SoundToggle";
+import { GameButton } from "@/components/Game/GameButton";
 import { WaitingRoom } from "@/components/HUD/WaitingRoom";
 import { ApiError, loadTicket, rooms, saveTicket } from "@/lib/api";
+import { MissingState } from "@/components/Game/MissingState";
+import type { RoomInfo } from "@/lib/protocol";
 import { LocaleToggle } from "@/components/I18n/LocaleToggle";
 import { localName, translate, useT } from "@/lib/i18n";
 import { windName } from "@/lib/tiles";
@@ -35,6 +38,8 @@ export default function RoomPage() {
   const [ticket, setTicket] = useState<{ seat: number; token: string } | null | undefined>(undefined);
   const [name, setName] = useState("");
   const [joinError, setJoinError] = useState<string | null>(null);
+  /** the table an invite link points at, looked up before offering a seat */
+  const [invite, setInvite] = useState<RoomInfo | "missing" | null>(null);
   const status = useGame((s) => s.status);
   const room = useGame((s) => s.room);
   const view = useGame((s) => s.view);
@@ -56,6 +61,11 @@ export default function RoomPage() {
   }, [id]);
 
   useEffect(() => {
+    if (ticket !== null) return;
+    rooms.get(id).then(setInvite).catch(() => setInvite("missing"));
+  }, [id, ticket]);
+
+  useEffect(() => {
     if (!ticket) return;
     useGame.getState().reset();
     const sock = new GameSocket(id, ticket.token);
@@ -66,25 +76,41 @@ export default function RoomPage() {
   if (ticket === undefined) return null;
 
   if (ticket === null) {
+    if (invite === null) return null;
+    if (invite === "missing") {
+      return <MissingState title={t("找不到這個房間。")} message={t("這一桌可能已經結束，或連結打錯了。")} linkLabel={t("回大廳")} />;
+    }
+    if (invite.status !== "WAITING") {
+      return <MissingState title={t("牌局已經開始了。")} message={t("這一桌已經開打，無法再入座。")} linkLabel={t("回大廳")} />;
+    }
+    if (!invite.seats.some((x) => x === null)) {
+      return <MissingState title={t("這桌已經坐滿了。")} message={t("請朋友開一桌留空位給你，或回大廳快速配對。")} linkLabel={t("回大廳")} />;
+    }
     return (
-      <main className="mx-auto max-w-md px-5 py-20">
-        <h1 className="font-display text-4xl">{t("加入這一桌")}</h1>
-        <form className="mt-6 flex gap-2" onSubmit={async (e) => {
-          e.preventDefault();
-          try {
-            const j = await rooms.join(id, name || undefined);
-            saveTicket(id, j);
-            setTicket({ seat: j.seat, token: j.ws_token });
-          } catch (err) {
-            setJoinError(err instanceof ApiError ? err.message : t("無法加入"));
-          }
-        }}>
-          <input value={name} onChange={(e) => setName(e.target.value.slice(0, 20))} placeholder={t("暱稱")}
-            aria-label={t("暱稱")} className="flex-1 rounded-md border border-felt-line bg-felt-deep px-3 py-2" />
-          <button className="rounded-md bg-ivory px-4 py-2 text-ink">{t("入座")}</button>
-        </form>
-        {joinError && <p role="alert" className="mt-3 text-zhong">{joinError}</p>}
-        <Link href="/" className="mt-8 inline-block text-mist underline">{t("回大廳")}</Link>
+      <main className="mx-auto max-w-md px-5 py-16">
+        <section className="panel animate-pop-in p-6 sm:p-8">
+          <h1 className="font-display text-4xl font-black">{t("加入這一桌")}</h1>
+          <p className="mt-2 text-mist">
+            {t("房間碼")}{" "}
+            <span className="tabular font-display text-xl font-black tracking-[0.18em] text-gold">{invite.code}</span>
+          </p>
+          <form className="mt-6 flex gap-2" onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              const j = await rooms.join(id, name || undefined);
+              saveTicket(id, j);
+              setTicket({ seat: j.seat, token: j.ws_token });
+            } catch (err) {
+              setJoinError(err instanceof ApiError ? err.message : t("無法加入"));
+            }
+          }}>
+            <input value={name} onChange={(e) => setName(e.target.value.slice(0, 20))} placeholder={t("暱稱")}
+              aria-label={t("暱稱")} className="min-w-0 flex-1 rounded-xl border border-white/10 bg-felt-deep px-3 py-2" />
+            <GameButton type="submit" className="shrink-0">{t("入座")}</GameButton>
+          </form>
+          {joinError && <p role="alert" className="mt-3 font-bold text-zhong">{joinError}</p>}
+        </section>
+        <Link href="/" className="mt-6 inline-block text-mist underline">{t("回大廳")}</Link>
       </main>
     );
   }
