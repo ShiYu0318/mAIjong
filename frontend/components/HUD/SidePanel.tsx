@@ -30,7 +30,7 @@ export function SidePanel({ names }: { names: string[] }) {
         {tab === "log"
           ? log.map((l, i) => <p key={i} className="py-0.5 text-mist">{l}</p>)
           : chat.map((c, i) => (
-            <p key={i} className="py-0.5"><span className="text-mist">{names[c.seat]}：</span>{c.message}</p>
+            <p key={i} className="py-0.5"><span className="text-mist">{t("{user}：", { user: names[c.seat] })}</span>{c.message}</p>
           ))}
         <div ref={endRef} />
       </div>

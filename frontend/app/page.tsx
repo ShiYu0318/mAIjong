@@ -363,6 +363,6 @@ function Missions() {
 
 function describeError(e: ApiError): string {
   if (e.status === 404) return translate("找不到這個房間，請確認房間碼。");
-  if (e.status === 409) return translate("無法加入：{msg}", { msg: e.message });
+  if (e.status === 409) return e.message;
   return translate("發生錯誤：{msg}", { msg: e.message });
 }

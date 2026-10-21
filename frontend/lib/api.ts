@@ -1,3 +1,4 @@
+import { translate } from "./i18n";
 import type { RoomInfo } from "./protocol";
 
 /** Backend base URL. Without NEXT_PUBLIC_API_URL the page talks to port 8000 on whatever host
@@ -31,9 +32,44 @@ export function setAuthToken(token: string | null) {
   }
 }
 
+/** Server error details a player can run into, worded for the interface. */
+const SERVER_ERRORS: Record<string, string> = {
+  "game already started": "牌局已經開始，無法加入。",
+  "already started": "牌局已經開始了。",
+  "seat taken": "這個座位已經有人了。",
+  "room full": "這桌已經坐滿了。",
+  "room not found": "找不到這個房間。",
+  "only the host can start": "只有開桌的人可以開始。",
+  "not enough coins": "金幣不足。",
+  "already owned": "已經擁有這個物品。",
+  "not owned": "還沒有這個物品。",
+  "no such item": "沒有這個物品。",
+  "bonus already claimed today": "今天的獎勵已經領過了。",
+  "already claimed": "已經領取過了。",
+  "mission not complete": "任務還沒完成。",
+  "no such mission today": "今天沒有這個任務。",
+  "already a registered account": "這已經是正式帳號了。",
+  "username or email already taken": "這個名稱或信箱已經註冊過。",
+  "wrong email or password": "信箱或密碼不正確。",
+  "not authenticated": "請先登入。",
+  "invalid token": "登入已過期，請重新整理頁面。",
+  "note is empty": "筆記不能是空的。",
+  "game not found": "找不到這場牌局。",
+  "agent not found": "找不到這個代理程式。",
+  "not your agent": "這不是你的代理程式。",
+  "not enough eligible agents": "目前沒有足夠的代理程式可以比賽。",
+  "not a zip file": "上傳的檔案不是 zip。",
+  "submission needs agent.py and manifest.json": "提交包需要 agent.py 和 manifest.json。",
+  "manifest.json is not valid JSON": "manifest.json 不是正確的 JSON。",
+  "manifest needs agent_class and name": "manifest.json 需要 agent_class 與 name 欄位。",
+  "submission larger than 200 MB": "提交包超過 200 MB。",
+  "try again": "請再試一次。",
+};
+
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
+  /** `detail` is the server's own text; `message` is it in the interface language. */
+  constructor(public status: number, public detail: string) {
+    super(translate(SERVER_ERRORS[detail] ?? detail));
   }
 }
 

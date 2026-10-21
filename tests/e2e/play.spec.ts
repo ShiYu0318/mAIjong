@@ -81,6 +81,21 @@ test("a double tap on the daily bonus claims it once", async ({ page }) => {
   expect(codes).toEqual([200]);
 });
 
+test("joining a table that already started explains why, in the interface language", async ({ page, browser }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "開桌" }).click();
+  await page.waitForURL(/\/room\//);
+  const code = (await page.locator(".tabular.text-gold").first().innerText()).trim();
+  await page.getByRole("button", { name: "開始", exact: true }).click();
+  await expect(page.getByRole("tab", { name: "牌局紀錄" })).toBeVisible({ timeout: 30_000 });
+
+  const late = await (await browser.newContext()).newPage();
+  await late.goto("/");
+  await late.getByLabel("六碼房間碼").fill(code);
+  await late.getByRole("button", { name: "加入", exact: true }).click();
+  await expect(late.getByText("牌局已經開始，無法加入。")).toBeVisible();
+});
+
 test("every page reads in English once switched", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("maijong.locale", "en"));
   const pages = ["/", "/agents", "/lab", "/offline", "/practice", "/tutor", "/tutor/analyze", "/tutor/quiz",
