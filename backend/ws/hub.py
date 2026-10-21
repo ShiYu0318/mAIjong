@@ -568,6 +568,8 @@ class Room:
                                         actions)
             except Exception:  # persistence must not break play
                 log.exception("failed to save hand %s", g.game_id)
+            else:  # the result screen links to the replay only once it can be opened
+                await self._broadcast("HAND_SAVED", {"game_id": g.game_id})
         self.match = finish_hand(m, g)
         if self.scenario is not None:
             self.match.finished = True  # practice scenarios are a single hand

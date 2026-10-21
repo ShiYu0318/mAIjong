@@ -288,3 +288,26 @@ def test_players_already_waiting_see_a_newcomer(client):
             assert first["type"] == "ROOM_STATE", first["type"]
             seats = first["payload"]["seats"]
             assert seats[b["seat"]]["name"] == "B"
+
+
+def test_hand_saved_is_announced_once_the_replay_can_be_opened(client):
+    room = create(client, [None, 3, 3, 3])
+    j = client.post(f"/api/v1/rooms/{room['room_id']}/join", json={}).json()
+    seen: list[str] = []
+    with client.websocket_connect(f"/ws/game/{room['room_id']}?token={j['ws_token']}") as ws:
+        client.post(f"/api/v1/rooms/{room['room_id']}/start")
+        while True:
+            msg = ws.receive_json()
+            seen.append(msg["type"])
+            if msg["type"] == "HAND_SAVED":
+                game_id = msg["payload"]["game_id"]
+                # the link the result screen shows must open right away
+                assert client.get(f"/api/v1/games/{game_id}/frames").status_code == 200
+                break
+            assert msg["type"] != "GAME_END", "the hand ended without HAND_SAVED"
+            if msg["type"] == "ACTION_REQUEST" and msg["payload"]["player"] == j["seat"]:
+                legal = msg["payload"]["legal_actions"]
+                pick = next((a for a in legal if a["action_type"] == "PASS"), legal[0])
+                ws.send_json({"type": "ACTION", "payload": pick})
+    end = max(seen.index(k) for k in ("WIN_DECLARED", "ROUND_DRAW") if k in seen)
+    assert seen.index("HAND_SAVED") > end

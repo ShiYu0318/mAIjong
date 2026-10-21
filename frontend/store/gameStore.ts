@@ -78,6 +78,8 @@ interface GameState {
   gameEnd: GameEnd | null;
   hint: Hint | null;
   coach: CoachNoteData | null;
+  /** the last hand the server has finished saving, so its replay link opens */
+  savedGameId: string | null;
   error: string | null;
   sender: ((msg: object) => void) | null;
   setStatus: (s: Status) => void;
@@ -148,6 +150,7 @@ const initial = {
   gameEnd: null,
   hint: null,
   coach: null,
+  savedGameId: null,
   error: null,
   sender: null,
 };
@@ -178,6 +181,9 @@ export const useGame = create<GameState>((set, get) => ({
     switch (msg.type) {
       case "JOINED":
         set({ seat: p.seat as number, room: p.room as RoomInfo, error: null });
+        break;
+      case "HAND_SAVED":
+        set({ savedGameId: String(p.game_id) });
         break;
       case "ROOM_STATE":
         set({ room: p as unknown as RoomInfo });

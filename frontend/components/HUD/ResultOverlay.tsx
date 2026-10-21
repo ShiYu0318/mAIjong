@@ -230,6 +230,7 @@ export function ResultOverlay({ names }: { names: string[] }) {
   const gameEnd = useGame((s) => s.gameEnd);
   const dismiss = useGame((s) => s.dismissResult);
   const gameId = useGame((s) => s.view?.game_id);
+  const replayReady = useGame((s) => s.savedGameId !== null && s.savedGameId === s.view?.game_id);
   const mySeat = useGame((s) => s.seat);
   const effect = useAccount((s) => s.profile?.equipped.win_effect) ?? "gold";
   const t = useT();
@@ -369,7 +370,7 @@ export function ResultOverlay({ names }: { names: string[] }) {
         ) : (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-mist">
             <NextHandBar />
-            {gameId && (
+            {gameId && replayReady && (
               <a href={`/replay/${gameId}`} target="_blank" rel="noreferrer" className="text-cyan underline">
                 {t("看這手錄影")}
               </a>
