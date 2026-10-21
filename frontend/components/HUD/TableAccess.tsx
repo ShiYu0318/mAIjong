@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { translate, useT } from "@/lib/i18n";
+import { localName, translate, useT } from "@/lib/i18n";
 import type { Action, GameView } from "@/lib/protocol";
 import { tileName } from "@/lib/tiles";
 import { useGame } from "@/store/gameStore";
@@ -121,7 +121,7 @@ export function TableAnnouncer() {
 
   const assertive = win
     ? t(win.self_draw ? "{who} 自摸，共 {n} 台" : "{who} 胡牌，共 {n} 台", {
-      who: seats?.[win.winner]?.name ?? `#${win.winner + 1}`,
+      who: localName(seats?.[win.winner]?.name ?? `#${win.winner + 1}`),
       n: (win.tai_breakdown ?? []).reduce((n, x) => n + x.tai, 0),
     })
     : drawn ? t("流局") : "";

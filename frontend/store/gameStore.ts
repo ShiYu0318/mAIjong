@@ -34,6 +34,9 @@ export interface CoachNoteData {
   tile: number;
   text: string;
   candidates: HintCandidate[];
+  who?: string;
+  human?: boolean;
+  chosen?: HintCandidate | null;
 }
 
 /** A call / event shown as a stamp on the table (chi, pon, kong, ready, flower, win). */

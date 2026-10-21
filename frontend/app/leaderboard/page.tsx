@@ -9,14 +9,14 @@ import { PageShell, PillTabs } from "@/components/Game/PageShell";
 import { Panel } from "@/components/Game/Panel";
 import { RankBadge } from "@/components/Game/RankBadge";
 import { type AiVsHumans, ApiError, type BoardRow, competition, saveTicket, type SeasonInfo } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { dateLocale, localName, useT } from "@/lib/i18n";
 import { sfx } from "@/lib/sfx";
 import { useAccount } from "@/store/accountStore";
 import { GameIcon } from "@/components/Game/GameIcon";
 import { Medal } from "@/components/Game/Medal";
 import { Swords, Trophy } from "lucide-react";
 
-const fmtDate = (s: string) => new Date(s).toLocaleDateString("zh-TW");
+const fmtDate = (s: string) => new Date(s).toLocaleDateString(dateLocale());
 type Kind = "agent" | "human";
 const PODIUM = [
   { order: "order-2", height: "h-36", tone: "from-[#ffe27a] to-[#d39a12]" },
@@ -47,12 +47,13 @@ export default function LeaderboardPage() {
   }, [season, kind, t]);
 
   const nameOf = (r: BoardRow) => kind === "agent"
-    ? <Link href={`/agents/${r.id}`} className="hover:underline">{r.name}{r.version && r.version > 1 ? ` v${r.version}` : ""}</Link>
-    : r.name;
+    ? <Link href={`/agents/${r.id}`} className="hover:underline">{localName(r.name)}{r.version && r.version > 1 ? ` v${r.version}` : ""}</Link>
+    : localName(r.name);
 
   return (
     <PageShell icon={<GameIcon icon={Trophy} tone="gold" size={60} />} title={t("排行榜")}
-      subtitle={current ? `${current.status === "ACTIVE" ? t("本賽季") : t("已結束賽季")}：${fmtDate(current.starts_at)} – ${fmtDate(current.ends_at)}` : undefined}
+      subtitle={current ? t("{season}：{from} – {to}", { season: current.status === "ACTIVE" ? t("本賽季") : t("已結束賽季"),
+        from: fmtDate(current.starts_at), to: fmtDate(current.ends_at) }) : undefined}
       actions={kind === "human" && (
         <GameButton variant="danger" size="lg" disabled={!user || busy} onClick={async () => {
           setBusy(true);
@@ -125,7 +126,7 @@ export default function LeaderboardPage() {
                     {kind === "human" && <RankBadge rating={r.elo} size={18} showName={false} />}
                   </span>
                 </td>
-                <td className="text-mist">{r.author}</td>
+                <td className="text-mist">{r.author === "官方" ? t("官方") : r.author}</td>
                 <td className="font-black">{r.elo.toFixed(0)}</td>
                 <td>{r.games}</td>
                 <td>{(r.first_rate * 100).toFixed(1)}%</td>

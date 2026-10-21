@@ -6,6 +6,7 @@ import { LineChart } from "@/components/Lab/LineChart";
 import { agentLabel, StatsTable, toCsv } from "@/components/Lab/StatsTable";
 import { useJob } from "@/components/Lab/useJob";
 import { ApiError, lab, type LabJob, type LabRun, type MetricPoint } from "@/lib/api";
+import { dateLocale, localName, taiName, useLocale, useT } from "@/lib/i18n";
 
 const field = "rounded-md border border-felt-line bg-felt-deep px-2 py-1.5";
 const primary = "btn-game px-5 py-2.5 btn-primary disabled:opacity-50";
@@ -13,6 +14,7 @@ const primary = "btn-game px-5 py-2.5 btn-primary disabled:opacity-50";
 function AgentSelect({ value, onChange, agents, label }: {
   value: string; onChange: (v: string) => void; agents: string[]; label: string;
 }) {
+  useT();  // agentLabel reads the language; re-render when it changes
   return (
     <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={field}>
       {agents.map((a) => <option key={a} value={a}>{agentLabel(a)}</option>)}
@@ -29,6 +31,7 @@ function useAgents(): string[] {
 }
 
 function Progress({ job }: { job: LabJob | null }) {
+  const t = useT();
   if (!job) return null;
   const p = job.metrics.progress ?? 0;
   return (
@@ -38,13 +41,15 @@ function Progress({ job }: { job: LabJob | null }) {
         <div className="h-full bg-ivory transition-[width]" style={{ width: `${p * 100}%` }} />
       </div>
       <p className="mt-1 text-sm text-mist">
-        {job.status === "FAILED" ? `失敗：${job.metrics.error}` : job.status === "DONE" ? "完成" : `進行中 ${(p * 100).toFixed(0)}%`}
+        {job.status === "FAILED" ? t("失敗：{msg}", { msg: String(job.metrics.error ?? "") })
+          : job.status === "DONE" ? t("完成") : t("進行中 {p}%", { p: (p * 100).toFixed(0) })}
       </p>
     </div>
   );
 }
 
 export function SimulatorPanel() {
+  const t = useT();
   const agents = useAgents();
   const [seats, setSeats] = useState(["rule", "random", "random", "random"]);
   const [n, setN] = useState(200);
@@ -55,35 +60,36 @@ export function SimulatorPanel() {
   const rows = job?.metrics.summary?.seats ?? [];
   return (
     <section>
-      <p className="text-mist">設定四個座位的代理程式，跑 N 手牌並統計各座位表現（座位每手輪換）。</p>
+      <p className="text-mist">{t("設定四個座位的代理程式，跑 N 手牌並統計各座位表現（座位每手輪換）。")}</p>
       <div className="mt-4 flex flex-wrap items-end gap-3">
         {seats.map((s, i) => (
-          <AgentSelect key={i} label={`座位 ${i + 1}`} value={s} agents={agents}
+          <AgentSelect key={i} label={t("座位 {n}", { n: i + 1 })} value={s} agents={agents}
             onChange={(v) => setSeats(seats.map((x, j) => (j === i ? v : x)))} />
         ))}
-        <label className="flex flex-col text-sm text-mist">手數
+        <label className="flex flex-col text-sm text-mist">{t("手數")}
           <input type="number" min={1} max={100000} value={n} onChange={(e) => setN(Number(e.target.value))} className={`${field} w-28 text-ivory`} />
         </label>
-        <label className="flex flex-col text-sm text-mist">隨機種子
+        <label className="flex flex-col text-sm text-mist">{t("隨機種子")}
           <input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value))} className={`${field} w-24 text-ivory`} />
         </label>
         <button className={primary} onClick={async () => {
           setError(null);
           try { setJobId((await lab.simulate(seats, n, seed)).job_id); } catch (e) {
-            setError(e instanceof ApiError ? e.message : "連不上伺服器");
+            setError(e instanceof ApiError ? e.message : t("連不上伺服器"));
           }
-        }}>開始模擬</button>
+        }}>{t("開始模擬")}</button>
       </div>
       {error && <p role="alert" className="mt-3 text-zhong">{error}</p>}
       <Progress job={job} />
       {rows.length > 0 && (
         <div className="mt-6">
           <p className="mb-2 text-sm text-mist">
-            共 {job?.metrics.summary?.hands} 手，流局率 {((job?.metrics.summary?.draw_rate ?? 0) * 100).toFixed(1)}%
+            {t("共 {n} 手，流局率 {r}%", { n: job?.metrics.summary?.hands ?? 0,
+              r: ((job?.metrics.summary?.draw_rate ?? 0) * 100).toFixed(1) })}
           </p>
           <StatsTable rows={rows} />
           <a className="mt-3 inline-block text-sm underline" download="simulation.csv"
-            href={`data:text/csv;charset=utf-8,${encodeURIComponent(toCsv(rows))}`}>匯出 CSV</a>
+            href={`data:text/csv;charset=utf-8,${encodeURIComponent(toCsv(rows))}`}>{t("匯出 CSV")}</a>
         </div>
       )}
     </section>
@@ -91,26 +97,34 @@ export function SimulatorPanel() {
 }
 
 export function ComparePanel() {
+  const t = useT();
   const agents = useAgents();
+  const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState(["rule", "random"]);
   const [n, setN] = useState(400);
   const [jobId, setJobId] = useState<string | null>(null);
   const job = useJob(jobId);
   return (
     <section>
-      <p className="text-mist">選 2 到 4 個代理程式輪流入座比較；p 值檢驗胡牌占比是否偏離座位比例。</p>
+      <p className="text-mist">{t("選 2 到 4 個代理程式輪流入座比較；p 值檢驗胡牌占比是否偏離座位比例。")}</p>
       <div className="mt-4 flex flex-wrap items-end gap-3">
         {picked.map((s, i) => (
-          <AgentSelect key={i} label={`代理程式 ${i + 1}`} value={s} agents={agents}
+          <AgentSelect key={i} label={t("代理程式 {n}", { n: i + 1 })} value={s} agents={agents}
             onChange={(v) => setPicked(picked.map((x, j) => (j === i ? v : x)))} />
         ))}
-        {picked.length < 4 && <button onClick={() => setPicked([...picked, "rule:1.5"])} className="text-sm underline">加一個</button>}
-        {picked.length > 2 && <button onClick={() => setPicked(picked.slice(0, -1))} className="text-sm underline">移除一個</button>}
-        <label className="flex flex-col text-sm text-mist">手數
+        {picked.length < 4 && <button onClick={() => setPicked([...picked, "rule:1.5"])} className="text-sm underline">{t("加一個")}</button>}
+        {picked.length > 2 && <button onClick={() => setPicked(picked.slice(0, -1))} className="text-sm underline">{t("移除一個")}</button>}
+        <label className="flex flex-col text-sm text-mist">{t("手數")}
           <input type="number" min={4} value={n} onChange={(e) => setN(Number(e.target.value))} className={`${field} w-28 text-ivory`} />
         </label>
-        <button className={primary} onClick={async () => setJobId((await lab.compare(picked, n)).job_id)}>開始比較</button>
+        <button className={primary} onClick={async () => {
+          setError(null);
+          try { setJobId((await lab.compare(picked, n)).job_id); } catch (e) {
+            setError(e instanceof ApiError ? e.message : t("連不上伺服器"));
+          }
+        }}>{t("開始比較")}</button>
       </div>
+      {error && <p role="alert" className="mt-3 text-zhong">{error}</p>}
       <Progress job={job} />
       {job?.metrics.agents && <div className="mt-6"><StatsTable rows={job.metrics.agents} showP /></div>}
     </section>
@@ -177,6 +191,8 @@ function chartsFor(kind: string, series: MetricPoint[]): ChartSpec[] {
 type Selection = { type: "job"; id: string } | { type: "run"; id: string };
 
 export function TrainingPanel() {
+  const t = useT();
+  const locale = useLocale((s) => s.locale);
   const [jobs, setJobs] = useState<LabJob[]>([]);
   const [runs, setRuns] = useState<LabRun[]>([]);
   const [selected, setSelected] = useState<Selection | null>(null);
@@ -248,7 +264,7 @@ export function TrainingPanel() {
       refresh();
       setSelected({ type: "job", id: job_id });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "無法開始訓練");
+      setError(e instanceof ApiError ? e.message : t("無法開始訓練"));
     }
   };
 
@@ -257,61 +273,61 @@ export function TrainingPanel() {
   return (
     <section className="grid gap-8 lg:grid-cols-[300px_1fr]">
       <div>
-        <h3 className="font-display text-xl font-black">開始訓練</h3>
+        <h3 className="font-display text-xl font-black">{t("開始訓練")}</h3>
         <div className="mt-3 grid gap-3 text-sm">
-          <select aria-label="訓練方法" value={kind} onChange={(e) => {
+          <select aria-label={t("訓練方法")} value={kind} onChange={(e) => {
             setKind(e.target.value);
             setAmount(e.target.value === "dqn" ? 50000 : e.target.value === "sb3" ? 200000 : 50);
           }} className={field}>
-            <option value="sb3">SB3 MaskablePPO 自我對弈（多行程）</option>
+            <option value="sb3">{t("SB3 MaskablePPO 自我對弈（多行程）")}</option>
             <option value="ppo">PPO self-play</option>
             <option value="dqn">Dueling DQN</option>
             <option value="bc">Behavior Cloning (BC)</option>
           </select>
           {kind !== "bc" && (
-            <label className="flex flex-col text-mist">{kind === "ppo" ? "更新次數" : "環境步數"}
+            <label className="flex flex-col text-mist">{kind === "ppo" ? t("更新次數") : t("環境步數")}
               <input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className={`${field} text-ivory`} />
             </label>
           )}
           {(kind === "ppo" || kind === "sb3") && (
             <label className="flex flex-col text-mist">
-              {kind === "ppo" ? "初始權重（BC checkpoint 路徑，可留空）" : "接續訓練的模型（.zip，可留空）"}
+              {kind === "ppo" ? t("初始權重（BC checkpoint 路徑，可留空）") : t("接續訓練的模型（.zip，可留空）")}
               <input value={init} onChange={(e) => setInit(e.target.value)}
                 placeholder={kind === "ppo" ? "checkpoints/bc_v2.pt" : "checkpoints/sb3_best.zip"} className={`${field} text-ivory`} />
             </label>
           )}
           {(kind === "bc" || kind === "sb3") && (
-            <label className="flex flex-col text-mist">{kind === "bc" ? "對局紀錄檔" : "模仿學習暖身資料（可留空）"}
+            <label className="flex flex-col text-mist">{kind === "bc" ? t("對局紀錄檔") : t("模仿學習暖身資料（可留空）")}
               <input value={data} onChange={(e) => setData(e.target.value)} placeholder="data/bc/rule_3k.jsonl.gz" className={`${field} text-ivory`} />
             </label>
           )}
-          <button onClick={start} className={primary}>開始</button>
+          <button onClick={start} className={primary}>{t("開始")}</button>
           {error && <p role="alert" className="text-zhong">{error}</p>}
         </div>
-        <h3 className="mt-8 font-display text-xl font-black">訓練任務</h3>
+        <h3 className="mt-8 font-display text-xl font-black">{t("訓練任務")}</h3>
         <ul className="mt-2 divide-y divide-felt-line text-sm">
-          {jobs.length === 0 && <li className="py-2 text-mist">還沒有從這裡啟動的訓練。</li>}
+          {jobs.length === 0 && <li className="py-2 text-mist">{t("還沒有從這裡啟動的訓練。")}</li>}
           {jobs.map((j) => (
             <li key={j.id}>
               <button onClick={() => setSelected({ type: "job", id: j.id })}
                 className={`flex w-full justify-between py-2 text-left ${isSel("job", j.id) ? "text-ivory" : "text-mist"}`}>
-                <span>{j.kind.replace("TRAIN_", "")}・{new Date(j.created_at).toLocaleString("zh-TW")}</span>
+                <span>{j.kind.replace("TRAIN_", "")}・{new Date(j.created_at).toLocaleString(dateLocale(locale))}</span>
                 <span>{j.status}</span>
               </button>
             </li>
           ))}
         </ul>
-        <h3 className="mt-8 font-display text-xl font-black">所有訓練紀錄</h3>
-        <p className="mt-1 text-xs text-mist">runs/ 資料夾裡的每一次訓練，包含用指令列啟動的。</p>
+        <h3 className="mt-8 font-display text-xl font-black">{t("所有訓練紀錄")}</h3>
+        <p className="mt-1 text-xs text-mist">{t("runs/ 資料夾裡的每一次訓練，包含用指令列啟動的。")}</p>
         <ul className="mt-2 divide-y divide-felt-line text-sm">
-          {runs.length === 0 && <li className="py-2 text-mist">還沒有訓練紀錄。</li>}
+          {runs.length === 0 && <li className="py-2 text-mist">{t("還沒有訓練紀錄。")}</li>}
           {runs.map((r) => (
             <li key={r.name}>
               <button onClick={() => setSelected({ type: "run", id: r.name })}
                 className={`flex w-full justify-between gap-2 py-2 text-left ${isSel("run", r.name) ? "text-ivory" : "text-mist"}`}>
                 <span className="truncate">{r.name}</span>
                 <span className="tabular shrink-0">
-                  {typeof r.eval_win_rate === "number" ? pct(r.eval_win_rate) : `${r.points} 筆`}
+                  {typeof r.eval_win_rate === "number" ? pct(r.eval_win_rate) : (r.points === 1 ? t("1 筆") : t("{n} 筆", { n: r.points }))}
                 </span>
               </button>
             </li>
@@ -319,16 +335,16 @@ export function TrainingPanel() {
         </ul>
       </div>
       <div>
-        {!selected ? <p className="text-mist">選一個訓練任務或紀錄查看曲線。</p> : (
+        {!selected ? <p className="text-mist">{t("選一個訓練任務或紀錄查看曲線。")}</p> : (
           <>
             <div className="flex flex-wrap items-center gap-3">
               <h3 className="font-display text-xl font-black">
-                {selected.type === "run" ? selected.id : `${detail?.kind.replace("TRAIN_", "") ?? ""} 訓練`}
+                {selected.type === "run" ? selected.id : t("{kind} 訓練", { kind: detail?.kind.replace("TRAIN_", "") ?? "" })}
               </h3>
               {detail && <span className="text-sm text-mist">{detail.status}</span>}
               {detail?.status === "RUNNING" && (
                 <button onClick={async () => { setDetail(await lab.stop(detail.id)); refresh(); }}
-                  className="rounded border border-ivory/30 px-3 py-1 text-sm">停止</button>
+                  className="rounded border border-ivory/30 px-3 py-1 text-sm">{t("停止")}</button>
               )}
               {detail && (detail.status === "STOPPED" || detail.status === "FAILED") && (
                 <button onClick={async () => {
@@ -336,12 +352,12 @@ export function TrainingPanel() {
                   setSelected(null);
                   setTimeout(() => setSelected({ type: "job", id: detail.id }), 50);
                   refresh();
-                }} className="rounded border border-ivory/30 px-3 py-1 text-sm">從 checkpoint 繼續</button>
+                }} className="rounded border border-ivory/30 px-3 py-1 text-sm">{t("從 checkpoint 繼續")}</button>
               )}
             </div>
-            {charts.length === 0 && <p className="mt-4 text-mist">還沒有資料點，訓練開始後會自動更新。</p>}
+            {charts.length === 0 && <p className="mt-4 text-mist">{t("還沒有資料點，訓練開始後會自動更新。")}</p>}
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {charts.map((c) => <LineChart key={c.key} title={c.title} points={c.points} format={c.fmt} />)}
+              {charts.map((c) => <LineChart key={c.key} title={t(c.title)} points={c.points} format={c.fmt} />)}
             </div>
           </>
         )}
@@ -350,7 +366,14 @@ export function TrainingPanel() {
   );
 }
 
+const TAI_FILTERS = ["T24", "T25", "T29", "T30", "T21", "T06", "T13"];
+const TAI_ZH: Record<string, string> = {
+  T24: "清一色", T25: "湊一色", T29: "碰碰胡", T30: "平胡", T21: "大三元", T06: "門清自摸", T13: "八仙過海",
+};
+
 export function ReplayExplorer() {
+  const t = useT();
+  const locale = useLocale((s) => s.locale);
   const [agent, setAgent] = useState("");
   const [result, setResult] = useState("");
   const [minTai, setMinTai] = useState(0);
@@ -370,38 +393,43 @@ export function ReplayExplorer() {
   return (
     <section>
       <form className="flex flex-wrap items-end gap-3 text-sm" onSubmit={(e) => { e.preventDefault(); search(); }}>
-        <label className="flex flex-col text-mist">座位名稱包含
-          <input value={agent} onChange={(e) => setAgent(e.target.value)} placeholder="例如 高手" className={`${field} text-ivory`} />
+        <label className="flex flex-col text-mist">{t("座位名稱包含")}
+          <input value={agent} onChange={(e) => setAgent(e.target.value)} placeholder={t("例如 高手")} className={`${field} text-ivory`} />
         </label>
-        <label className="flex flex-col text-mist">結果
+        <label className="flex flex-col text-mist">{t("結果")}
           <select value={result} onChange={(e) => setResult(e.target.value)} className={`${field} text-ivory`}>
-            <option value="">全部</option><option value="HU">胡牌</option><option value="SELF_DRAW">自摸</option>
-            <option value="DEAL_IN">放槍</option><option value="DRAW">流局</option>
+            <option value="">{t("全部")}</option><option value="HU">{t("胡牌")}</option>
+            <option value="SELF_DRAW">{t("自摸")}</option>
+            <option value="DEAL_IN">{t("放槍")}</option><option value="DRAW">{t("流局")}</option>
           </select>
         </label>
-        <label className="flex flex-col text-mist">最少台數
+        <label className="flex flex-col text-mist">{t("最少台數")}
           <input type="number" min={0} value={minTai} onChange={(e) => setMinTai(Number(e.target.value))} className={`${field} w-20 text-ivory`} />
         </label>
-        <label className="flex flex-col text-mist">包含台型
+        <label className="flex flex-col text-mist">{t("包含台型")}
           <select value={taiId} onChange={(e) => setTaiId(e.target.value)} className={`${field} text-ivory`}>
-            <option value="">不限</option><option value="T24">清一色</option><option value="T25">湊一色</option>
-            <option value="T29">碰碰胡</option><option value="T30">平胡</option><option value="T21">大三元</option>
-            <option value="T06">門清自摸</option><option value="T13">八仙過海</option>
+            <option value="">{t("不限")}</option>
+            {TAI_FILTERS.map((id) => <option key={id} value={id}>{taiName(id, TAI_ZH[id], locale)}</option>)}
           </select>
         </label>
-        <button className={primary}>搜尋</button>
+        <button className={primary}>{t("搜尋")}</button>
       </form>
       <ul className="mt-6 divide-y divide-felt-line">
-        {rows.length === 0 && <li className="py-3 text-mist">沒有符合的對局。</li>}
+        {rows.length === 0 && <li className="py-3 text-mist">{t("沒有符合的對局。")}</li>}
         {rows.map((r) => {
-          const names = r.seats.map((s, i) => s?.name ?? `座位${i + 1}`);
+          const names = r.seats.map((s, i) => localName(s?.name ?? t("座位 {n}", { n: i + 1 }), locale));
           const tai = (r.result.tai_breakdown ?? []).reduce((a, b) => a + b.tai, 0);
           return (
             <li key={r.id} className="flex flex-wrap items-baseline gap-x-4 py-2 text-sm">
-              <Link href={`/replay/${r.id}`} className="underline">看錄影</Link>
-              <span>{r.result.kind === "DRAW" ? "流局" : `${names[r.result.winner!]} ${r.result.self_draw ? "自摸" : "胡牌"} ${tai} 台`}</span>
-              <span className="text-mist">{(r.result.tai_breakdown ?? []).map((t) => t.name).join("、")}</span>
-              <span className="ml-auto text-mist">{new Date(r.created_at).toLocaleString("zh-TW")}</span>
+              <Link href={`/replay/${r.id}`} className="underline">{t("看錄影")}</Link>
+              <span>
+                {r.result.kind === "DRAW" ? t("流局") : t(r.result.self_draw ? "{name} 自摸 {tai} 台" : "{name} 胡牌 {tai} 台",
+                  { name: names[r.result.winner!], tai })}
+              </span>
+              <span className="text-mist">
+                {(r.result.tai_breakdown ?? []).map((x) => taiName(x.id, x.name, locale)).join(t("、"))}
+              </span>
+              <span className="ml-auto text-mist">{new Date(r.created_at).toLocaleString(dateLocale(locale))}</span>
             </li>
           );
         })}

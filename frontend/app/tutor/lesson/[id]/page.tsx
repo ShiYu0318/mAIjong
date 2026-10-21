@@ -5,37 +5,48 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { TileImage } from "@/components/Hand/TileImage";
-import { LESSONS, lessonById } from "@/content/lessons";
+import { LESSONS, lessonById, localLesson } from "@/content/lessons";
+import { useLocale, useT } from "@/lib/i18n";
 import { markLessonDone } from "@/lib/progress";
 import { GameIcon } from "@/components/Game/GameIcon";
 import { BookOpen } from "lucide-react";
 
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
-  const lesson = lessonById(id);
+  const t = useT();
+  const locale = useLocale((s) => s.locale);
+  const found = lessonById(id);
   const [answers, setAnswers] = useState<Record<number, number>>({});
-  if (!lesson) return <main className="p-10">找不到這堂課。<Link href="/tutor" className="underline">回教練首頁</Link></main>;
+  if (!found) {
+    return (
+      <main className="p-10">
+        {t("找不到這堂課。")}<Link href="/tutor" className="underline">{t("回教練首頁")}</Link>
+      </main>
+    );
+  }
+  const lesson = localLesson(found, locale);
   const idx = LESSONS.findIndex((l) => l.id === id);
-  const next = LESSONS[idx + 1];
+  const next = LESSONS[idx + 1] && localLesson(LESSONS[idx + 1], locale);
   const answered = Object.keys(answers).length === lesson.quiz.length;
   const correct = lesson.quiz.filter((q, i) => answers[i] === q.answer).length;
 
   return (
-    <PageShell icon={<GameIcon icon={BookOpen} tone="pink" size={60} />} backHref="/tutor" backLabel="AI 教練" title={lesson.title} subtitle={`第 ${idx + 1} 課`}>
+    <PageShell icon={<GameIcon icon={BookOpen} tone="pink" size={60} />} backHref="/tutor" backLabel={t("AI 教練")} title={lesson.title}
+      subtitle={t("第 {n} 課", { n: idx + 1 })}>
       {lesson.sections.map((s) => (
         <section key={s.heading} className="mt-10">
           <h2 className="font-display text-2xl font-black">{s.heading}</h2>
           {s.body.map((p, i) => <p key={i} className="mt-3 leading-relaxed">{p}</p>)}
           {s.tiles && (
             <div className="mt-4 flex flex-wrap gap-[3px]">
-              {s.tiles.map((t, i) => <TileImage key={i} id={t} width={38} />)}
+              {s.tiles.map((x, i) => <TileImage key={i} id={x} width={38} />)}
             </div>
           )}
         </section>
       ))}
 
       <section className="mt-12 border-t border-felt-line pt-8">
-        <h2 className="font-display text-2xl font-black">課後小測驗</h2>
+        <h2 className="font-display text-2xl font-black">{t("課後小測驗")}</h2>
         {lesson.quiz.map((q, qi) => (
           <fieldset key={qi} className="mt-6">
             <legend className="font-medium">{q.question}</legend>
@@ -66,15 +77,18 @@ export default function LessonPage() {
         ))}
         {answered && (
           <div className="mt-8 flex items-center gap-4">
-            <p>{correct === lesson.quiz.length ? "全部答對，這堂課完成了。" : `答對 ${correct} / ${lesson.quiz.length} 題，再讀一次上面的說明試試看。`}</p>
+            <p>
+              {correct === lesson.quiz.length ? t("全部答對，這堂課完成了。")
+                : t("答對 {n} / {total} 題，再讀一次上面的說明試試看。", { n: correct, total: lesson.quiz.length })}
+            </p>
             {correct < lesson.quiz.length && (
-              <button onClick={() => setAnswers({})} className="rounded-md border border-ivory/30 px-3 py-1.5">重新作答</button>
+              <button onClick={() => setAnswers({})} className="rounded-md border border-ivory/30 px-3 py-1.5">{t("重新作答")}</button>
             )}
           </div>
         )}
         {next && (
           <Link href={`/tutor/lesson/${next.id}`} className="mt-8 inline-block rounded-lg bg-ivory px-5 py-2.5 text-ink">
-            下一課：{next.title}
+            {t("下一課：{title}", { title: next.title })}
           </Link>
         )}
       </section>

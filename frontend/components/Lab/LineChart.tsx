@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
+import { useT } from "@/lib/i18n";
 
 export interface Point {
   x: number;
@@ -19,7 +20,9 @@ const H = 140;
 const PAD = { l: 44, r: 14, t: 12, b: 22 };
 
 /** Single-series line chart with crosshair tooltip; one measure per chart (no dual axes). */
-export function LineChart({ title, points, format = (v) => v.toFixed(3), xLabel = "步數" }: Props) {
+export function LineChart({ title, points, format = (v) => v.toFixed(3), xLabel }: Props) {
+  const t = useT();
+  xLabel ??= t("步數");
   const [hover, setHover] = useState<number | null>(null);
   const ref = useRef<SVGSVGElement>(null);
   const id = useId();
@@ -27,7 +30,7 @@ export function LineChart({ title, points, format = (v) => v.toFixed(3), xLabel 
     return (
       <figure className="rounded-lg border border-felt-line p-3">
         <figcaption className="text-sm">{title}</figcaption>
-        <p className="py-8 text-center text-sm text-mist">尚無資料</p>
+        <p className="py-8 text-center text-sm text-mist">{t("尚無資料")}</p>
       </figure>
     );
   }
@@ -65,7 +68,7 @@ export function LineChart({ title, points, format = (v) => v.toFixed(3), xLabel 
       </figcaption>
       <svg ref={ref} viewBox={`0 0 ${W} ${H}`} className="mt-1 w-full touch-none" role="img"
         aria-labelledby={id} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
-        <title id={id}>{`${title}：最新值 ${format(last.y)}`}</title>
+        <title id={id}>{t("{title}：最新值 {v}", { title, v: format(last.y) })}</title>
         <line x1={PAD.l} x2={W - PAD.r} y1={H - PAD.b} y2={H - PAD.b} stroke="#24493f" />
         <line x1={PAD.l} x2={W - PAD.r} y1={PAD.t} y2={PAD.t} stroke="#24493f" strokeDasharray="2 4" />
         <text x={PAD.l - 6} y={PAD.t + 4} textAnchor="end" fontSize="10" fill="#a9bdb4">{format(y1)}</text>

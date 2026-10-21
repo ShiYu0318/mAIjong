@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ComparePanel, ReplayExplorer, SimulatorPanel, TrainingPanel } from "@/components/Lab/Panels";
 import { GameIcon } from "@/components/Game/GameIcon";
 import { FlaskConical } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 const TABS = [
   { id: "training", label: "訓練監控" },
@@ -14,14 +15,15 @@ const TABS = [
 ] as const;
 
 export default function LabPage() {
+  const t = useT();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("training");
   return (
-    <PageShell icon={<GameIcon icon={FlaskConical} tone="green" size={60} />} title="實驗室" wide>
+    <PageShell icon={<GameIcon icon={FlaskConical} tone="green" size={60} />} title={t("實驗室")} wide>
       <div role="tablist" className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
-            className={`rounded-full px-5 py-2 font-black transition ${tab === t.id ? "bg-ivory text-ink shadow-[0_4px_0_rgb(0_0_0/0.25)]" : "bg-black/25 text-mist hover:text-ivory"}`}>
-            {t.label}
+        {TABS.map((x) => (
+          <button key={x.id} role="tab" aria-selected={tab === x.id} onClick={() => setTab(x.id)}
+            className={`rounded-full px-5 py-2 font-black transition ${tab === x.id ? "bg-ivory text-ink shadow-[0_4px_0_rgb(0_0_0/0.25)]" : "bg-black/25 text-mist hover:text-ivory"}`}>
+            {t(x.label)}
           </button>
         ))}
       </div>

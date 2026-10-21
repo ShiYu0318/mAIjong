@@ -9,7 +9,7 @@ import { CoinIcon } from "@/components/Game/CoinCounter";
 import { Panel } from "@/components/Game/Panel";
 import { ProgressBar } from "@/components/Game/ProgressBar";
 import { RankBadge } from "@/components/Game/RankBadge";
-import { useT } from "@/lib/i18n";
+import { localName, useT } from "@/lib/i18n";
 import { useAccount } from "@/store/accountStore";
 import { GameIcon } from "@/components/Game/GameIcon";
 import { Lock, Trophy } from "lucide-react";
@@ -31,7 +31,7 @@ export default function ProfilePage() {
               frame={rankFor(profile.user.elo_human).tier.colors} />
             <div className="min-w-60 flex-1">
               <h1 className="flex items-center gap-3 font-display text-4xl font-black">
-                {profile.user.username}
+                {localName(profile.user.username)}
                 <LevelBadge level={profile.level} xp={profile.xp} xpNext={profile.xp_next} size={52} />
               </h1>
               <ProgressBar value={profile.xp} max={profile.xp_next} className="mt-2 max-w-md" label={t("經驗值")} />

@@ -15,7 +15,7 @@ import { SoundToggle } from "@/components/Game/SoundToggle";
 import { WaitingRoom } from "@/components/HUD/WaitingRoom";
 import { ApiError, loadTicket, rooms, saveTicket } from "@/lib/api";
 import { LocaleToggle } from "@/components/I18n/LocaleToggle";
-import { translate, useT } from "@/lib/i18n";
+import { localName, translate, useT } from "@/lib/i18n";
 import { windName } from "@/lib/tiles";
 import { GameSocket } from "@/lib/ws";
 import { useGame } from "@/store/gameStore";
@@ -82,7 +82,7 @@ export default function RoomPage() {
     );
   }
 
-  const names = (room?.seats ?? []).map((s, i) => s?.name ?? `座位${i + 1}`);
+  const names = (room?.seats ?? []).map((s, i) => (s ? localName(s.name) : t("座位 {n}", { n: i + 1 })));
 
   if (room?.status === "WAITING" || (!view && room)) {
     return room.status === "WAITING" ? <WaitingRoom room={room} seat={seat} /> : <Loading />;

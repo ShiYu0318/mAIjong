@@ -391,9 +391,11 @@ class Room:
             st = self.seats[seat]
             human = st is not None and not st.bot_controlled
             who = st.name if st is not None else ""
+            # the structured fields let the client word the note in its own language
             note = {"seat": seat, "tile": action.tile,
                     "text": describe_discard(coach, action.tile, who, human),
-                    "candidates": coach[:3]}
+                    "candidates": coach[:3], "who": who, "human": human,
+                    "chosen": next((c for c in coach if c["tile"] == action.tile), None)}
             for s in self.seats:
                 if s is not None and not s.is_bot:
                     await self._send_seat(s.index, "TUTOR_NOTE", note)

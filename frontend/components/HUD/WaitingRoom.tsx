@@ -5,7 +5,7 @@ import { PlayerBar } from "@/components/Account/PlayerBar";
 import { Avatar } from "@/components/Game/Avatar";
 import { GameButton } from "@/components/Game/GameButton";
 import { rooms } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { localName, useT } from "@/lib/i18n";
 import type { RoomInfo } from "@/lib/protocol";
 import { sfx } from "@/lib/sfx";
 
@@ -54,7 +54,7 @@ export function WaitingRoom({ room, seat }: { room: RoomInfo; seat: number | nul
               <span className="flex-1">
                 <span className="block text-sm text-mist">{t("座位 {n}", { n: i + 1 })}{seat === i ? t("（你）") : ""}</span>
                 <span className="block font-black">
-                  {s === null ? t("空位") : s.is_bot ? t("AI {level}", { level: t(LEVEL[s.bot_level ?? 3]) }) : s.name}
+                  {s === null ? t("空位") : s.is_bot ? t("AI {level}", { level: t(LEVEL[s.bot_level ?? 3]) }) : localName(s.name)}
                 </span>
               </span>
             </li>

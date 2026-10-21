@@ -17,9 +17,11 @@ type Props = {
   frame?: [string, string];
 };
 
+import { localName } from "@/lib/i18n";
+
 export function Avatar({ name, size = 48, progress, ringColor = "#ffcc3d", active, frame }: Props) {
   const [a, b] = PALETTE[hash(name) % PALETTE.length];
-  const initial = [...(name.trim() || "?")][0];
+  const initial = [...(localName(name).trim() || "?")][0];  // colour stays tied to the real name
   const stroke = 4;
   const r = size / 2 + stroke;
   const c = 2 * Math.PI * (r - stroke / 2);

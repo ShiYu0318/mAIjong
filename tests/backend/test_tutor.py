@@ -54,3 +54,6 @@ def test_guided_game_sends_coach_notes(client):
                 pick = next((a for a in legal if a["action_type"] == "PASS"), legal[0])
                 ws.send_json({"type": "ACTION", "payload": pick})
     assert len(notes) >= 2 and all(n["text"] for n in notes)
+    # enough structure for the client to word the note in English
+    assert all(n["chosen"]["tile"] == n["tile"] and n["who"] and isinstance(n["human"], bool)
+               for n in notes)

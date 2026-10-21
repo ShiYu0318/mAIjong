@@ -1,5 +1,7 @@
 /** Tutor lessons (SPEC 04.7 A). Rules follow the tai table used by the engine. */
 
+import { LESSONS_EN } from "./lessons.en";
+
 export interface LessonSection {
   heading: string;
   body: string[];
@@ -151,3 +153,16 @@ export const LESSONS: Lesson[] = [
 ];
 
 export const lessonById = (id: string) => LESSONS.find((l) => l.id === id);
+
+/** The lesson worded in the given language; tiles and answers never change. */
+export function localLesson(lesson: Lesson, locale: string): Lesson {
+  const en = locale === "en" ? LESSONS_EN[lesson.id] : undefined;
+  if (!en) return lesson;
+  return {
+    ...lesson,
+    title: en.title,
+    summary: en.summary,
+    sections: lesson.sections.map((s, i) => ({ ...s, ...en.sections[i] })),
+    quiz: lesson.quiz.map((q, i) => ({ ...q, ...en.quiz[i] })),
+  };
+}

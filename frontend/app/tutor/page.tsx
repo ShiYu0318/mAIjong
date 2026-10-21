@@ -7,9 +7,9 @@ import { GameButton } from "@/components/Game/GameButton";
 import { PageShell } from "@/components/Game/PageShell";
 import { Panel } from "@/components/Game/Panel";
 import { ProgressBar } from "@/components/Game/ProgressBar";
-import { LESSONS } from "@/content/lessons";
+import { LESSONS, localLesson } from "@/content/lessons";
 import { startGuidedGame } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useLocale, useT } from "@/lib/i18n";
 import { completedLessons, syncLessons } from "@/lib/progress";
 import { sfx } from "@/lib/sfx";
 import { GameIcon } from "@/components/Game/GameIcon";
@@ -18,6 +18,7 @@ import { Check, CircleHelp, GraduationCap, ScanSearch, Users } from "lucide-reac
 export default function TutorHome() {
   const router = useRouter();
   const t = useT();
+  const locale = useLocale((s) => s.locale);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +50,8 @@ export default function TutorHome() {
                       {isDone ? <Check size={18} strokeWidth={3.2} aria-label={t("已完成")} /> : i + 1}
                     </span>
                     <span className="flex-1">
-                      <span className="block font-black">{l.title}</span>
-                      <span className="block text-sm text-mist">{l.summary}</span>
+                      <span className="block font-black">{localLesson(l, locale).title}</span>
+                      <span className="block text-sm text-mist">{localLesson(l, locale).summary}</span>
                     </span>
                     {isNext && <span className="rounded-full bg-gold px-3 py-1 text-xs font-black text-ink">{t("下一課")}</span>}
                     {isDone && <span className="text-sm font-bold text-jade">{t("已完成")}</span>}

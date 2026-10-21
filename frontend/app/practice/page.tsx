@@ -7,7 +7,8 @@ import { PageShell, PillTabs } from "@/components/Game/PageShell";
 import { Panel } from "@/components/Game/Panel";
 import { TileImage } from "@/components/Hand/TileImage";
 import { ApiError, type DefenseState, practice, saveTicket, type Scenario, type SpeedState } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useLocale, useT } from "@/lib/i18n";
+import { scenarioDescriptionEn, scenarioTitleEn } from "@/lib/scenarioText";
 import { sfx } from "@/lib/sfx";
 import { tileName } from "@/lib/tiles";
 import { GameIcon } from "@/components/Game/GameIcon";
@@ -25,18 +26,19 @@ const CATEGORY: Record<string, { label: string; icon: LucideIcon; tone: string }
 function Hand({ tiles, drawn, onPick, disabled, mark }: {
   tiles: number[]; drawn: number | null; onPick: (t: number) => void; disabled?: boolean; mark?: number | null;
 }) {
+  const t = useT();
   const rest = [...tiles];
   if (drawn !== null) rest.splice(rest.lastIndexOf(drawn), 1);
   return (
     <div className="flex flex-wrap items-end gap-[3px]">
-      {rest.map((t, i) => (
-        <button key={i} disabled={disabled} onClick={() => { sfx.discard(); onPick(t); }} aria-label={`打出 ${tileName(t)}`}
+      {rest.map((x, i) => (
+        <button key={i} disabled={disabled} onClick={() => { sfx.discard(); onPick(x); }} aria-label={t("打出 {tile}", { tile: tileName(x) })}
           className="transition hover:-translate-y-2 disabled:hover:translate-y-0">
-          <TileImage id={t} width={46} className={mark === t ? "rounded-md ring-4 ring-zhong" : ""} />
+          <TileImage id={x} width={46} className={mark === x ? "rounded-md ring-4 ring-zhong" : ""} />
         </button>
       ))}
       {drawn !== null && (
-        <button disabled={disabled} onClick={() => { sfx.discard(); onPick(drawn); }} aria-label={`打出剛摸到的 ${tileName(drawn)}`}
+        <button disabled={disabled} onClick={() => { sfx.discard(); onPick(drawn); }} aria-label={t("打出剛摸到的 {tile}", { tile: tileName(drawn) })}
           className="ml-4 transition hover:-translate-y-2">
           <TileImage id={drawn} width={46} />
         </button>
@@ -47,6 +49,7 @@ function Hand({ tiles, drawn, onPick, disabled, mark }: {
 
 function ScenarioPanel() {
   const router = useRouter();
+  const en = useLocale((s) => s.locale) === "en";
   const t = useT();
   const [list, setList] = useState<Scenario[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -83,8 +86,10 @@ function ScenarioPanel() {
                     }} className={`group relative h-full w-full animate-rise overflow-hidden rounded-2xl bg-gradient-to-br p-4 text-left shadow-[0_8px_20px_rgb(5_6_25/0.4)] ring-1 ring-white/15 transition hover:-translate-y-1 ${cat.tone}`}
                       style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
                       <cat.icon className="absolute -right-2 -bottom-3 opacity-20 transition group-hover:scale-110" size={72} strokeWidth={1.8} aria-hidden="true" />
-                      <span className="relative block font-black">{s.title}</span>
-                      <span className="relative mt-1 block text-sm text-white/85">{s.description}</span>
+                      <span className="relative block font-black">{en ? scenarioTitleEn(s.title) : s.title}</span>
+                      <span className="relative mt-1 block text-sm text-white/85">
+                        {en ? scenarioDescriptionEn(s.description) : s.description}
+                      </span>
                     </button>
                   </li>
                 ))}

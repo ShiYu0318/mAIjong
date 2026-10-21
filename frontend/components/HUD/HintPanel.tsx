@@ -2,7 +2,8 @@
 
 import { GameButton } from "@/components/Game/GameButton";
 import { TileImage } from "@/components/Hand/TileImage";
-import { translate, useT } from "@/lib/i18n";
+import { explainEn } from "@/lib/explain";
+import { translate, useLocale, useT } from "@/lib/i18n";
 import { useGame } from "@/store/gameStore";
 import { Lightbulb, X } from "lucide-react";
 
@@ -31,12 +32,13 @@ export function HintPanel() {
   const select = useGame((s) => s.select);
   const selected = useGame((s) => s.selected);
   const t = useT();
+  const en = useLocale((s) => s.locale) === "en";
   if (!hint) return null;
   return (
     <section aria-label={t("打牌提示")}
       className="absolute top-3 left-3 z-10 max-h-[70%] w-80 overflow-y-auto rounded-xl border border-felt-line bg-felt-deep/95 p-4 text-sm shadow-xl">
       <div className="flex items-start justify-between gap-2">
-        <p className="leading-relaxed">{hint.explanation}</p>
+        <p className="leading-relaxed">{en ? explainEn(hint.candidates) : hint.explanation}</p>
         <button onClick={close} aria-label={t("關閉提示")} className="shrink-0 text-mist hover:text-ivory"><X size={18} strokeWidth={2.6} aria-hidden="true" /></button>
       </div>
       {hint.remaining !== null && (

@@ -9,7 +9,7 @@ import { rankFor } from "@/lib/progression";
 import { SoundToggle } from "@/components/Game/SoundToggle";
 import { LocaleToggle } from "@/components/I18n/LocaleToggle";
 import { account, ApiError } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { localName, useT } from "@/lib/i18n";
 import { useAccount } from "@/store/accountStore";
 
 const field = "rounded-xl border border-white/10 bg-felt-deep px-3 py-2";
@@ -30,7 +30,7 @@ export function PlayerBar({ compact = false }: { compact?: boolean }) {
           aria-label={t("我的檔案")}>
           <Avatar name={user.username} size={compact ? 32 : 40} progress={xpPct} frame={rankFor(user.elo_human).tier.colors} />
           <span className="hidden leading-tight sm:block">
-            <span className="block max-w-36 truncate font-black">{user.username}</span>
+            <span className="block max-w-36 truncate font-black">{localName(user.username)}</span>
             <span className="block text-xs text-gold">Lv.{level}</span>
           </span>
         </Link>

@@ -72,6 +72,19 @@ test("switch the interface to English and keep the choice", async ({ page }) => 
   await expect(page.getByRole("tab", { name: "牌局紀錄" })).toBeVisible();
 });
 
+test("every page reads in English once switched", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("maijong.locale", "en"));
+  const pages = ["/", "/agents", "/lab", "/offline", "/practice", "/tutor", "/tutor/analyze", "/tutor/quiz",
+    "/tutor/lesson/calls", "/tutor/lesson/nope", "/leaderboard", "/profile", "/shop"];
+  for (const path of pages) {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+    // runs of two or more Chinese characters; the language toggle itself says 中文
+    const chinese = (await page.locator("body").innerText()).match(/[\u4e00-\u9fff]{2,}/g) ?? [];
+    expect(chinese.filter((w) => w !== "中文"), path).toEqual([]);
+  }
+});
+
 test.describe("phone screen", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
