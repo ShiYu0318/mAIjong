@@ -87,6 +87,7 @@ export default function ReplayPage() {
         <Link href="/" className="font-display text-xl">{t("麥醬")}</Link>
         <span className="text-mist">
           {t("錄影・{wind}風圈第 {n} 手", { wind: windName(game?.round_wind ?? 0), n: (game?.hand_index ?? 0) + 1 })}
+          {frame.view.dealer_streak > 0 && <span className="ml-1 text-gold">{t("連 {n}", { n: frame.view.dealer_streak })}</span>}
         </span>
         <label className="flex items-center gap-2 text-mist">
           {t("視角")}

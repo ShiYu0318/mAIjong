@@ -126,8 +126,8 @@ function useTurnClock(view: GameView, timeLimit: number | null): Record<number, 
 const ringColor = (c: Clock | undefined) => (c && c.left <= 5 ? "#ff4d6a" : "#38d0ff");
 
 /** Seat panels, the centre compass and call stamps, drawn over the canvas. */
-export function TableHud({ g, view, names, timeLimit = null, handNo }: {
-  g: TableLayout; view: GameView; names: string[]; timeLimit?: number | null; handNo?: number;
+export function TableHud({ g, view, names, timeLimit = null }: {
+  g: TableLayout; view: GameView; names: string[]; timeLimit?: number | null;
 }) {
   const t = useT();
   const effects = useGame((s) => s.effects);
@@ -188,7 +188,7 @@ export function TableHud({ g, view, names, timeLimit = null, handNo }: {
           </Abs>
         );
       })}
-      <Compass g={g} view={view} clocks={clocks} handNo={handNo} />
+      <Compass g={g} view={view} clocks={clocks} />
       {effects.map((e) => {
         const rel = relSeat(e.seat, me);
         const pos = seatStamp(rel, g);
@@ -203,8 +203,8 @@ export function TableHud({ g, view, names, timeLimit = null, handNo }: {
   );
 }
 
-function Compass({ g, view, clocks, handNo }: {
-  g: TableLayout; view: GameView; clocks: Record<number, Clock>; handNo?: number;
+function Compass({ g, view, clocks }: {
+  g: TableLayout; view: GameView; clocks: Record<number, Clock>;
 }) {
   const t = useT();
   const me = view.you ?? 0;
@@ -265,13 +265,6 @@ function Compass({ g, view, clocks, handNo }: {
             </>
           )}
         </div>
-      </div>
-      <div className="absolute top-full left-1/2 mt-2 -translate-x-1/2 text-center font-black whitespace-nowrap text-ivory/80"
-        style={{ fontSize: small }}>
-        {handNo !== undefined
-          ? t("{wind}風圈・第 {n} 手", { wind: windName(view.round_wind), n: handNo })
-          : t("{wind}風圈", { wind: windName(view.round_wind) })}
-        {view.dealer_streak > 0 && <span className="ml-1 text-gold">{t("連 {n}", { n: view.dealer_streak })}</span>}
       </div>
     </Abs>
   );

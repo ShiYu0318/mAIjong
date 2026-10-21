@@ -38,6 +38,13 @@ export default function RoomPage() {
   const status = useGame((s) => s.status);
   const room = useGame((s) => s.room);
   const view = useGame((s) => s.view);
+  // the server counts a hand as played the moment it ends; keep its number while its result shows
+  const handOver = useGame((s) => s.win !== null || s.drawn);
+  const played = room?.match?.hands_played ?? 0;
+  const [handNo, setHandNo] = useState<number | null>(null);
+  useEffect(() => {
+    if (!handOver) setHandNo(played + 1);
+  }, [handOver, played]);
   const seat = useGame((s) => s.seat);
   const error = useGame((s) => s.error);
   const t = useT();
@@ -96,7 +103,8 @@ export default function RoomPage() {
         <span className="text-mist"><span className="hidden sm:inline">{t("房間")} </span><span className="tabular text-ivory">{room.code}</span></span>
         {view && (
           <span className="text-mist">
-            {t("{wind}風圈・第 {n} 手", { wind: windName(view.round_wind), n: (room.match?.hands_played ?? 0) + 1 })}
+            {t("{wind}風圈・第 {n} 手", { wind: windName(view.round_wind), n: handNo ?? played })}
+            {view.dealer_streak > 0 && <span className="ml-1 text-gold">{t("連 {n}", { n: view.dealer_streak })}</span>}
           </span>
         )}
         {STATUS_TEXT[status] && <span className="text-zhong">{t(STATUS_TEXT[status])}</span>}
@@ -107,8 +115,7 @@ export default function RoomPage() {
           {layout && <TableFelt g={layout} />}
           <TableCanvas />
           {layout && view && (
-            <TableHud g={layout} view={view} names={names} timeLimit={room.config.time_limit}
-              handNo={(room.match?.hands_played ?? 0) + 1} />
+            <TableHud g={layout} view={view} names={names} timeLimit={room.config.time_limit} />
           )}
           <HandList />
           <TableAnnouncer />
