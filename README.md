@@ -26,7 +26,7 @@ scripts/    查表產生、批次模擬、情境產生、本機開發
 tests/      引擎、AI、後端、SDK 測試與 Playwright 端對端測試
 ```
 
-選用的基礎設施（不設定時全部退回單機模式）：PostgreSQL（預設 SQLite）、Redis（房間快照、重啟恢復、跨實例觀戰）、MinIO／S3（錄影檔與預簽名下載）、Celery（實驗室任務與排位排程）。
+選用的基礎設施（不設定時全部退回單機模式）：PostgreSQL（預設 SQLite）、Redis（房間快照、重啟恢復、跨實例觀戰）、S3 相容物件儲存（錄影檔與預簽名下載；docker compose 內建 SeaweedFS）、Celery（實驗室任務與排位排程）。
 
 ## 快速開始
 
@@ -47,10 +47,30 @@ uv run python -m engine.cli watch --seed 3   # 觀看四個電腦打一圈
 
 ### Docker
 
+macOS 沒有 Docker Desktop 時，可用 Colima（免費、免管理員權限）：
+
 ```bash
-docker compose up --build              # postgres、redis、minio、backend、frontend
-docker compose build sandbox           # 提交代理程式用的隔離映像檔（MAIJONG_SANDBOX=docker）
+brew install colima docker docker-buildx docker-compose
+mkdir -p ~/.docker && echo '{"cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"]}' > ~/.docker/config.json
+colima start --cpu 4 --memory 8 --disk 60
 ```
+
+啟動整套服務：
+
+```bash
+docker compose up -d --build           # postgres、redis、s3（SeaweedFS）、backend、frontend
+docker compose build sandbox           # 提交代理程式用的隔離映像檔（MAIJONG_SANDBOX=docker）
+docker compose down                    # 停止（加 -v 連資料一起清掉）
+```
+
+| 服務 | 網址 |
+| --- | --- |
+| 網站 | http://localhost:3000 |
+| API | http://localhost:8000（健康檢查 `/healthz`） |
+| S3（錄影檔） | http://localhost:8333，金鑰在 `deploy/seaweedfs-s3.json` |
+| PostgreSQL／Redis | localhost:5432／localhost:6379 |
+
+錄影下載連結由後端預簽名：後端在容器內以 `S3_ENDPOINT=http://s3:8333` 存取，瀏覽器則用 `S3_PUBLIC_ENDPOINT=http://localhost:8333`。部署到其他網址時改這一項。MinIO 已停止在 Docker Hub 發布映像檔，所以改用 SeaweedFS；任何 S3 相容服務（AWS S3、R2 等）都可以換上。
 
 設定項目見 `.env.example`。
 

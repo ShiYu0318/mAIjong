@@ -1,4 +1,4 @@
-"""Replay storage: local folder by default, MinIO/S3 with presigned URLs (SPEC P6-2)."""
+"""Replay storage: local folder by default, S3-compatible store with presigned URLs (SPEC P6-2)."""
 
 from __future__ import annotations
 
@@ -54,3 +54,27 @@ def test_replays_in_s3_with_presigned_urls(client, monkeypatch):
     assert raw.status_code == 200
     first = gzip.decompress(raw.content).decode().splitlines()[0]
     assert '"type": "META"' in first
+
+
+@mock_aws
+def test_download_links_use_the_public_endpoint(monkeypatch):
+    # in docker compose the backend reaches S3 as http://s3:8333, which a browser cannot
+    import backend.storage as storage
+    from backend.config import get_settings
+
+    monkeypatch.setenv("S3_ENDPOINT", "http://s3:8333")
+    monkeypatch.setenv("S3_PUBLIC_ENDPOINT", "http://localhost:8333")
+    monkeypatch.setenv("S3_BUCKET", "maijong-test")
+    monkeypatch.setenv("S3_ACCESS_KEY", "k")
+    monkeypatch.setenv("S3_SECRET_KEY", "s")
+    get_settings.cache_clear()
+    storage.get_storage.cache_clear()
+    monkeypatch.setattr(storage.S3Storage, "_ensure_bucket", lambda self: None)
+    try:
+        st = storage.get_storage()
+        assert isinstance(st, S3Storage)
+        assert st.s3.meta.endpoint_url == "http://s3:8333"
+        assert st.presigned_url("g1").startswith("http://localhost:8333/maijong-test/replays/g1")
+    finally:
+        get_settings.cache_clear()
+        storage.get_storage.cache_clear()

@@ -1,6 +1,8 @@
 """Replay file storage (SPEC P6-2): a local folder by default, MinIO / S3 when configured.
 
-S3 settings: S3_ENDPOINT (e.g. http://minio:9000), S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY.
+S3 settings: S3_ENDPOINT (e.g. http://s3:8333), S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY, and
+S3_PUBLIC_ENDPOINT when browsers reach S3 at another address than the backend does (docker
+compose: http://localhost:8333); download links are signed for that address.
 With S3 the replay endpoint hands out short-lived presigned download URLs.
 """
 
@@ -54,8 +56,10 @@ class LocalStorage:
 
 
 class S3Storage:
-    def __init__(self, client: Any, bucket: str, prefix: str = "replays/") -> None:
+    def __init__(self, client: Any, bucket: str, prefix: str = "replays/",
+                 signer: Any | None = None) -> None:
         self.s3 = client
+        self.signer = signer or client  # signs download links for the address browsers use
         self.bucket = bucket
         self.prefix = prefix
         self._ensure_bucket()
@@ -83,7 +87,7 @@ class S3Storage:
         return body
 
     def presigned_url(self, game_id: str) -> str | None:
-        url: str = self.s3.generate_presigned_url(
+        url: str = self.signer.generate_presigned_url(
             "get_object", Params={"Bucket": self.bucket, "Key": self.key(game_id)},
             ExpiresIn=PRESIGN_SECONDS)
         return url
@@ -98,9 +102,12 @@ def get_storage() -> ReplayStorage:
     if s.s3_endpoint and s.s3_bucket:
         import boto3
 
-        client = boto3.client(
-            "s3", endpoint_url=s.s3_endpoint, aws_access_key_id=s.s3_access_key,
-            aws_secret_access_key=s.s3_secret_key, region_name="us-east-1")
+        def client(endpoint: str) -> Any:
+            return boto3.client(
+                "s3", endpoint_url=endpoint, aws_access_key_id=s.s3_access_key,
+                aws_secret_access_key=s.s3_secret_key, region_name="us-east-1")
+
         log.info("replays in S3 bucket %s at %s", s.s3_bucket, s.s3_endpoint)
-        return S3Storage(client, s.s3_bucket)
+        signer = client(s.s3_public_endpoint) if s.s3_public_endpoint else None
+        return S3Storage(client(s.s3_endpoint), s.s3_bucket, signer=signer)
     return LocalStorage(s.replay_dir)

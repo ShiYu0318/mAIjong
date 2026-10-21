@@ -32,6 +32,7 @@ class Settings:
     token_ttl_hours: int = 24 * 7
     replay_dir: Path = DATA_DIR / "replays"
     s3_endpoint: str | None = None
+    s3_public_endpoint: str | None = None
     s3_bucket: str | None = None
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
@@ -61,6 +62,7 @@ def get_settings() -> Settings:
         token_ttl_hours=int(env.get("TOKEN_TTL_HOURS", defaults.token_ttl_hours)),
         replay_dir=Path(env.get("REPLAY_DIR", str(defaults.replay_dir))),
         s3_endpoint=env.get("S3_ENDPOINT") or None,
+        s3_public_endpoint=env.get("S3_PUBLIC_ENDPOINT") or None,
         s3_bucket=env.get("S3_BUCKET") or None,
         s3_access_key=env.get("S3_ACCESS_KEY") or None,
         s3_secret_key=env.get("S3_SECRET_KEY") or None,

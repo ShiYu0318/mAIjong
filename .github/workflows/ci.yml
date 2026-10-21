@@ -88,3 +88,13 @@ jobs:
           docker run -d --name api -p 8000:8000 -e DATABASE_URL=sqlite:////tmp/m.db maijong-backend
           for i in $(seq 1 30); do curl -sf localhost:8000/healthz && exit 0; sleep 2; done
           docker logs api; exit 1
+      - name: The whole compose stack comes up
+        run: |
+          docker rm -f api
+          docker compose up -d --build
+          for i in $(seq 1 60); do
+            curl -sf localhost:8000/healthz && curl -sf -o /dev/null localhost:3000 \
+              && curl -s -o /dev/null localhost:8333 && exit 0
+            sleep 2
+          done
+          docker compose ps; docker compose logs; exit 1

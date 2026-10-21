@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "maijong",
+      "credentials": [{ "accessKey": "maijong", "secretKey": "maijong-secret" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

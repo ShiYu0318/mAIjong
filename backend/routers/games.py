@@ -45,7 +45,7 @@ def get_game(game_id: str, db: SessionDep) -> dict[str, Any]:
 
 @router.get("/games/{game_id}/replay")
 def replay_url(game_id: str, db: SessionDep, request: Request) -> dict[str, str]:
-    """Download link: a presigned MinIO/S3 URL when configured, else the API endpoint."""
+    """Download link: a presigned S3 URL when configured, else the API endpoint."""
     _game(db, game_id)
     url = get_storage().presigned_url(game_id) \
         or str(request.url_for("download_replay", game_id=game_id))

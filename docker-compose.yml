@@ -16,14 +16,14 @@ services:
     image: redis:7
     ports: ["6379:6379"]
 
-  minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: maijong
-      MINIO_ROOT_PASSWORD: maijong-secret
-    ports: ["9000:9000", "9001:9001"]
-    volumes: [miniodata:/data]
+  # S3-compatible replay store (MinIO no longer publishes images); keys in deploy/seaweedfs-s3.json
+  s3:
+    image: chrislusf/seaweedfs:4.05
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
+    ports: ["8333:8333"]
+    volumes:
+      - s3data:/data
+      - ./deploy/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
 
   backend:
     build:
@@ -35,7 +35,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string-0123456789}
       CORS_ORIGINS: http://localhost:3000
       REPLAY_DIR: /data/replays
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://s3:8333
+      S3_PUBLIC_ENDPOINT: http://localhost:8333
       S3_BUCKET: maijong-replays
       S3_ACCESS_KEY: maijong
       S3_SECRET_KEY: maijong-secret
@@ -48,7 +49,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      minio:
+      s3:
         condition: service_started
 
   frontend:
@@ -71,5 +72,5 @@ services:
 
 volumes:
   pgdata:
-  miniodata:
+  s3data:
   replays:
