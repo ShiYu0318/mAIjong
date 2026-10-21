@@ -204,6 +204,8 @@ class Room:
             else:
                 st = self.seats[seat]
                 assert st is not None
+                if not st.sockets:  # the seat just came online: show it to everyone already here
+                    await self._broadcast("ROOM_STATE", self.public())
                 st.sockets.append(ws)
                 since = st.disconnected_at
                 reconnect = since is not None

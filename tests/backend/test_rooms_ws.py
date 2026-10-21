@@ -269,3 +269,22 @@ def test_rate_limited_move_is_asked_for_again(client, monkeypatch):
             elif limited and msg["type"] == "ACTION_REQUEST" \
                     and msg["payload"]["player"] == j["seat"]:
                 break  # asked again after the dropped move
+
+
+def test_players_already_waiting_see_a_newcomer(client):
+    room = create(client, [None, None, 2, 3])
+    url = f"/ws/game/{room['room_id']}?token="
+    a = client.post(f"/api/v1/rooms/{room['room_id']}/join", json={"name": "A"}).json()
+    with client.websocket_connect(url + a["ws_token"]) as ws_a:
+        assert ws_a.receive_json()["type"] == "JOINED"
+        ws_a.send_json({"type": "PING"})
+        while ws_a.receive_json()["type"] != "PONG":  # drain A's own initial sync
+            pass
+        b = client.post(f"/api/v1/rooms/{room['room_id']}/join", json={"name": "B"}).json()
+        with client.websocket_connect(url + b["ws_token"]) as ws_b:
+            assert ws_b.receive_json()["type"] == "JOINED"
+            ws_a.send_json({"type": "PING"})
+            first = ws_a.receive_json()  # the newcomer must arrive before the reply to our ping
+            assert first["type"] == "ROOM_STATE", first["type"]
+            seats = first["payload"]["seats"]
+            assert seats[b["seat"]]["name"] == "B"
