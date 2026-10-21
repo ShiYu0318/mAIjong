@@ -72,6 +72,15 @@ test("switch the interface to English and keep the choice", async ({ page }) => 
   await expect(page.getByRole("tab", { name: "牌局紀錄" })).toBeVisible();
 });
 
+test("a double tap on the daily bonus claims it once", async ({ page }) => {
+  const codes: number[] = [];
+  page.on("response", (r) => { if (r.url().includes("/profile/bonus")) codes.push(r.status()); });
+  await page.goto("/");
+  await page.getByRole("button", { name: /領取 \d+/ }).dblclick();
+  await expect(page.getByRole("button", { name: "已領取" })).toBeVisible();
+  expect(codes).toEqual([200]);
+});
+
 test("every page reads in English once switched", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("maijong.locale", "en"));
   const pages = ["/", "/agents", "/lab", "/offline", "/practice", "/tutor", "/tutor/analyze", "/tutor/quiz",

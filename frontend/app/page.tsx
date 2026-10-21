@@ -277,6 +277,7 @@ function DailyBonus() {
   const t = useT();
   const profile = useAccount((s) => s.profile);
   const refresh = useAccount((s) => s.refreshProfile);
+  const [claiming, setClaiming] = useState(false);  // a double tap must not claim twice
   const [claimed, setClaimed] = useState<number | null>(null);
   if (!profile) return <Panel className="h-32 animate-pulse" aria-hidden="true">{null}</Panel>;
   const { bonus } = profile;
@@ -297,8 +298,9 @@ function DailyBonus() {
         <p className="absolute top-3 right-4 animate-stamp text-2xl font-black text-gold" aria-live="polite">+{claimed}</p>
       )}
       <GameButton variant="primary" size="md" className={`mt-4 w-full ${bonus.available ? "animate-pulse-glow" : ""}`}
-        disabled={!bonus.available}
+        disabled={!bonus.available || claiming}
         onClick={async () => {
+          setClaiming(true);
           try {
             const r = await profileApi.claimBonus();
             setClaimed(r.amount);
@@ -306,6 +308,8 @@ function DailyBonus() {
             await refresh();
           } catch {
             sfx.error();
+          } finally {
+            setClaiming(false);
           }
         }}>
         <CoinIcon size={20} /> {bonus.available ? t("領取 {n}", { n: bonus.amount }) : t("已領取")}
