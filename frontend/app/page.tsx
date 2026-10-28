@@ -233,7 +233,7 @@ export default function Lobby() {
       </nav>
 
       <footer className="mt-10 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-mist">
-        <span>© 2026 ShiYu Huang</span>
+        <span>© 2026 ShiYu Huang (黃士育)</span>
         <span aria-hidden="true">·</span>
         <a href={`${REPO}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer" className="underline hover:text-ivory">
           Apache-2.0

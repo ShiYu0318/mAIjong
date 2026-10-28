@@ -103,9 +103,10 @@ test("every page reads in English once switched", async ({ page }) => {
   for (const path of pages) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
-    // runs of two or more Chinese characters; the language toggle itself says 中文
+    // runs of two or more Chinese characters; the language toggle says 中文 and the footer
+    // carries the author's own name
     const chinese = (await page.locator("body").innerText()).match(/[\u4e00-\u9fff]{2,}/g) ?? [];
-    expect(chinese.filter((w) => w !== "中文"), path).toEqual([]);
+    expect(chinese.filter((w) => w !== "中文" && w !== "黃士育"), path).toEqual([]);
   }
 });
 
