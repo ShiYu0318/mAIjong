@@ -66,17 +66,30 @@ def candidates(agent: RuleAgent, state: GameState, seat: int, legal: list[Action
     return ranked[:TOP_K]
 
 
-def label(state: GameState, seat: int, tiles: list[int], seed: int) -> np.ndarray:
-    """Payoff of each candidate discard (NaN for the other tiles)."""
+def label(state: GameState, seat: int, tiles: list[int], seed: int, worlds: int = 1
+          ) -> np.ndarray:
+    """Payoff of each candidate discard (NaN for the other tiles).
+
+    With worlds > 1 each candidate is played out in that many futures, each a fresh shuffle
+    of the wall (the discarding seat cannot know its order), and the payoffs are averaged.
+    Every candidate meets the same futures, so their differences stay paired."""
     q = np.full(34, np.nan, dtype=np.float32)
     for t in tiles:
         nxt, _ = apply_action(state, seat, Action(ActionType.DISCARD, t))
-        q[t] = _rollout(nxt, seat, seed)
+        if worlds == 1:
+            q[t] = _rollout(nxt, seat, seed)
+            continue
+        total = 0
+        for w in range(worlds):
+            world = nxt.clone()
+            random.Random(seed * 1009 + w).shuffle(world.wall)
+            total += _rollout(world, seat, seed + w)
+        q[t] = total / worlds
     return q
 
 
-def _gen_chunk(args: tuple[list[int], float]) -> dict[str, np.ndarray]:
-    seeds, rate = args
+def _gen_chunk(args: tuple[list[int], float, int]) -> dict[str, np.ndarray]:
+    seeds, rate, worlds = args
     tiles: list[np.ndarray] = []
     scal: list[np.ndarray] = []
     qs: list[np.ndarray] = []
@@ -91,7 +104,7 @@ def _gen_chunk(args: tuple[list[int], float]) -> dict[str, np.ndarray]:
             a = agents[p].act(s, p, legal)
             if (s.phase is Phase.DISCARD and s.turn == p and rng.random() < rate
                     and a.type in (ActionType.DISCARD, ActionType.TING)):
-                q = label(s, p, candidates(agents[p], s, p, legal), seed * 131 + len(qs))
+                q = label(s, p, candidates(agents[p], s, p, legal), seed * 131 + len(qs), worlds)
                 if np.count_nonzero(~np.isnan(q)) >= 2:
                     t, sc = encode(s, p)
                     tiles.append(t.astype(np.float16))
@@ -106,10 +119,10 @@ def _gen_chunk(args: tuple[list[int], float]) -> dict[str, np.ndarray]:
 
 
 def generate(hands: int, out: Path, workers: int, rate: float = 0.08,
-             start: int = GEN_SEED) -> None:
+             start: int = GEN_SEED, worlds: int = 1) -> None:
     seeds = list(range(start, start + hands))
     per = max(1, min(50, hands // (workers * 4) or 1))
-    jobs = [(seeds[i:i + per], rate) for i in range(0, len(seeds), per)]
+    jobs = [(seeds[i:i + per], rate, worlds) for i in range(0, len(seeds), per)]
     parts: list[dict[str, np.ndarray]] = []
     t0 = time.time()
     with ProcessPoolExecutor(workers) as ex:
@@ -136,11 +149,15 @@ def build_model(init: str | None = None) -> Any:
         def __init__(self) -> None:
             super().__init__()
             self.encoder = MahjongEncoder()
-            self.head = torch.nn.Sequential(torch.nn.Linear(LATENT, 256), torch.nn.ReLU(),
+            # prior: Lv5's pick (one-hot) and the candidate set, so the network starts from
+            # Lv5's choice and only has to learn where to depart from it
+            self.head = torch.nn.Sequential(torch.nn.Linear(LATENT + 68, 256), torch.nn.ReLU(),
                                             torch.nn.Linear(256, 34))
 
-        def forward(self, tiles: torch.Tensor, scalars: torch.Tensor) -> torch.Tensor:
-            out: torch.Tensor = self.head(self.encoder(tiles, scalars))
+        def forward(self, tiles: torch.Tensor, scalars: torch.Tensor, prior: torch.Tensor
+                    ) -> torch.Tensor:
+            h = torch.cat([self.encoder(tiles, scalars), prior], dim=1)
+            out: torch.Tensor = self.head(h)
             return out
 
     net = QNet()
@@ -150,6 +167,16 @@ def build_model(init: str | None = None) -> Any:
         model, _ = load_model(Path(init))
         net.encoder.load_state_dict(model.encoder.state_dict())
     return net
+
+
+def prior_of(chosen: Any, mask: Any) -> Any:
+    """(B, 68): one-hot of Lv5's discard, then the candidate mask."""
+    import torch
+
+    pick = torch.zeros_like(mask, dtype=torch.float32)
+    ok = chosen >= 0
+    pick[torch.arange(len(chosen))[ok], chosen[ok]] = 1.0
+    return torch.cat([pick, mask.float()], dim=1)
 
 
 def _centered(pred: Any, mask: Any) -> Any:
@@ -176,6 +203,8 @@ def train(data: Path, out: Path, init: str | None, epochs: int = 12, batch: int 
     mask = ~torch.isnan(q)
     qz = torch.nan_to_num(q)
     target = _centered(qz, mask) / 100.0  # points → roughly unit scale
+    chosen = torch.from_numpy(d["chosen"].astype(np.int64))
+    prior = prior_of(chosen, mask)
     n = len(q)
     idx = torch.randperm(n)
     n_val = max(256, n // 10)
@@ -184,34 +213,53 @@ def train(data: Path, out: Path, init: str | None, epochs: int = 12, batch: int 
     opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs)
 
+    def predict(ix: torch.Tensor) -> torch.Tensor:
+        out: torch.Tensor = net(tiles[ix].to(dev), scal[ix].to(dev), prior[ix].to(dev))
+        return out
+
     def loss_on(ix: torch.Tensor) -> torch.Tensor:
         b_mask = mask[ix].to(dev)
-        pred = _centered(net(tiles[ix].to(dev), scal[ix].to(dev)), b_mask)
-        err = (pred - target[ix].to(dev)) ** 2
+        pred = _centered(predict(ix), b_mask)
+        # Huber: the rare huge hand should not drown the many ordinary ones
+        err = torch.nn.functional.huber_loss(pred, target[ix].to(dev), reduction="none", delta=1.0)
         return (err * b_mask).sum() / b_mask.sum()
 
+    margins = (0.0, 10.0, 25.0, 50.0)
+
     def evaluate() -> dict[str, float]:
-        """Validation loss, and how much the network's pick gains over Lv5's own choice."""
+        """Validation loss, and per discard decision how many points switching away from
+        Lv5's choice gains (measured on the rollouts), for several switching margins."""
         net.eval()
+        losses: list[float] = []
+        diffs: dict[float, list[torch.Tensor]] = {m: [] for m in margins}
         with torch.no_grad():
-            losses, gain, agree, k = [], 0.0, 0, 0
             for i in range(0, n_val, 4096):
                 ix = val[i:i + 4096]
                 losses.append(float(loss_on(ix)) * len(ix))
                 b_mask = mask[ix].to(dev)
-                pred = net(tiles[ix].to(dev), scal[ix].to(dev)).masked_fill(~b_mask, -1e9)
-                pick = pred.argmax(1).cpu()
-                ch = torch.from_numpy(d["chosen"][ix.numpy()].astype(np.int64))
-                ok = ch >= 0
-                qv = qz[ix]
+                pred = predict(ix).masked_fill(~b_mask, -1e9).cpu()
+                ch = chosen[ix].clamp(min=0)
                 rows = torch.arange(len(ix))
-                gain += float((qv[rows, pick] - qv[rows, ch.clamp(min=0)])[ok].sum())
-                agree += int((pick == ch)[ok].sum())
-                k += int(ok.sum())
+                best = pred.argmax(1)
+                lead = (pred[rows, best] - pred[rows, ch]) * 100.0
+                qv = qz[ix]
+                for m in margins:
+                    pick = torch.where(lead >= max(m, 1e-6), best, ch)
+                    diffs[m].append(qv[rows, pick] - qv[rows, ch])
         net.train()
-        base = float(((target[val] ** 2) * mask[val]).sum() / mask[val].sum())
-        return {"val_loss": sum(losses) / n_val, "base_loss": base,
-                "gain_vs_lv5": gain / max(1, k), "agree_lv5": agree / max(1, k)}
+        base = float(huber_zero)
+        out = {"val_loss": sum(losses) / n_val, "base_loss": base}
+        for m in margins:
+            g = torch.cat(diffs[m])
+            out[f"gain@{m:g}"] = float(g.mean())
+            out[f"se@{m:g}"] = float(g.std() / max(1.0, len(g) ** 0.5))
+            out[f"switch@{m:g}"] = float((g != 0).float().mean())
+        return out
+
+    with torch.no_grad():
+        z = torch.nn.functional.huber_loss(torch.zeros_like(target[val]), target[val],
+                                           reduction="none", delta=1.0)
+        huber_zero = (z * mask[val]).sum() / mask[val].sum()
 
     best: dict[str, float] = {"val_loss": float("inf")}
     for epoch in range(1, epochs + 1):
@@ -223,9 +271,10 @@ def train(data: Path, out: Path, init: str | None, epochs: int = 12, batch: int 
             opt.step()
         sched.step()
         m = evaluate()
-        print(f"epoch {epoch}: val {m['val_loss']:.4f} (predict-zero {m['base_loss']:.4f}), "
-              f"pick vs Lv5 {m['gain_vs_lv5']:+.2f} points, agree {m['agree_lv5']:.1%}",
-              flush=True)
+        gains = "  ".join(f"m{g:g}: {m[f'gain@{g:g}']:+.2f}±{m[f'se@{g:g}']:.2f} "
+                          f"({m[f'switch@{g:g}']:.0%})" for g in margins)
+        print(f"epoch {epoch}: val {m['val_loss']:.4f} (predict-zero {m['base_loss']:.4f})",
+              gains, flush=True)
         if m["val_loss"] < best["val_loss"]:
             best = {**m, "epoch": epoch}
             out.parent.mkdir(parents=True, exist_ok=True)
@@ -264,8 +313,11 @@ class RolloutQAgent(RuleAgent):
         import torch
 
         t, sc = encode(state, seat)
+        cand = torch.zeros(1, 34, dtype=torch.bool)
+        cand[0, tiles] = True
+        prior = prior_of(torch.tensor([a.tile]), cand)
         with torch.no_grad():
-            pred = _load(self.path)(torch.from_numpy(t)[None], torch.from_numpy(sc)[None])[0]
+            pred = _load(self.path)(torch.from_numpy(t)[None], torch.from_numpy(sc)[None], prior)[0]
         best = max(tiles, key=lambda x: float(pred[x]))
         if best == a.tile or float(pred[best]) - float(pred[a.tile]) < self.margin:
             return a
@@ -283,6 +335,7 @@ def main() -> None:
     g.add_argument("--out", type=Path, required=True)
     g.add_argument("--rate", type=float, default=0.08, help="share of discards to label")
     g.add_argument("--start", type=int, default=GEN_SEED)
+    g.add_argument("--worlds", type=int, default=1, help="shuffled futures averaged per discard")
     g.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     t = sub.add_parser("train")
     t.add_argument("--data", type=Path, nargs="+", required=True)
@@ -292,7 +345,7 @@ def main() -> None:
     t.add_argument("--device", default="auto")
     args = ap.parse_args()
     if args.cmd == "generate":
-        generate(args.hands, args.out, args.workers, args.rate, args.start)
+        generate(args.hands, args.out, args.workers, args.rate, args.start, args.worlds)
     else:
         data = args.data[0]
         if len(args.data) > 1:  # merge several generated files

@@ -83,6 +83,10 @@ def make_agent(spec: str, seed: int) -> Agent:
             params = LEVEL5_PARAMS
         return SearchAgent(samples=samples, seed=seed, params=params,
                            defense="defense" in parts[1:])
+    if name == "vote" and arg:  # vote:lv5+rule+bc_v3, majority of several agents
+        from ai.agents.vote_agent import vote_agent
+
+        return vote_agent(arg, seed)
     if name == "rollq" and arg:  # rollq:checkpoint[,margin], Lv5 with a learned discard
         from ai.rollout_q import RolloutQAgent
 
