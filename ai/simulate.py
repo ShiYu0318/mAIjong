@@ -83,6 +83,11 @@ def make_agent(spec: str, seed: int) -> Agent:
             params = LEVEL5_PARAMS
         return SearchAgent(samples=samples, seed=seed, params=params,
                            defense="defense" in parts[1:])
+    if name == "rollq" and arg:  # rollq:checkpoint[,margin], Lv5 with a learned discard
+        from ai.rollout_q import RolloutQAgent
+
+        path, _, margin = arg.partition(",")
+        return RolloutQAgent(path, float(margin) if margin else 3.0, seed)
     if name.startswith("lv") and name[2:].isdigit():
         return create_agent(int(name[2:]), seed)
     if name in _REGISTRY:
