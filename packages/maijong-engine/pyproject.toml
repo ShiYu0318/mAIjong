@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Taiwanese 16-tile mahjong rule engine used by mAIjong."
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
+authors = [{ name = "ShiYu Huang" }]
 dependencies = []
 
 [build-system]

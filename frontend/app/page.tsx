@@ -231,9 +231,21 @@ export default function Lobby() {
           </Link>
         ))}
       </nav>
+
+      <footer className="mt-10 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-mist">
+        <span>© 2026 ShiYu Huang</span>
+        <span aria-hidden="true">·</span>
+        <a href={`${REPO}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer" className="underline hover:text-ivory">
+          Apache-2.0
+        </a>
+        <span aria-hidden="true">·</span>
+        <a href={REPO} target="_blank" rel="noopener noreferrer" className="underline hover:text-ivory">GitHub</a>
+      </footer>
     </main>
   );
 }
+
+const REPO = "https://github.com/ShiYu0318/mAIjong";
 
 const TONES = {
   amber: "from-[#d14200] via-[#d8301f] to-[#e31f4a]",

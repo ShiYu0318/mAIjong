@@ -5,6 +5,7 @@ description = "Taiwanese 16-tile mahjong research platform: rule engine, online 
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
+authors = [{ name = "ShiYu Huang" }]
 dependencies = []
 
 [project.optional-dependencies]

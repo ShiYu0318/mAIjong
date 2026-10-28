@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   title: "麥醬 mAIjong",
   description: "台灣十六張麻將：線上對戰、AI 對手與牌技練習",
   applicationName: "麥醬 mAIjong",
+  authors: [{ name: "ShiYu Huang", url: "https://github.com/ShiYu0318" }],
+  creator: "ShiYu Huang",
   appleWebApp: { capable: true, title: "麥醬", statusBarStyle: "black-translucent" },
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192" }],

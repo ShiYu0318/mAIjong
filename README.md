@@ -129,6 +129,8 @@ cd frontend && pnpm lint && pnpm typecheck && pnpm e2e
 
 ## 授權
 
+© 2026 ShiYu Huang and mAIjong contributors.
+
 主程式（引擎、後端、訓練 pipeline、前端）採 Apache-2.0（`LICENSE`）；`sdk/`（maijong-sdk）採 MIT（`sdk/LICENSE`）。第三方依賴與字型的授權列在 `NOTICE`（`uv run python scripts/generate_notice.py` 重新產生）。
 
 ### 貢獻者協議

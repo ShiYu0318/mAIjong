@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "Build, train and submit Taiwanese 16-tile mahjong agents for the mAIjong platform."
 requires-python = ">=3.10"
 license = { text = "MIT" }
+authors = [{ name = "ShiYu Huang" }]
 dependencies = ["maijong-engine>=0.1"]
 classifiers = [
     "License :: OSI Approved :: MIT License",
