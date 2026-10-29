@@ -7,11 +7,15 @@ from ai.agents.random_agent import RandomAgent
 from ai.agents.rule_agent import RuleAgent, RuleParams
 
 LEVEL_TEMPERATURE = {2: 3.0, 3: 1.5, 4: 0.7, 5: 0.1}
-# Lv5 when nothing stronger was promoted: the rule agent tuned with duplicate evaluation
-# (2026-10-20 it led BC v3 by +9.2 ± 3.7 points/hand on the default deals, but on fresh deals
-# it is level with BC v3 and with the plain rule agent; see the README ladder)
-LEVEL5_PARAMS = RuleParams(flush=13, declare=4, threat_melds=3, threat_turn=12,
-                           fold_late_near=3.2, fold_ready=2.0)
+# Lv5 when nothing stronger was promoted: the rule agent found by the cross-entropy search
+# (ai.training.cem_tune, fresh deals every generation). On deals the search never saw it led
+# the previous Lv5 by +2.9, +7.7 and +8.4 points/hand (3 sets, 36,000 paired deals in all,
+# about +6.3 ± 1.8 combined) and the plain rule agent by about +3.5 ± 1.5 (2026-10-30)
+LEVEL5_PARAMS = RuleParams(w_shanten=8.9362, w_live=0.0853, honor_discard=0.1603,
+                           ting_bonus=0.5166, value_pon=0.2447, flush_far=5.3785,
+                           flush_near=14.1263, fold_ready=4.2321, fold_one=7.1861,
+                           fold_far=37.6972, late_wall=30, fold_late_near=1.4033,
+                           fold_late_far=4.2173, threat_turn=18, threat_scale=0.5941)
 LEVEL_NAMES = {1: "初學", 2: "入門", 3: "普通", 4: "進階", 5: "高手"}
 
 
