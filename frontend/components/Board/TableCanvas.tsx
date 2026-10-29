@@ -268,10 +268,6 @@ function drawMyHand(app: Application, mem: Memory, stage: Container, tex: Textur
   sc: Scene, g: TableLayout) {
   const hand = p.hand ?? [];
   const meldCount = p.melds.reduce((n, m) => n + m.tiles.length, 0);
-  // shrink the tiles so the whole hand (+ the fresh draw and melds) fits the width
-  const units = hand.length + 1.4 + meldCount * 0.72 + p.melds.length * 0.3 + 0.5;
-  const w = Math.min(g.handW, (g.W - 16) / units);
-  const h = (w * TILE_H) / TILE_W;
   const lastDraw = sc.view.last_draw;
   let tiles = hand;
   let drawn: number | null = null;
@@ -284,15 +280,17 @@ function drawMyHand(app: Application, mem: Memory, stage: Container, tex: Textur
   }
   const justDrew = drawn !== null && hand.length === mem.handLen + 1;
   mem.handLen = hand.length;
-  const totalW = (tiles.length + (drawn !== null ? 1.4 : 0)) * w + meldCount * w * 0.72
-    + p.melds.length * w * 0.3;
-  let x = Math.max(8, (g.W - totalW) / 2);
-  const y = g.H - h - 18;
+  // one row, or two on portrait phones; the fresh draw and the melds end the last row
+  const split = g.handRows === 2 ? Math.ceil(tiles.length / 2) : tiles.length;
+  const rows = g.handRows === 2 ? [tiles.slice(0, split), tiles.slice(split)] : [tiles];
+  const tail = 1.4 + meldCount * 0.72 + p.melds.length * 0.3 + 0.5;
+  const widest = Math.max(...rows.map((r, k) => r.length + (k === rows.length - 1 ? tail : 0)));
+  // shrink the tiles so every row fits the width
+  const w = Math.min(g.handW, (g.W - 16) / widest);
+  const h = (w * TILE_H) / TILE_W;
+  let x = 0;
+  let y = 0;
   const selectedIdx = sc.selected === null ? -1 : tiles.indexOf(sc.selected);
-
-  // soft shadow under the hand row
-  stage.addChild(new Graphics().roundRect(x - 10, y + h - 6, totalW + 20, 16, 8)
-    .fill({ color: COLORS.shadow, alpha: 0.35 }));
 
   const place = (t: number, i: number | "drawn") => {
     const s = tileSprite(tex, t, w);
@@ -324,13 +322,26 @@ function drawMyHand(app: Application, mem: Memory, stage: Container, tex: Textur
     if (i === "drawn" && justDrew) tweenIn(app, mem, s, { dx: w * 1.2, dy: -h * 0.3 }, 200);
     x += w;
   };
-  tiles.forEach((t, i) => place(t, i));
-  if (drawn !== null) {
-    x += w * 0.4;
-    place(drawn, "drawn");
-  }
-  x += w * 0.5;
-  drawMelds(stage, tex, p.melds, x, y + h * 0.28, w * 0.72, sc.selected);
+  let offset = 0;
+  rows.forEach((row, k) => {
+    const last = k === rows.length - 1;
+    const rowW = (row.length + (last && drawn !== null ? 1.4 : 0)) * w
+      + (last ? meldCount * w * 0.72 + p.melds.length * w * 0.3 : 0);
+    x = Math.max(8, (g.W - rowW) / 2);
+    y = g.H - h - 18 - (rows.length - 1 - k) * (h + 6);
+    // soft shadow under the row
+    stage.addChild(new Graphics().roundRect(x - 10, y + h - 6, rowW + 20, 16, 8)
+      .fill({ color: COLORS.shadow, alpha: 0.35 }));
+    row.forEach((t, j) => place(t, offset + j));
+    offset += row.length;
+    if (!last) return;
+    if (drawn !== null) {
+      x += w * 0.4;
+      place(drawn, "drawn");
+    }
+    x += w * 0.5;
+    drawMelds(stage, tex, p.melds, x, y + h * 0.28, w * 0.72, sc.selected);
+  });
 }
 
 /** A fixed view to render instead of the live game store (replays). */

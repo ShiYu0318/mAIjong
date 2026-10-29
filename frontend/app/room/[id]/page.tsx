@@ -148,7 +148,7 @@ export default function RoomPage() {
           <HandList />
           <TableAnnouncer />
           <div className="absolute right-4 left-4 z-10 flex items-end justify-between gap-3"
-            style={{ bottom: (layout?.handH ?? 80) + 40 }}>
+            style={{ bottom: (layout?.handBlock ?? 98) + 22 }}>
             <ReadyWaits />
             <div className="ml-auto"><ActionBar /></div>
           </div>

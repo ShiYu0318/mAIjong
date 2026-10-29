@@ -16,8 +16,9 @@ const VARIANTS = {
 const SIZES = {
   sm: "px-3 py-1.5 text-sm",
   md: "px-5 py-2.5 text-base",
-  lg: "px-6 py-3.5 text-lg",
-  xl: "px-8 py-5 text-2xl",
+  // large sizes step down on phones, where the table and a two-row hand share the height
+  lg: "px-4 py-2.5 text-base sm:px-6 sm:py-3.5 sm:text-lg",
+  xl: "px-6 py-3.5 text-xl sm:px-8 sm:py-5 sm:text-2xl",
 } as const;
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {

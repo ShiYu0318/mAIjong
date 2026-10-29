@@ -96,7 +96,7 @@ export function ActionBar() {
   const lastTile = view.last_discard?.[1] ?? null;
 
   return (
-    <div className="flex flex-wrap items-end justify-end gap-3" role="group" aria-label={t("可執行的動作")}>
+    <div className="flex flex-wrap items-end justify-end gap-2 sm:gap-3" role="group" aria-label={t("可執行的動作")}>
       {selected !== null && <SeenCount tile={selected} />}
       {selected !== null && discardPhase && <WaitsPreview tile={selected} />}
       {discardPhase && selected === null && !hu && kongs.length === 0 && (

@@ -15,9 +15,26 @@ export interface TableLayout {
   sdH: number;
   /** phone-sized: mini seat badges in the table corners, hand shrinks to fit */
   compact: boolean;
+  /** 2 on portrait phones: one row of 17 tiles would leave each about 20 px, too small to tap */
+  handRows: 1 | 2;
+  /** height of the whole hand area at the bottom (rows, gaps and margin) */
+  handBlock: number;
 }
 
 export function tableLayout(W: number, H: number): TableLayout {
+  const compact = W < 640;
+  if (compact && H > W * 1.25) {
+    // portrait phone: the hand in two rows of about nine (tiles near fingertip size), the
+    // table pushed to the top so the space goes to the hand and the action buttons
+    const handW = Math.min(52, (W - 16) / 9.6);
+    const handH = (handW * TILE_H) / TILE_W;
+    const handBlock = handH * 2 + 6 + 18;
+    // ~100 px between table and hand for the action buttons; short phones shrink the table
+    const L = Math.max(220, Math.min(W - 24, H - handBlock - 100));
+    const sd = Math.max(20, L / 22);
+    return { W, H, L, cx: W / 2, cy: 8 + L / 2, handW, handH, sd, sdH: (sd * TILE_H) / TILE_W,
+      compact, handRows: 2, handBlock };
+  }
   const handW = Math.min(62, Math.max(28, (W - 48) / 21));
   const handH = (handW * TILE_H) / TILE_W;
   const bottom = handH + 40;
@@ -25,7 +42,8 @@ export function tableLayout(W: number, H: number): TableLayout {
   const cx = W / 2;
   const cy = 8 + (H - bottom - 8) / 2;
   const sd = Math.max(20, L / 22);
-  return { W, H, L, cx, cy, handW, handH, sd, sdH: (sd * TILE_H) / TILE_W, compact: W < 640 };
+  return { W, H, L, cx, cy, handW, handH, sd, sdH: (sd * TILE_H) / TILE_W, compact,
+    handRows: 1, handBlock: handH + 18 };
 }
 
 /** Seat position relative to the viewer: 0 bottom (you), 1 right, 2 top, 3 left. */
