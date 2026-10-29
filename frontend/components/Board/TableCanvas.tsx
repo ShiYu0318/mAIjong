@@ -257,7 +257,8 @@ function drawOpponent(area: Container, tex: Textures, p: PlayerView, g: TableLay
   drawMelds(area, tex, p.melds, x, y, w, highlight);
   p.flowers.forEach((f, i) => {
     const s = tileSprite(tex, f, w * 0.72);
-    s.x = -g.L / 2 + 12 + i * (w * 0.72 - 1);
+    // clear of the seat badges, which sit in the corners (0.4 L from the centre)
+    s.x = -g.L / 2 + Math.max(12, g.L * 0.26) + i * (w * 0.72 - 1);
     s.y = y - h * 0.85;
     area.addChild(s);
   });

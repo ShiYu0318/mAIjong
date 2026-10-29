@@ -180,9 +180,12 @@ export function TableHud({ g, view, names, timeLimit = null }: {
                   )}
                 </div>
                 <div className="flex min-w-0 items-center gap-1">
-                  <span className="truncate text-sm font-bold">{splitLevel(name).base}</span>
+                  {/* a bot's name is short and must stay whole; a long level tag gives way */}
+                  <span className={`text-sm font-bold ${splitLevel(name).level ? "shrink-0" : "truncate"}`}>
+                    {splitLevel(name).base}
+                  </span>
                   {splitLevel(name).level && (
-                    <span className="shrink-0 rounded bg-white/15 px-1 text-[10px] font-bold text-ivory-dim">
+                    <span className="min-w-0 truncate rounded bg-white/15 px-1 text-[10px] font-bold text-ivory-dim">
                       {splitLevel(name).level}
                     </span>
                   )}
