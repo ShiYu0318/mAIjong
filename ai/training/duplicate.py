@@ -99,9 +99,12 @@ def main() -> None:
                     help="the three other seats; a|b|c rotates several styles")
     ap.add_argument("--hands", type=int, default=2000)
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
+    ap.add_argument("--seed", type=int, default=DUP_SEED,
+                    help="first deal; tuning reuses the default deals, so confirm a winner on "
+                         "deals it has never seen")
     args = ap.parse_args()
     for cand in args.candidates:
-        res = paired(cand, args.baseline, args.hands, args.opponent, args.workers)
+        res = paired(cand, args.baseline, args.hands, args.opponent, args.workers, args.seed)
         print(res.line(cand, args.baseline), flush=True)
 
 

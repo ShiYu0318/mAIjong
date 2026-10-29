@@ -8,7 +8,8 @@ from ai.agents.rule_agent import RuleAgent, RuleParams
 
 LEVEL_TEMPERATURE = {2: 3.0, 3: 1.5, 4: 0.7, 5: 0.1}
 # Lv5 when nothing stronger was promoted: the rule agent tuned with duplicate evaluation
-# (2026-10-20: +9.2 ± 3.7 points/hand over the BC v3 network on 9000 paired deals)
+# (2026-10-20 it led BC v3 by +9.2 ± 3.7 points/hand on the default deals, but on fresh deals
+# it is level with BC v3 and with the plain rule agent; see the README ladder)
 LEVEL5_PARAMS = RuleParams(flush=13, declare=4, threat_melds=3, threat_turn=12,
                            fold_late_near=3.2, fold_ready=2.0)
 LEVEL_NAMES = {1: "初學", 2: "入門", 3: "普通", 4: "進階", 5: "高手"}
