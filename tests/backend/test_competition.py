@@ -147,3 +147,23 @@ def test_leaderboard_and_stats_reject_bad_query_values(client):
     assert client.get("/api/v1/leaderboard?kind=human").status_code == 200
     assert client.get("/api/v1/stats/ai-vs-humans?limit=-1").status_code == 422
     assert client.get("/api/v1/stats/ai-vs-humans?limit=0").status_code == 422
+
+
+def test_an_agent_whose_files_are_gone_sits_out(client, tmp_path, monkeypatch):
+    """A container rebuilt without its data volume keeps the database rows but loses the
+    uploaded files: such an agent must be refused up front, not crash mid-match."""
+    import shutil
+
+    from backend.arena import active_agents
+
+    monkeypatch.setattr("backend.routers.agents.agents_dir", lambda: tmp_path / "agents")
+    token, _ = register(client)
+    aid = submit_greedy(client, token, tmp_path)
+    shutil.rmtree(tmp_path / "agents" / aid)
+    house = [r["id"] for r in client.get("/api/v1/leaderboard").json()["rows"]
+             if r["author"] == "官方"]
+    r = client.post("/api/v1/challenges", headers=auth(token),
+                    json={"agent_id": aid, "opponent_id": house[0], "n_games": 1})
+    assert r.status_code == 409 and r.json()["detail"] == "agent files missing"
+    with dbmod.session_factory()() as db:
+        assert aid not in {a.id for a in active_agents(db)}

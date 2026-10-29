@@ -56,9 +56,22 @@ def verify_model_hash(agent: Agent) -> bool:
     return model.exists() and hashlib.sha256(model.read_bytes()).hexdigest() == agent.model_sha256
 
 
+def playable(agent: Agent) -> bool:
+    """House agents always; a submission only while its files are still on disk (they live
+    under MAIJONG_DATA_DIR, which a container must keep on a volume)."""
+    if agent.manifest.get("house"):
+        return True
+    return bool(agent.submission_path) and (Path(str(agent.submission_path)) / "agent.py").exists()
+
+
+def active_agents(db: Session) -> list[Agent]:
+    return [a for a in db.scalars(select(Agent).where(Agent.status == "ACTIVE")).all()
+            if playable(a)]
+
+
 def pick_table(db: Session, rng: random.Random) -> list[Agent]:
     """Four agents with close ratings, preferring those with fewer games."""
-    active = db.scalars(select(Agent).where(Agent.status == "ACTIVE")).all()
+    active = active_agents(db)
     if len(active) < 4:
         return []
     anchor = min(active, key=lambda a: (a.games_played, rng.random()))

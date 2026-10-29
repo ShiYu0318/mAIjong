@@ -35,6 +35,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string-0123456789}
       CORS_ORIGINS: http://localhost:3000
       REPLAY_DIR: /data/replays
+      # uploaded agents and other app files; must outlive the container
+      MAIJONG_DATA_DIR: /data/app
       S3_ENDPOINT: http://s3:8333
       S3_PUBLIC_ENDPOINT: http://localhost:8333
       S3_BUCKET: maijong-replays
@@ -43,7 +45,7 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       ARENA_INTERVAL: ${ARENA_INTERVAL:-0}
     ports: ["8000:8000"]
-    volumes: [replays:/data/replays]
+    volumes: [replays:/data/replays, appdata:/data/app]
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,6 +73,7 @@ services:
     profiles: ["tools"]
 
 volumes:
+  appdata:
   pgdata:
   s3data:
   replays:

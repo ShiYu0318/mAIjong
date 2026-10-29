@@ -13,7 +13,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.arena import ensure_house_agents, play_match, run_arena_match
+from backend.arena import (
+    active_agents,
+    ensure_house_agents,
+    play_match,
+    playable,
+    run_arena_match,
+)
 from backend.db import session_factory
 from backend.deps import SessionDep, UserDep
 from backend.models import Agent, Challenge, EloHistory, Game, Season, User, new_id
@@ -224,6 +230,8 @@ def create_challenge(body: ChallengeIn, db: SessionDep, user: UserDep) -> dict[s
         ag = db.get(Agent, aid)
         if ag is None or ag.status != "ACTIVE":
             raise HTTPException(422, f"agent {aid} is not active")
+        if not playable(ag):
+            raise HTTPException(409, "agent files missing")
     c = Challenge(challenger_id=user.id, agent_id=body.agent_id, opponent_id=body.opponent_id,
                   n_games=body.n_games)
     db.add(c)
@@ -259,7 +267,7 @@ async def arena_human_join(request: Request, db: SessionDep, user: UserDep) -> d
     """Human vs agents (P10-6): three opponents near the player's rating; only the human
     rating changes."""
     ensure_house_agents(db)
-    pool = db.scalars(select(Agent).where(Agent.status == "ACTIVE")).all()
+    pool = active_agents(db)
     opponents = sorted(pool, key=lambda a: (abs(a.elo - user.elo_human), random.random()))[:3]
     manager: RoomManager = request.app.state.rooms
     cfg = RoomConfig(time_limit=30, rounds=1, bot_levels=[None, 3, 3, 3])
