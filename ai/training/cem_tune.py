@@ -125,7 +125,8 @@ def evaluate(cands: list[RuleParams], base: str, opponent: list[str], seeds: lis
 
 
 def search(out: Path, generations: int, pop: int, elite: int, deals: int, base: str,
-           opponent: list[str], workers: int, start: RuleParams, sigma: float = 0.15) -> None:
+           opponent: list[str], workers: int, start: RuleParams, sigma: float = 0.15,
+           first_gen: int = 0) -> None:
     out.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(7)
     mean = from_params(start)
@@ -136,7 +137,7 @@ def search(out: Path, generations: int, pop: int, elite: int, deals: int, base: 
         xs = [mean] + [np.clip(mean + std * rng.standard_normal(len(SPACE)), 0, 1)
                        for _ in range(pop - 1)]  # keep the current mean in the race
         cands = [to_params(x) for x in xs]
-        seeds = [CEM_SEED + g * 100_000 + k for k in range(deals)]
+        seeds = [CEM_SEED + (first_gen + g) * 100_000 + k for k in range(deals)]
         fit = evaluate(cands, base, opponent, seeds, workers)
         order = np.argsort(-fit)
         top = np.array([xs[i] for i in order[:elite]])
@@ -162,11 +163,20 @@ def main() -> None:
     ap.add_argument("--baseline", default="rule")
     ap.add_argument("--opponent", default="rule|rulex:declare=never|rulex:calls=near|lv4")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
+    ap.add_argument("--start", default="",
+                    help="params JSON to start from (default: the plain rule agent)")
+    ap.add_argument("--sigma", type=float, default=0.15, help="initial spread in the unit cube")
+    ap.add_argument("--first-gen", type=int, default=0,
+                    help="offset for the deal range, so a follow-up search never reuses deals")
     args = ap.parse_args()
     known = {f.name for f in fields(RuleParams)}
     assert all(name in known for name, _, _ in SPACE)
+    start = RuleParams()
+    if args.start:
+        data = json.loads(Path(args.start).read_text())
+        start = RuleParams(**data.get("params", data))
     search(args.out, args.generations, args.pop, args.elite, args.deals, args.baseline,
-           args.opponent.split("|"), args.workers, RuleParams())
+           args.opponent.split("|"), args.workers, start, args.sigma, args.first_gen)
 
 
 if __name__ == "__main__":
