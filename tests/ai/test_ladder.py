@@ -6,7 +6,7 @@ import json
 import random
 from collections import Counter
 
-from ai.ladder import elo_rating, play_block, points_rating, report, schedule
+from ai.ladder import LV5_SPEC, elo_rating, play_block, points_rating, report, schedule
 
 
 def test_schedule_spreads_play_evenly():
@@ -48,7 +48,8 @@ def test_ratings_recover_a_known_order():
 
 
 def test_a_real_block_and_report(tmp_path):
-    specs = {"random": "random", "rule": "rule", "lv2": "lv2", "lv3": "lv3", "tuned": "tuned"}
+    # only specs that need no checkpoint files (CI has none)
+    specs = {"random": "random", "rule": "rule", "lv2": "lv2", "lv3": "lv3", "lv5": LV5_SPEC}
     blocks = []
     cache: dict = {}
     for b, lineup in enumerate(schedule(sorted(specs), 30)):
@@ -59,5 +60,5 @@ def test_a_real_block_and_report(tmp_path):
     (tmp_path / "pool.json").write_text(json.dumps(specs))
     summary = report(tmp_path, boot=20)
     elo = {r["agent"]: r["elo"] for r in summary["ratings"]}
-    assert elo["random"] < min(elo["rule"], elo["tuned"])
+    assert elo["random"] < min(elo["rule"], elo["lv5"])
     assert (tmp_path / "ratings.json").exists()
