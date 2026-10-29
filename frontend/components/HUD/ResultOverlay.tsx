@@ -8,7 +8,7 @@ import { GameButton } from "@/components/Game/GameButton";
 import { ProgressBar } from "@/components/Game/ProgressBar";
 import { TileImage } from "@/components/Hand/TileImage";
 import { WIN_EFFECTS } from "@/lib/cosmetics";
-import { taiName, useT } from "@/lib/i18n";
+import { splitLevel, taiName, useT } from "@/lib/i18n";
 import { sfx } from "@/lib/sfx";
 import { useAccount } from "@/store/accountStore";
 import { useGame } from "@/store/gameStore";
@@ -336,7 +336,7 @@ export function ResultOverlay({ names }: { names: string[] }) {
                     ready ? "bg-jade/15 ring-1 ring-jade/50" : "bg-black/25"}`} style={{ animationDelay: `${seat * 80}ms` }}>
                     <Avatar name={names[seat] ?? ""} size={22} />
                     <span className="min-w-0 leading-tight">
-                      <span className="block truncate text-sm font-bold">{names[seat]}</span>
+                      <span className="block truncate text-sm font-bold">{splitLevel(names[seat] ?? "").base}</span>
                       <span className={`text-xs font-black ${ready ? "text-jade" : "text-mist"}`}>
                         {ready ? t("聽牌") : t("未聽")}{drawInfo.declared[seat] ? ` · ${t("已宣告")}` : ""}
                       </span>

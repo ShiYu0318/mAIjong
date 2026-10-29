@@ -55,6 +55,14 @@ export const dateLocale = (locale: Locale = useLocale.getState().locale) => (loc
 
 const SEAT_NUMBERS: Record<string, string> = { "一": "1", "二": "2", "三": "3", "四": "4" };
 
+/** "電腦三號（普通）" / "Bot 3 (Intermediate)" → name and level, so a narrow seat badge can
+ * show the level as a tag instead of cutting it off. Other names come back unchanged. */
+export function splitLevel(name: string): { base: string; level: string | null } {
+  // only the server's bot names; a player's own name keeps its brackets
+  const m = name.match(/^(電腦[一二三四]號|Bot [1-4])\s*[（(]([^（）()]+)[）)]$/);
+  return m ? { base: m[1], level: m[2] } : { base: name, level: null };
+}
+
 /** Names the server makes up (bots, house agents, guests), shown in the current language;
  * names people chose are left alone. */
 export function localName(name: string, locale: Locale = useLocale.getState().locale): string {
@@ -349,6 +357,8 @@ const EN: Record<string, string> = {
   "還沒有真人和高手 AI 同桌的牌局。開一桌把座位設成「AI 高手」就會開始累計。": "No hands with people and the Expert AI yet. Open a table with an “AI Expert” seat to start counting.",
   "AI 胡牌率": "AI win rate",
   "真人胡牌率": "People's win rate",
+  "{name} 斷線了，{n} 秒後由 AI 代打": "{name} dropped out; an AI takes over in {n}s",
+  "{name} 斷線了，AI 正在接手": "{name} dropped out; an AI is taking over",
   "挑戰沒有完成：有一方的代理程式中途出錯或無法啟動。": "The challenge didn't finish: one of the agents failed or couldn't start.",
   "這個代理程式的檔案遺失了，暫時不能比賽。": "This agent's files are missing, so it can't play for now.",
   "請朋友開一桌留空位給你，或回大廳快速配對。": "Ask your friend to open a table with a seat left for you, or try quick match from the lobby.",

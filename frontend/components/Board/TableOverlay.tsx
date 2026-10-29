@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/Game/Avatar";
 import { TABLE_CLOTHS } from "@/lib/cosmetics";
-import { useT } from "@/lib/i18n";
+import { splitLevel, useT } from "@/lib/i18n";
 import type { GameView } from "@/lib/protocol";
 import { sfx } from "@/lib/sfx";
 import { type TableLayout, relSeat, seatCorner, seatStamp, tableLayout } from "@/lib/tableLayout";
@@ -179,7 +179,14 @@ export function TableHud({ g, view, names, timeLimit = null }: {
                     <span className={`tabular ml-auto text-xs font-black ${clock.left <= 5 ? "text-zhong" : "text-cyan"}`}>{clock.left}</span>
                   )}
                 </div>
-                <div className="truncate text-sm font-bold">{name}</div>
+                <div className="flex min-w-0 items-center gap-1">
+                  <span className="truncate text-sm font-bold">{splitLevel(name).base}</span>
+                  {splitLevel(name).level && (
+                    <span className="shrink-0 rounded bg-white/15 px-1 text-[10px] font-bold text-ivory-dim">
+                      {splitLevel(name).level}
+                    </span>
+                  )}
+                </div>
                 <div className={`tabular text-xs font-black ${p.score > 0 ? "text-jade" : p.score < 0 ? "text-zhong" : "text-mist"}`}>
                   {p.score > 0 ? `+${p.score}` : p.score}
                 </div>
