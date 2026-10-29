@@ -219,6 +219,7 @@ async def play_scenario(scenario_id: str, request: Request) -> dict[str, Any]:
 
     room = manager.create(new_id(), "PRACTICE", cfg, None)
     room.scenario = {"seed": int(sc["seed"]), "step": int(sc["step"])}
+    room.scenario_info = {k: str(sc[k]) for k in ("id", "title", "description", "category")}
     name = "練習者"
     room.join(None, name, seat)
     await room.start()

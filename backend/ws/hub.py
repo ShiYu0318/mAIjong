@@ -133,6 +133,8 @@ class Room:
         self.arena_agents: dict[int, str] = {}  # seat → agents.id (ARENA rooms)
         self.scenario: dict[str, int] | None = None  # practice: start from (seed, step)
         self.fill_at: float | None = None  # quick match: when bots take the empty seats
+        self.scenario_info: dict[str, str] | None = None  # practice: the question shown
+        self.scenario_judged = False  # the player's first move is the one that gets marked
         self.match_end_hook: Any = None
         self.store: RoomStore = NullStore()
         self.hand_seed: int | None = None  # seed of the current hand (for recovery)
@@ -185,6 +187,7 @@ class Room:
             "room_id": self.id, "code": self.code, "type": self.kind, "status": self.status,
             "host_id": self.host_id,
             "seats": [s.public() if s else None for s in self.seats],
+            "scenario": self.scenario_info,
             # seconds until bots fill a waiting quick match (relative: clocks differ)
             "fill_in": (max(0.0, round(self.fill_at - time.time(), 1))
                         if self.fill_at is not None and self.status == "WAITING" else None),
@@ -377,11 +380,20 @@ class Room:
             # duplicate or late action: ignore and resend the current request
             await self._sync_one(seat, None)
             return
+        verdict = None
+        if self.scenario is not None and not self.scenario_judged:
+            from backend.hints.scenario import judge
+
+            verdict = judge(self.game, seat, action)  # on the position before the move
         try:
             await self._apply(seat, action)
         except IllegalAction as e:
             await self._error(seat, "INVALID_ACTION", str(e))
             await self._sync_one(seat, None)
+            return
+        if verdict is not None:
+            self.scenario_judged = True
+            await self._send_seat(seat, "SCENARIO_RESULT", verdict)
 
     async def _apply(self, seat: int, action: Action, decision: dict[str, Any] | None = None
                      ) -> None:

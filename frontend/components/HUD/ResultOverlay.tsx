@@ -14,6 +14,7 @@ import { useAccount } from "@/store/accountStore";
 import { useGame } from "@/store/gameStore";
 import { Medal } from "@/components/Game/Medal";
 import { Check } from "lucide-react";
+import { ScenarioWrapUp } from "@/components/HUD/ScenarioPanel";
 
 /** Confetti-like burst in the colours of the equipped win effect. */
 function Burst({ effect, big }: { effect: string; big: boolean }) {
@@ -228,6 +229,7 @@ export function ResultOverlay({ names }: { names: string[] }) {
   const drawn = useGame((s) => s.drawn);
   const drawInfo = useGame((s) => s.drawInfo);
   const gameEnd = useGame((s) => s.gameEnd);
+  const scenario = useGame((s) => s.room?.scenario ?? null);
   const dismiss = useGame((s) => s.dismissResult);
   const gameId = useGame((s) => s.view?.game_id);
   const replayReady = useGame((s) => s.savedGameId !== null && s.savedGameId === s.view?.game_id);
@@ -348,7 +350,7 @@ export function ResultOverlay({ names }: { names: string[] }) {
           </div>
         )}
         {(stage >= 3 || (drawn && !win)) && <Rewards />}
-        {gameEnd ? (
+        {gameEnd && scenario ? <ScenarioWrapUp info={scenario} /> : gameEnd ? (
           <div className="mt-6">
             <h3 className="text-center font-display text-3xl font-black">{t("最終名次")}</h3>
             <ol className="mt-4 space-y-2">

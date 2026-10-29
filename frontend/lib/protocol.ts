@@ -85,6 +85,8 @@ export interface RoomInfo {
   status: "WAITING" | "IN_GAME" | "ROUND_END" | "GAME_END";
   host_id: string | null;
   seats: (SeatInfo | null)[];
+  /** the practice question, for scenario rooms */
+  scenario?: ScenarioInfo | null;
   /** seconds until bots fill a waiting quick match; null otherwise */
   fill_in?: number | null;
   config: {
@@ -114,4 +116,32 @@ export interface WinPayload extends HandResult {
   winner: number;
   melds: MeldView[];
   flowers: number[];
+}
+
+export interface ScenarioInfo {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+}
+
+export interface ScenarioCandidate {
+  tile: number;
+  shanten_after: number;
+  uke_count: number;
+  uke_ire: number[];
+  waits?: number[];
+  best_tai?: number | null;
+  danger?: number;
+}
+
+/** SCENARIO_RESULT: how the player's key move in a practice scenario rates. */
+export interface ScenarioResult {
+  kind: "discard" | "call";
+  verdict: "best" | "good" | "worse";
+  explanation: string;
+  // discard drills: candidate rows; call drills: actions as {action_type, tile}
+  best: ScenarioCandidate | { action_type: string; tile: number | null };
+  chosen: ScenarioCandidate & { action_type?: string };
+  candidates?: ScenarioCandidate[];
 }

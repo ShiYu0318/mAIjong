@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { Action, GameView, RoomInfo, ServerMessage, WinPayload } from "@/lib/protocol";
-import { translate } from "@/lib/i18n";
+import type { Action, GameView, RoomInfo, ScenarioResult, ServerMessage, WinPayload } from "@/lib/protocol";
+import { localName, translate } from "@/lib/i18n";
 import { sfx } from "@/lib/sfx";
 import { type ProgressEvent, useAccount } from "@/store/accountStore";
 import { tileName } from "@/lib/tiles";
@@ -78,6 +78,8 @@ interface GameState {
   gameEnd: GameEnd | null;
   hint: Hint | null;
   coach: CoachNoteData | null;
+  /** practice scenarios: how the key move rated */
+  scenarioResult: ScenarioResult | null;
   /** seats whose player dropped, with the epoch ms when an AI takes over */
   away: Record<number, number>;
   /** the last hand the server has finished saving, so its replay link opens */
@@ -153,6 +155,7 @@ const initial = {
   hint: null,
   coach: null,
   away: {},
+  scenarioResult: null,
   savedGameId: null,
   error: null,
   sender: null,
@@ -180,10 +183,13 @@ export const useGame = create<GameState>((set, get) => ({
   },
   handle: (msg) => {
     const p = msg.payload ?? {};
-    const names = (get().room?.seats ?? []).map((s, i) => s?.name ?? SEATS[i]);
+    const names = (get().room?.seats ?? []).map((s, i) => (s ? localName(s.name) : SEATS[i]));
     switch (msg.type) {
       case "JOINED":
         set({ seat: p.seat as number, room: p.room as RoomInfo, error: null });
+        break;
+      case "SCENARIO_RESULT":
+        set({ scenarioResult: p as unknown as ScenarioResult });
         break;
       case "HAND_SAVED":
         set({ savedGameId: String(p.game_id) });
