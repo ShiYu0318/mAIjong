@@ -47,3 +47,20 @@ def test_vote_agent_takes_the_majority_and_breaks_ties_by_order():
     assert v.act(None, 0, [x, y]) == y
     v.members = [Fixed(z), Fixed(x), Fixed(y)]
     assert v.act(None, 0, [x, y, z]) == z  # a three-way tie goes to the first member
+
+
+def test_batch_workers_are_spawned_not_forked(monkeypatch):
+    """The lab runs batches from a web-server thread; forked workers of a threaded process
+    can hang on an inherited lock (it did on Linux), so the pool must spawn."""
+    import ai.simulate as sim
+
+    seen = {}
+    real = sim.ProcessPoolExecutor
+
+    def recording(workers, mp_context=None):
+        seen["method"] = mp_context.get_start_method() if mp_context else None
+        return real(workers, mp_context=mp_context)
+
+    monkeypatch.setattr(sim, "ProcessPoolExecutor", recording)
+    sim.run_batch(["rule", "random", "random", "random"], 4, 0, workers=2)
+    assert seen["method"] == "spawn"

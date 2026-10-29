@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import gzip
 import json
+import multiprocessing
 from collections.abc import Callable, Iterator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
@@ -238,7 +239,10 @@ def run_batch(
         if workers <= 1:
             results: Iterator[tuple[BatchResult, list[str]]] = map(_run_chunk, jobs)
         else:
-            pool = stack.enter_context(ProcessPoolExecutor(workers))
+            # spawn, not fork: the web server runs this from a thread, and a forked child of
+            # a threaded process can inherit a held lock and never exit (seen on Linux)
+            pool = stack.enter_context(ProcessPoolExecutor(
+                workers, mp_context=multiprocessing.get_context("spawn")))
             results = pool.map(_run_chunk, jobs)
         for res, lines in results:
             total.merge(res)
