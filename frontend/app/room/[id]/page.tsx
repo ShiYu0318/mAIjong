@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ActionBar, ReadyWaits } from "@/components/HUD/ActionBar";
+import { AwayNotice } from "@/components/HUD/AwayNotice";
 import { CoachNote } from "@/components/HUD/CoachNote";
 import { HintPanel } from "@/components/HUD/HintPanel";
 import { ResultOverlay } from "@/components/HUD/ResultOverlay";
@@ -157,6 +158,7 @@ export default function RoomPage() {
           )}
           <HintPanel />
           <CoachNote />
+          <AwayNotice names={names} />
           <ResultOverlay names={names} />
         </section>
         <div className="hidden w-72 shrink-0 p-3 lg:block">

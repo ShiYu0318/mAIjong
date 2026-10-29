@@ -233,7 +233,9 @@ class Room:
             if st.sockets or st.is_bot:
                 return
             st.disconnected_at = time.time()
-            await self._broadcast("PLAYER_DISCONNECTED", {"seat": seat})
+            # the others can show how long until an AI plays this seat (none before the start)
+            grace = get_settings().grace_period_sec if self.status == "IN_GAME" else None
+            await self._broadcast("PLAYER_DISCONNECTED", {"seat": seat, "grace": grace})
             if self.status == "IN_GAME":
                 self._spawn(self._takeover_after_grace(seat, st.disconnected_at))
 

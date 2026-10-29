@@ -78,6 +78,8 @@ interface GameState {
   gameEnd: GameEnd | null;
   hint: Hint | null;
   coach: CoachNoteData | null;
+  /** seats whose player dropped, with the epoch ms when an AI takes over */
+  away: Record<number, number>;
   /** the last hand the server has finished saving, so its replay link opens */
   savedGameId: string | null;
   error: string | null;
@@ -150,6 +152,7 @@ const initial = {
   gameEnd: null,
   hint: null,
   coach: null,
+  away: {},
   savedGameId: null,
   error: null,
   sender: null,
@@ -240,11 +243,20 @@ export const useGame = create<GameState>((set, get) => ({
       case "CHAT":
         set({ chat: [...get().chat.slice(-100), { seat: p.seat as number, message: p.message as string, at: Date.now() }] });
         break;
-      case "SEAT_BOT_FILL":
-      case "PLAYER_DISCONNECTED":
-      case "PLAYER_RECONNECTED":
+      case "PLAYER_DISCONNECTED": {
+        const grace = typeof p.grace === "number" ? p.grace : null;
+        if (grace !== null) set({ away: { ...get().away, [p.seat as number]: Date.now() + grace * 1000 } });
         get().sender?.({ type: "READY" });
         break;
+      }
+      case "SEAT_BOT_FILL":
+      case "PLAYER_RECONNECTED": {
+        const rest = { ...get().away };
+        delete rest[p.seat as number];
+        set({ away: rest });
+        get().sender?.({ type: "READY" });
+        break;
+      }
       case "TUTOR_NOTE":
         set({ coach: p as unknown as CoachNoteData });
         break;
