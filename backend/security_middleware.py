@@ -35,6 +35,21 @@ class TokenBucket:
             return True
 
 
+def client_ip(request: Request) -> str:
+    """The player's address. Behind a proxy (Cloudflare, Fly.io, nginx) every request comes
+    from the proxy, so set TRUSTED_PROXY_HEADER to the header it fills in (CF-Connecting-IP,
+    Fly-Client-IP or X-Forwarded-For). Only do that when the backend can be reached solely
+    through the proxy: otherwise anyone can send the header and pick their own address."""
+    header = os.environ.get("TRUSTED_PROXY_HEADER", "").strip()
+    if header:
+        value = request.headers.get(header, "")
+        if header.lower() == "x-forwarded-for":
+            value = value.split(",")[-1]  # the proxy appends; the left part is the client's
+        if value.strip():
+            return value.strip()
+    return request.client.host if request.client else "unknown"
+
+
 def _limit(name: str, default: str) -> float:
     return float(os.environ.get(name, default))
 
@@ -47,7 +62,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request,
                        call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-        ip = request.client.host if request.client else "unknown"
+        ip = client_ip(request)
         path = request.url.path
         if path.startswith("/api/"):
             bucket = self.auth if path.startswith("/api/v1/auth/") and request.method == "POST" \
