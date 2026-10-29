@@ -34,7 +34,8 @@ export default function AgentDetail() {
       if (!c) return;  // a network blip: try again on the next tick
       if (c.status === "DONE" || c.status === "FAILED") {
         clearInterval(timer);
-        if (c.status === "FAILED") setResult(t("挑戰失敗：{msg}", { msg: c.result.error ?? "" }));
+        // the raw error is for operators (job record); players get what it means for them
+        if (c.status === "FAILED") setResult(t("挑戰沒有完成：有一方的代理程式中途出錯或無法啟動。"));
         else {
           const name = (aid: string) => localName(
             (aid === id ? agent?.name : others.find((o) => o.id === aid)?.name) ?? aid);

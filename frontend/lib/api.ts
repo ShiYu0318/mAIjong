@@ -57,6 +57,7 @@ const SERVER_ERRORS: Record<string, string> = {
   "game not found": "找不到這場牌局。",
   "agent not found": "找不到這個代理程式。",
   "not your agent": "這不是你的代理程式。",
+  "agent files missing": "這個代理程式的檔案遺失了，暫時不能比賽。",
   "not enough eligible agents": "目前沒有足夠的代理程式可以比賽。",
   "not a zip file": "上傳的檔案不是 zip。",
   "submission needs agent.py and manifest.json": "提交包需要 agent.py 和 manifest.json。",
