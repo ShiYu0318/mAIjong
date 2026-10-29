@@ -311,3 +311,11 @@ def test_hand_saved_is_announced_once_the_replay_can_be_opened(client):
                 ws.send_json({"type": "ACTION", "payload": pick})
     end = max(seen.index(k) for k in ("WIN_DECLARED", "ROUND_DRAW") if k in seen)
     assert seen.index("HAND_SAVED") > end
+
+
+def test_a_waiting_quick_match_says_when_bots_fill_in(client):
+    j = client.post("/api/v1/rooms/quick/join", json={}).json()
+    info = client.get(f"/api/v1/rooms/{j['room']['code']}").json()
+    assert info["type"] == "QUICK" and 0 < info["fill_in"] <= 30
+    private = create(client, [None, 3, 3, 3])
+    assert private["room"]["fill_in"] is None

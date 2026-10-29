@@ -85,6 +85,8 @@ export interface RoomInfo {
   status: "WAITING" | "IN_GAME" | "ROUND_END" | "GAME_END";
   host_id: string | null;
   seats: (SeatInfo | null)[];
+  /** seconds until bots fill a waiting quick match; null otherwise */
+  fill_in?: number | null;
   config: {
     time_limit: number | null;
     rounds: number;

@@ -132,6 +132,7 @@ class Room:
         self.actions: list[list[int]] = []  # [seat, action_id] for exact replay
         self.arena_agents: dict[int, str] = {}  # seat → agents.id (ARENA rooms)
         self.scenario: dict[str, int] | None = None  # practice: start from (seed, step)
+        self.fill_at: float | None = None  # quick match: when bots take the empty seats
         self.match_end_hook: Any = None
         self.store: RoomStore = NullStore()
         self.hand_seed: int | None = None  # seed of the current hand (for recovery)
@@ -184,6 +185,9 @@ class Room:
             "room_id": self.id, "code": self.code, "type": self.kind, "status": self.status,
             "host_id": self.host_id,
             "seats": [s.public() if s else None for s in self.seats],
+            # seconds until bots fill a waiting quick match (relative: clocks differ)
+            "fill_in": (max(0.0, round(self.fill_at - time.time(), 1))
+                        if self.fill_at is not None and self.status == "WAITING" else None),
             "config": {
                 "time_limit": cfg.time_limit, "rounds": cfg.rounds,
                 "base_points": cfg.base_points, "tai_points": cfg.tai_points,
@@ -836,6 +840,8 @@ class RoomManager:
         return best[1] if best else None
 
     async def schedule_quick_start(self, room: Room) -> None:
+        room.fill_at = time.time() + room.config.quick_wait
+
         async def later() -> None:
             await asyncio.sleep(room.config.quick_wait)
             async with room.lock:
