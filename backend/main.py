@@ -22,7 +22,7 @@ from backend.config import Settings, get_settings
 from backend.db import init_db, session_factory
 from backend.metrics import render as render_metrics
 from backend.models import Room as RoomRow
-from backend.observability import init_sentry
+from backend.observability import init_sentry, redact_tokens_in_server_logs
 from backend.persistence import save_hand
 from backend.replay_check import verify_game
 from backend.routers import (
@@ -147,6 +147,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     init_sentry()
+    redact_tokens_in_server_logs()
     settings = get_settings()
     if settings.secret_key == Settings().secret_key and not settings.debug and \
             settings.database_url.startswith("postgresql"):

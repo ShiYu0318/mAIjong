@@ -5,8 +5,29 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 log = logging.getLogger("maijong")
+
+_TOKEN = re.compile(r"(token=)[^&\s\"]+")
+
+
+class TokenRedactor(logging.Filter):
+    """WebSocket URLs carry a sign-in token (?token=...); uvicorn logs the URL of every
+    connection and request, so the token would land in the logs for anyone who reads them."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple):
+            record.args = tuple(_TOKEN.sub(r"\1***", a) if isinstance(a, str) else a
+                                for a in record.args)
+        if isinstance(record.msg, str):
+            record.msg = _TOKEN.sub(r"\1***", record.msg)
+        return True
+
+
+def redact_tokens_in_server_logs() -> None:
+    for name in ("uvicorn.access", "uvicorn.error"):
+        logging.getLogger(name).addFilter(TokenRedactor())
 
 
 def init_sentry() -> bool:
