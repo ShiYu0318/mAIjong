@@ -96,6 +96,8 @@
 }
 
 :root {
+  --font-sans: "Noto Sans TC";
+  --font-wenkai: "LXGW WenKai TC";
   color-scheme: dark;
 }
 

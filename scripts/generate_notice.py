@@ -26,8 +26,8 @@ under the MIT License (see sdk/LICENSE).
 This product includes the third-party software listed below, each under its own licence.
 """
 FONTS = [
-    ("Noto Sans TC", "SIL Open Font License 1.1", "loaded through Google Fonts"),
-    ("LXGW WenKai TC", "SIL Open Font License 1.1", "loaded through Google Fonts"),
+    ("Noto Sans TC", "SIL Open Font License 1.1", "self-hosted via Fontsource"),
+    ("LXGW WenKai TC", "SIL Open Font License 1.1", "self-hosted via Fontsource"),
 ]
 _NAME = re.compile(r"^[A-Za-z0-9_.\-]+")
 

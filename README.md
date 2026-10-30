@@ -467,6 +467,8 @@ docker compose down
 
 Compose 會啟動 PostgreSQL、Redis、SeaweedFS S3、後端與前端；網站為 `localhost:3000`、API 為 `localhost:8000`、S3 為 `localhost:8333`。錄影預簽名連結使用 `S3_PUBLIC_ENDPOINT` 作為瀏覽器可到達的位址。正式部署至少應設定自己的 `SECRET_KEY`、`CORS_ORIGINS` 與儲存端點；完整項目見 [環境變數範例](.env.example)。
 
+前端以鎖定版本的 Fontsource 套件提供 Noto Sans TC 與 LXGW WenKai TC 字型，字型隨建置產物提供。Docker 在依賴安裝完成後，以停用網路的方式執行前端 build，避免建置依賴 Google Fonts 的即時回應。
+
 ### 環境變數與服務選擇
 
 | 變數 | 作用 |

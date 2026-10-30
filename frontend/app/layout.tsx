@@ -5,7 +5,7 @@ import { Toasts } from "@/components/Game/Toasts";
 import { LocaleSync } from "@/components/I18n/LocaleToggle";
 import { SentryInit } from "@/components/Monitoring/SentryInit";
 import { ServiceWorker } from "@/components/Pwa/ServiceWorker";
-import { notoSans, wenkai } from "@/lib/fonts";
+import "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="zh-Hant-TW" className={`${wenkai.variable} ${notoSans.variable}`}>
+    <html lang="zh-Hant-TW">
       <body className="min-h-dvh antialiased">
         {children}
         <ServiceWorker />

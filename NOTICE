@@ -30,6 +30,8 @@ uvicorn 0.54.0: BSD-3-Clause
 
 JavaScript packages (frontend)
 ------------------------------
+@fontsource/lxgw-wenkai-tc 5.3.1: OFL-1.1
+@fontsource/noto-sans-tc 5.3.1: OFL-1.1
 lucide-react 1.56.0: ISC
 next 15.5.27: MIT
 pixi.js 8.22.0: MIT
@@ -39,5 +41,5 @@ zustand 5.0.15: MIT
 
 Fonts
 -----
-Noto Sans TC: SIL Open Font License 1.1 (loaded through Google Fonts)
-LXGW WenKai TC: SIL Open Font License 1.1 (loaded through Google Fonts)
+Noto Sans TC: SIL Open Font License 1.1 (self-hosted via Fontsource)
+LXGW WenKai TC: SIL Open Font License 1.1 (self-hosted via Fontsource)
