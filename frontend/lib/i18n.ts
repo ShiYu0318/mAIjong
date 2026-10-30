@@ -340,6 +340,8 @@ const EN: Record<string, string> = {
   "入座": "Take a seat",
   "無法加入": "Couldn't join",
   "回大廳": "Back to lobby",
+  "請橫向遊玩": "Rotate to landscape",
+  "將手機轉成橫向，完整查看四家牌面與手牌。": "Turn your phone sideways to see all four players and your hand.",
   "連線中…": "Connecting…",
   "連線中斷，重新連線中…": "Connection lost, reconnecting…",
   "已離線": "Offline",

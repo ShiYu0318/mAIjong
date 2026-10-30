@@ -206,3 +206,11 @@ select::-ms-expand {
   border-radius: 10px; font-size: 40px; font-weight: 700; line-height: 1;
   box-shadow: 0 5px 0 #176d51, 0 10px 20px #0005;
 }
+.table-rotate { display: none; }
+@media (max-width: 640px) and (orientation: portrait) {
+  .table-rotate { display: flex; }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .table-actions { transform: scale(.82); transform-origin: bottom right; }
+}

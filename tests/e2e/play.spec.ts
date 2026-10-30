@@ -258,6 +258,20 @@ test.describe("phone screen", () => {
     expect(await overflow()).toBeLessThanOrEqual(1);
   });
 
+  test("portrait play asks for landscape and landscape keeps the table accessible", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "開桌" }).click();
+    await page.waitForURL(/\/room\//);
+    await page.getByRole("button", { name: "開始", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "請橫向遊玩" })).toBeVisible();
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect(page.getByRole("dialog", { name: "請橫向遊玩" })).toBeHidden();
+    await expect(page.locator("canvas")).toBeVisible();
+    await expect(page.locator("[data-seat-panel]")).toHaveCount(4);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
+
   test("the leaderboard podium fits in English", async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem("maijong.locale", "en"));
     await page.goto("/leaderboard");

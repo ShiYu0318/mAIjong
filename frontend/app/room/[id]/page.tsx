@@ -126,6 +126,12 @@ export default function RoomPage() {
 
   return (
     <main className="flex h-dvh flex-col">
+      <div role="dialog" aria-label={t("請橫向遊玩")} className="table-rotate fixed inset-0 z-50 flex-col items-center justify-center gap-5 bg-[#10162e] px-8 text-center">
+        <span aria-hidden="true" className="text-6xl">↻</span>
+        <h1 className="font-display text-3xl font-black">{t("請橫向遊玩")}</h1>
+        <p className="max-w-xs text-mist">{t("將手機轉成橫向，完整查看四家牌面與手牌。")}</p>
+        <Link href="/" className="mt-4 text-gold underline">{t("回大廳")}</Link>
+      </div>
       <header className="flex items-center gap-3 border-b border-white/10 bg-black/25 px-3 py-2 text-sm whitespace-nowrap backdrop-blur sm:gap-4 sm:px-4">
         <Link href="/" className="font-display text-xl font-black text-gold">{t("麥醬")}</Link>
         <span className="text-mist"><span className="hidden sm:inline">{t("房間")} </span><span className="tabular text-ivory">{room.code}</span></span>
@@ -150,7 +156,7 @@ export default function RoomPage() {
           <div className="absolute right-4 left-4 z-10 flex items-end justify-between gap-3"
             style={{ bottom: (layout?.handBlock ?? 98) + 22 }}>
             <ReadyWaits />
-            <div className="ml-auto"><ActionBar /></div>
+            <div className="table-actions ml-auto"><ActionBar /></div>
           </div>
           {error && (
             <p role="alert" className="absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-md bg-zhong/90 px-3 py-1.5 text-sm">
