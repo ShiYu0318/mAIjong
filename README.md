@@ -1,10 +1,33 @@
-# mAIjong 麥醬
+<p align="center">
+  <img src="frontend/public/icons/icon-512.png" alt="mAIjong 麥醬 Logo" width="112" height="112">
+</p>
 
-**台灣十六張麻將的線上遊戲、AI 練習場與強化學習研究平台。**
+<h1 align="center">mAIjong 麥醬</h1>
+
+<p align="center">
+  <strong>台灣十六張麻將的線上遊戲、AI 練習場與強化學習研究平台。</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ShiYu0318/mAIjong/actions/workflows/ci.yml"><img src="https://github.com/ShiYu0318/mAIjong/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue?style=flat" alt="Platform license: Apache-2.0"></a>
+  <a href="sdk/LICENSE"><img src="https://img.shields.io/badge/SDK-MIT-green?style=flat" alt="SDK license: MIT"></a>
+  <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.12%2B-3776AB?style=flat&amp;logo=python&amp;logoColor=white" alt="Python 3.12+"></a>
+  <a href="frontend/package.json"><img src="https://img.shields.io/badge/Next.js-15-111111?style=flat&amp;logo=nextdotjs&amp;logoColor=white" alt="Next.js 15"></a>
+  <a href="#ai-與強化學習"><img src="https://img.shields.io/badge/PyTorch-Reinforcement%20Learning-EE4C2C?style=flat&amp;logo=pytorch&amp;logoColor=white" alt="PyTorch reinforcement learning"></a>
+</p>
+
+<p align="center">
+  <a href="#快速開始">快速開始</a> ·
+  <a href="#遊戲與產品">遊戲功能</a> ·
+  <a href="#ai-與強化學習">AI 與 RL</a> ·
+  <a href="#開發自己的代理程式">Agent SDK</a> ·
+  <a href="#部署設定與測試">部署與開發</a>
+</p>
 
 和朋友開桌、與不同難度的 AI 對戰，從每一次出牌學習；也可以用同一套規則引擎訓練代理程式、重播牌局，並在固定牌譜上比較策略。介面以繁體中文為主，提供英文切換。
 
-![麥醬大廳：快速配對、開桌與玩家進度](assets/screenshots/home.png)
+![麥醬完整大廳：快速配對、開桌、玩家進度與各功能入口](assets/screenshots/home.png)
 
 > [!NOTE]
 > 本專案實作的是**台灣十六張**玩法。台數與特殊規則依程式內的計分設定；不同地區的麻將慣例可能不同。
