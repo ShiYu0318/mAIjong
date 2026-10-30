@@ -62,12 +62,8 @@ const STAMP_TEXT: Record<string, { text: string; colors: [string, string] }> = {
 
 function Stamp({ text, colors }: { text: string; colors: [string, string] }) {
   return (
-    <span className="block animate-stamp font-display text-6xl font-black"
-      style={{
-        background: `linear-gradient(180deg, ${colors[0]}, ${colors[1]})`, WebkitBackgroundClip: "text",
-        backgroundClip: "text", color: "transparent", WebkitTextStroke: "2px rgb(255 255 255 / 0.9)",
-        filter: "drop-shadow(0 6px 0 rgb(0 0 0 / 0.35)) drop-shadow(0 0 18px rgb(255 255 255 / 0.35))",
-      }}>
+    <span className="call-plaque animate-stamp font-tile"
+      style={{ borderColor: colors[1] }}>
       {text}
     </span>
   );

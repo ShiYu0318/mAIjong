@@ -61,8 +61,8 @@
     50% { box-shadow: 0 0 0 10px rgb(255 204 61 / 0); }
   }
   @keyframes stamp {
-    0% { opacity: 0; transform: scale(2.6) rotate(-8deg); }
-    60% { opacity: 1; transform: scale(0.92) rotate(2deg); }
+    0% { opacity: 0; transform: translateY(8px) scale(1.15); }
+    60% { opacity: 1; transform: translateY(-2px) scale(1.02); }
     100% { opacity: 1; transform: scale(1) rotate(0); }
   }
   @keyframes burst {
@@ -197,4 +197,12 @@ select::-ms-expand {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.call-plaque {
+  display: flex; align-items: center; justify-content: center;
+  min-width: 60px; height: 68px; padding: 0 12px;
+  background: #fff8df; color: #173d32; border: 2px solid;
+  border-radius: 10px; font-size: 40px; font-weight: 700; line-height: 1;
+  box-shadow: 0 5px 0 #176d51, 0 10px 20px #0005;
 }
