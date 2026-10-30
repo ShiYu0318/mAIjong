@@ -29,6 +29,32 @@ test("create a table with AI seats and play several turns", async ({ page }) => 
   expect(await log.count()).toBeGreaterThanOrEqual(8);
 });
 
+test("player panels sit at the middle of the four table edges without covering the felt", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "開桌" }).click();
+  await page.waitForURL(/\/room\//);
+  await page.getByRole("button", { name: "開始", exact: true }).click();
+  await expect(page.locator("[data-seat-panel]")).toHaveCount(4);
+  const positions = await page.evaluate(() => {
+    const felt = document.querySelector<HTMLElement>("[data-table-felt]")!.getBoundingClientRect();
+    return [...document.querySelectorAll<HTMLElement>("[data-seat-panel]")].map((panel) => {
+      const box = panel.getBoundingClientRect();
+      return {
+        seat: Number(panel.dataset.seatPanel),
+        outside: panel.dataset.seatPanel === "0" ? box.top >= felt.bottom
+          : panel.dataset.seatPanel === "1" ? box.left >= felt.right
+          : panel.dataset.seatPanel === "2" ? box.bottom <= felt.top
+          : box.right <= felt.left,
+        centered: panel.dataset.seatPanel === "0" || panel.dataset.seatPanel === "2"
+          ? Math.abs((box.left + box.right) / 2 - (felt.left + felt.right) / 2) < 4
+          : Math.abs((box.top + box.bottom) / 2 - (felt.top + felt.bottom) / 2) < 4,
+      };
+    });
+  });
+  await expect(page.locator("canvas")).toBeVisible();
+  expect(positions).toEqual([0, 1, 2, 3].map((seat) => ({ seat, outside: true, centered: true })));
+});
+
 test("play with the keyboard only", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "開桌" }).click();

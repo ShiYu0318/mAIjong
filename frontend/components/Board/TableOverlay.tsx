@@ -33,7 +33,7 @@ export function TableFelt({ g }: { g: TableLayout }) {
   const [a, b] = TABLE_CLOTHS[cloth] ?? TABLE_CLOTHS.emerald;
   const pad = 14;
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute rounded-[28px]"
+    <div data-table-felt aria-hidden="true" className="pointer-events-none absolute rounded-[28px]"
       style={{
         left: g.cx - g.L / 2 - pad, top: g.cy - g.L / 2 - pad, width: g.L + pad * 2, height: g.L + pad * 2,
         background: "linear-gradient(145deg, #8a5a32, #5a3517 55%, #3d230e)",
@@ -141,45 +141,22 @@ export function TableHud({ g, view, names, timeLimit = null }: {
         const acting = view.acting.includes(p.seat) && view.phase !== "ENDED";
         const clock = acting ? clocks[p.seat] : undefined;
         const name = names[p.seat] ?? `#${p.seat + 1}`;
-        if (g.compact) {
-          return (
-            <Abs key={p.seat} x={pos.x} y={pos.y}>
-              <div className={`flex flex-col items-center rounded-xl px-1 py-0.5 ${acting ? "bg-black/60 ring-2 ring-gold" : "bg-black/40"}`}
-                aria-label={name}>
-                <span className="relative">
-                  <Avatar name={name} size={22} active={acting && !clock} progress={clock?.frac} ringColor={ringColor(clock)} />
-                  <span className="absolute -top-1 -right-2 rounded bg-ivory px-0.5 text-[10px] leading-tight font-black text-ink">
-                    {windName(p.seat_wind)}
-                  </span>
-                </span>
-                <span className={`tabular text-[10px] font-black ${p.score > 0 ? "text-jade" : p.score < 0 ? "text-zhong" : "text-mist"}`}>
-                  {p.score > 0 ? `+${p.score}` : p.score}
-                </span>
-                {(view.dealer === p.seat || p.declared_ting) && (
-                  <span className="flex gap-0.5 text-[9px] font-black">
-                    {view.dealer === p.seat && <span className="rounded bg-zhong px-0.5">{t("莊")}</span>}
-                    {p.declared_ting && <span className="rounded bg-pink px-0.5">{t("聽")}</span>}
-                  </span>
-                )}
-              </div>
-            </Abs>
-          );
-        }
         return (
           <Abs key={p.seat} x={pos.x} y={pos.y}>
-            <div className={`flex w-[168px] items-center gap-2 rounded-2xl px-2 py-1.5 transition-all duration-300 ${
-              acting ? "scale-105 bg-black/55 ring-2 ring-gold shadow-[0_0_24px_rgb(255_204_61/0.45)]" : "bg-black/35"}`}>
-              <Avatar name={name} size={34} active={acting && !clock} progress={clock?.frac} ringColor={ringColor(clock)} />
+            <div data-seat-panel={rel} aria-label={name} className={`flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors duration-300 ${
+              acting ? "bg-black/65 ring-1 ring-gold" : "bg-black/40"}`} style={{ width: g.compact ? 120 : 168, height: g.compact ? 32 : 60 }}>
+              <Avatar name={name} size={g.compact ? 22 : 34} active={acting && !clock} progress={clock?.frac} ringColor={ringColor(clock)} />
               <div className="min-w-0 flex-1 leading-tight">
                 <div className="flex items-center gap-1">
                   <span className="rounded-md bg-ivory/90 px-1 text-xs font-black text-ink">{windName(p.seat_wind)}</span>
+                  {g.compact && <span className="min-w-0 truncate text-[10px] font-bold">{splitLevel(name).base}</span>}
                   {view.dealer === p.seat && <span className="rounded-md bg-zhong px-1 text-xs font-black">{t("莊")}</span>}
                   {p.declared_ting && <span className="rounded-md bg-pink px-1 text-xs font-black">{t("聽")}</span>}
                   {clock && !clock.mine && (
                     <span className={`tabular ml-auto text-xs font-black ${clock.left <= 5 ? "text-zhong" : "text-cyan"}`}>{clock.left}</span>
                   )}
                 </div>
-                <div className="flex min-w-0 items-center gap-1">
+                <div className={`flex min-w-0 items-center gap-1 ${g.compact ? "hidden" : ""}`}>
                   {/* a bot's name is short and must stay whole; a long level tag gives way */}
                   <span className={`text-sm font-bold ${splitLevel(name).level ? "shrink-0" : "truncate"}`}>
                     {splitLevel(name).base}
@@ -218,7 +195,7 @@ function Compass({ g, view, clocks }: {
 }) {
   const t = useT();
   const me = view.you ?? 0;
-  const size = Math.max(96, g.L * 0.2); // larger would cover the first river rows
+  const size = Math.max(48, g.L * 0.2); // larger would cover the first river rows
   // our own countdown wins; otherwise show whoever is on the clock
   const clock = clocks[me] ?? view.acting.map((s) => clocks[s]).find(Boolean);
   const left = clock?.left ?? null;
