@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from engine import tiles
 from engine.game import GameState
+from engine.hand import MeldType
 
 
 def safe_against(state: GameState, opponent: int) -> set[int]:
@@ -28,11 +29,14 @@ def safe_against(state: GameState, opponent: int) -> set[int]:
 
 
 def visible_counts(state: GameState, seat: int) -> list[int]:
+    """Known copies only; opponents' concealed-kong identities are unavailable."""
     seen = tiles.to_counts(state.hands[seat])
     for p in range(4):
         for t in state.discards[p]:
             seen[t] += 1
         for m in state.melds[p]:
+            if p != seat and m.type == MeldType.AN_KONG:
+                continue
             for t in m.tiles:
                 seen[t] += 1
     return seen
@@ -88,6 +92,7 @@ def suspected_danger(state: GameState, tile: int, seen: list[int], threats: list
             base *= 0.6
         suit = tiles.suit_of(tile)
         if any(t is not None and not tiles.is_honor(t) and tiles.suit_of(t) == suit
-               for p in threats for m in state.melds[p] for t in m.tiles):
+               for p in threats for m in state.melds[p] if m.type != MeldType.AN_KONG
+               for t in m.tiles):
             base *= 1.3
     return min(1.0, base * (1 + 0.15 * (len(threats) - 1)))

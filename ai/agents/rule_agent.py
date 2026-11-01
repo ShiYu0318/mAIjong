@@ -12,7 +12,7 @@ import math
 import random
 from dataclasses import dataclass, replace
 
-from ai.danger import suspected_danger, suspected_threats, tile_danger
+from ai.danger import suspected_danger, suspected_threats, tile_danger, visible_counts
 from engine import tiles
 from engine.actions import Action, ActionType
 from engine.game import GameState, Phase
@@ -26,15 +26,8 @@ _CHI_OFFSETS = {
 
 
 def _visible_counts(state: GameState, seat: int) -> list[int]:
-    """Copies of each tile the seat can see (own hand, all melds and discards)."""
-    seen = tiles.to_counts(state.hands[seat])
-    for p in range(4):
-        for t in state.discards[p]:
-            seen[t] += 1
-        for m in state.melds[p]:
-            for t in m.tiles:
-                seen[t] += 1
-    return seen
+    """Shared visibility contract for rule scores and danger estimates."""
+    return visible_counts(state, seat)
 
 
 def _best_discard_shanten(counts: list[int], n_melds: int) -> int:
