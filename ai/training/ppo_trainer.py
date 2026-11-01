@@ -93,7 +93,7 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
     league.add(model)
     logger = MetricsLogger(run, {"kind": "ppo", **cfg.__dict__, "init": str(init)})
 
-    reward_config = REWARD_PRESETS[cfg.reward]
+    reward_config = {**REWARD_PRESETS[cfg.reward], "discount_gamma": cfg.gamma}
     envs = [MahjongEnv(rotate_seat=True, seed=cfg.seed * 1000 + i, reward_config=reward_config)
             for i in range(cfg.n_envs)]
     obs, masks = [], []
@@ -254,8 +254,8 @@ def main() -> None:
     ap.add_argument("--kl", type=float, default=0.5, help="KL anchor to the --init policy")
     ap.add_argument("--warmup", type=int, default=10, help="value-only updates first")
     ap.add_argument("--rule-share", type=float, default=0.5)
-    ap.add_argument("--reward", choices=["potential", "spec"], default="potential",
-                    help="potential-based shaping + points (default) or the SPEC 05.4 shaping")
+    ap.add_argument("--reward", choices=list(REWARD_PRESETS), default="potential",
+                    help="reward preset; legacy potential remains the default")
     ap.add_argument("--run", default=f"ppo-{int(time.time())}")
     ap.add_argument("--device", choices=DEVICE_CHOICES, default="auto",
                     help="auto = CUDA when available, else CPU (rollouts always step on the CPU)")

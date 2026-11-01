@@ -296,7 +296,7 @@ def main() -> None:
     ap.add_argument("--n-steps", type=int, default=512, help="rollout length per env")
     ap.add_argument("--batch", type=int, default=1024)
     ap.add_argument("--rule-share", type=float, default=0.7)
-    ap.add_argument("--reward", choices=["potential", "spec"], default="potential")
+    ap.add_argument("--reward", choices=list(REWARD_PRESETS), default="potential")
     ap.add_argument("--value-warmup", type=int, default=100_000,
                     help="steps that train only the value network")
     ap.add_argument("--snapshot-every", type=int, default=100_000)

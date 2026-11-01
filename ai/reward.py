@@ -23,12 +23,27 @@ DEFAULT_REWARD_CONFIG: dict[str, float] = {
 # SPEC 05.4 shaping only rewards improvements, so breaking a hand apart costs nothing and
 # rebuilding it pays again: a policy can farm shaping reward instead of winning. The
 # "potential" preset makes shaping a potential difference Φ(s') − Φ(s) (penalising
-# regressions, Φ = 0 at the end, which leaves the optimal policy unchanged) and replaces
+# regressions, Φ = 0 at the end; legacy behavior without a discount correction) and replaces
 # the tai terms with the actual points, which also counts paying for others' self-draws.
 REWARD_PRESETS: dict[str, dict[str, float]] = {
     "spec": DEFAULT_REWARD_CONFIG,
     "potential": {**DEFAULT_REWARD_CONFIG, "potential_shaping": 1.0, "score_coeff": 0.005,
                   "win_tai_coeff": 0.0, "deal_in_penalty": 0.0},
+}
+
+
+# Pure payment objective and its discount-correct potential-based counterpart.
+# Keep legacy presets unchanged so historical experiments remain reproducible.
+REWARD_PRESETS["score"] = {
+    **DEFAULT_REWARD_CONFIG,
+    "shanten_improve": 0.0, "uke_ire_improve": 0.0, "tenpai_bonus": 0.0,
+    "flower_supplement": 0.0, "win_tai_coeff": 0.0, "deal_in_penalty": 0.0,
+    "exhausted_wall": 0.0, "score_coeff": 0.005,
+}
+REWARD_PRESETS["discounted"] = {
+    **REWARD_PRESETS["score"],
+    "potential_shaping": 1.0, "discounted_potential": 1.0,
+    "shanten_improve": 0.05, "uke_ire_improve": 0.005, "tenpai_bonus": 0.1,
 }
 
 
@@ -88,6 +103,7 @@ def compute_shaped_reward(
     # terminal rewards are given once, on the seat's final step
     if not step.is_final or final_result is None:
         return r
+    r += config.get("score_coeff", 0.0) * final_result.payment
     if final_result.winner == step.seat:
         r += config["win_tai_coeff"] * final_result.tai
     if final_result.deal_in == step.seat:
@@ -107,7 +123,8 @@ def _potential_reward(step: StepData, final_result: GameResult | None,
     before = _potential(step.shanten_before, step.uke_ire_before, config)
     after = 0.0 if step.is_final else _potential(step.shanten_after, step.uke_ire_after,
                                                  config)
-    r = after - before + config["flower_supplement"] * step.own_flowers_gained
+    gamma = config["discount_gamma"] if config.get("discounted_potential") else 1.0
+    r = gamma * after - before + config["flower_supplement"] * step.own_flowers_gained
     if step.is_final and final_result is not None:
         r += config.get("score_coeff", 0.0) * final_result.payment
         if final_result.winner == step.seat:
