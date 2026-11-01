@@ -65,13 +65,12 @@ def legal_actions_payload(s: GameState, seat: int) -> list[dict[str, Any]]:
 
 
 def visible_event(ev: dict[str, Any], seat: int | None) -> dict[str, Any] | None:
-    """Hide private events (other players' draws)."""
-    if ev.get("private") and ev.get("player") != seat:
-        return {**ev, "tile": None}
+    """Hide tile identities, including those encoded in action IDs."""
     if ev.get("type") == "DEAL":
         return None
-    if ev.get("type") == "KONG" and ev.get("kind") == "AN_KONG" and ev.get("player") != seat:
-        return {**ev, "tile": None}
+    concealed_kong = ev.get("type") == "KONG" and ev.get("kind") == "AN_KONG"
+    if (seat is None or ev.get("player") != seat) and (ev.get("private") or concealed_kong):
+        return {**ev, "tile": None, "action_id": None}
     return ev
 
 
