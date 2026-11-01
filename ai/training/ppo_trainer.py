@@ -50,6 +50,8 @@ class PPOConfig:
     eval_every: int = 20
     eval_hands: int = 200
     hierarchical: bool = True
+    use_history: bool = False
+    history_length: int = 128
     seed: int = 0
     extra: dict[str, Any] = field(default_factory=dict)
     device: str = "auto"  # see ai.training.device
@@ -58,6 +60,11 @@ class PPOConfig:
 def _stack(obs: list[dict[str, np.ndarray]]) -> tuple[torch.Tensor, torch.Tensor]:
     return (torch.from_numpy(np.stack([o["tiles"] for o in obs])),
             torch.from_numpy(np.stack([o["scalars"] for o in obs])))
+
+
+def _history(obs: list[dict[str, np.ndarray]]) -> dict[str, torch.Tensor]:
+    return {k: torch.from_numpy(np.stack([o[k] for o in obs]))
+            for k in ("history", "history_mask") if k in obs[0]}
 
 
 def _snapshot_factory(model: torch.nn.Module, model_config: dict[str, Any]
@@ -76,11 +83,12 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
               ) -> dict[str, float]:
     torch.manual_seed(cfg.seed)
     dev = pick_device(cfg.device)
-    model_config = {"hierarchical": cfg.hierarchical, "use_transformer": False}
+    model_config = {"hierarchical": cfg.hierarchical, "use_transformer": False,
+                    "use_history": cfg.use_history, "history_length": cfg.history_length}
     model = ActorCritic(**model_config)
     if init is not None:
         state = torch.load(init, map_location="cpu", weights_only=False)["state_dict"]
-        model.load_state_dict(state)
+        model.load_warm_start(state)
     model.to(dev)
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
     reference: ActorCritic | None = None
@@ -94,7 +102,8 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
     logger = MetricsLogger(run, {"kind": "ppo", **cfg.__dict__, "init": str(init)})
 
     reward_config = {**REWARD_PRESETS[cfg.reward], "discount_gamma": cfg.gamma}
-    envs = [MahjongEnv(rotate_seat=True, seed=cfg.seed * 1000 + i, reward_config=reward_config)
+    envs = [MahjongEnv(rotate_seat=True, seed=cfg.seed * 1000 + i, reward_config=reward_config,
+                       history_length=cfg.history_length if cfg.use_history else 0)
             for i in range(cfg.n_envs)]
     obs, masks = [], []
     for e in envs:
@@ -116,18 +125,24 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
         warmup = update <= cfg.value_warmup
 
         keys = ("tiles", "scalars", "mask", "act", "logp", "val", "rew", "done")
+        if cfg.use_history:
+            keys += ("history", "history_mask")
         buf: dict[str, list[Any]] = {k: [] for k in keys}
         model.eval()
         for _ in range(cfg.rollout_steps):
             t, s = _stack(obs)
             m = torch.from_numpy(np.stack(masks))
+            history = _history(obs)
             with torch.no_grad():  # the buffer stays on the CPU; only the forward pass moves
-                logp, val = model(t.to(dev), s.to(dev), m.to(dev))
+                logp, val = model(t.to(dev), s.to(dev), m.to(dev),
+                                  **{k: v.to(dev) for k, v in history.items()})
                 logp, val = logp.cpu(), val.cpu()
                 act = torch.distributions.Categorical(logits=logp).sample()
             buf["tiles"].append(t)
             buf["scalars"].append(s)
             buf["mask"].append(m)
+            for k, v in history.items():
+                buf[k].append(v)
             buf["act"].append(act)
             buf["logp"].append(logp.gather(1, act[:, None]).squeeze(1))
             buf["val"].append(val)
@@ -151,7 +166,8 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
         # GAE over the rollout (per env column)
         with torch.no_grad():
             t, s = _stack(obs)
-            _, next_val = model(t.to(dev), s.to(dev), torch.from_numpy(np.stack(masks)).to(dev))
+            _, next_val = model(t.to(dev), s.to(dev), torch.from_numpy(np.stack(masks)).to(dev),
+                                 **{k: v.to(dev) for k, v in _history(obs).items()})
             next_val = next_val.cpu()
         T = cfg.rollout_steps
         vals = torch.stack(buf["val"])
@@ -173,6 +189,8 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
             "logp": torch.cat(buf["logp"]), "val": vals.flatten(),
             "adv": adv.flatten(), "ret": ret.flatten(),
         }
+        if cfg.use_history:
+            flat.update({k: torch.cat(buf[k]) for k in ("history", "history_mask")})
         flat["adv"] = (flat["adv"] - flat["adv"].mean()) / (flat["adv"].std() + 1e-8)
         n = len(flat["act"])
         model.train()
@@ -182,7 +200,8 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
             for i in range(0, n, cfg.mini_batch):
                 b = perm[i:i + cfg.mini_batch]
                 mb = {k: v[b].to(dev) for k, v in flat.items()}
-                logp_all, v = model(mb["tiles"], mb["scalars"], mb["mask"])
+                history = {k: mb[k] for k in ("history", "history_mask") if k in mb}
+                logp_all, v = model(mb["tiles"], mb["scalars"], mb["mask"], **history)
                 logp = logp_all.gather(1, mb["act"][:, None]).squeeze(1)
                 ratio = (logp - mb["logp"]).exp()
                 a = mb["adv"]
@@ -195,7 +214,7 @@ def train_ppo(cfg: PPOConfig, out: Path, init: Path | None = None, run: str = "p
                 if reference is not None:
                     m = mb["mask"]
                     with torch.no_grad():
-                        ref_logp, _ = reference(mb["tiles"], mb["scalars"], m)
+                        ref_logp, _ = reference(mb["tiles"], mb["scalars"], m, **history)
                     diff = torch.where(m, ref_logp - logp_all, torch.zeros_like(logp_all))
                     kl = (ref_logp.exp() * m * diff).sum(dim=1).mean()
                 if warmup:
@@ -256,6 +275,9 @@ def main() -> None:
     ap.add_argument("--rule-share", type=float, default=0.5)
     ap.add_argument("--reward", choices=list(REWARD_PRESETS), default="potential",
                     help="reward preset; legacy potential remains the default")
+    ap.add_argument("--history", action="store_true",
+                    help="encode visible event history with a GRU")
+    ap.add_argument("--history-length", type=int, default=128)
     ap.add_argument("--run", default=f"ppo-{int(time.time())}")
     ap.add_argument("--device", choices=DEVICE_CHOICES, default="auto",
                     help="auto = CUDA when available, else CPU (rollouts always step on the CPU)")
@@ -263,7 +285,8 @@ def main() -> None:
     cfg = PPOConfig(n_envs=args.envs, rollout_steps=args.rollout, updates=args.updates,
                     eval_every=args.eval_every, eval_hands=args.eval_hands, lr=args.lr,
                     kl_coeff=args.kl, value_warmup=args.warmup, rule_share=args.rule_share,
-                    reward=args.reward, device=args.device)
+                    reward=args.reward, device=args.device, use_history=args.history,
+                    history_length=args.history_length)
     print(train_ppo(cfg, args.out, args.init, args.run))
 
 

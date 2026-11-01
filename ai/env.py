@@ -17,6 +17,7 @@ from gymnasium import spaces
 
 from ai.agents import Agent, RandomAgent
 from ai.features import N_SCALARS, _effective_tiles, encode, mask_for
+from ai.history import encode_public_history
 from ai.reward import DEFAULT_REWARD_CONFIG, GameResult, StepData, compute_shaped_reward
 from engine import tiles
 from engine.actions import N_ACTIONS, ActionType, decode_action
@@ -34,8 +35,12 @@ class MahjongEnv(gym.Env[dict[str, np.ndarray], int]):
         seed: int | None = None,
         rotate_seat: bool = False,
         render_mode: str | None = None,
+        history_length: int = 0,
     ) -> None:
         super().__init__()
+        if history_length < 0:
+            raise ValueError("history_length must be nonnegative")
+        self.history_length = history_length
         self.seat = seat
         self.rotate_seat = rotate_seat
         self.seed_value = seed
@@ -46,6 +51,11 @@ class MahjongEnv(gym.Env[dict[str, np.ndarray], int]):
             "tiles": spaces.Box(low=0, high=4, shape=(34, 14), dtype=np.float32),
             "scalars": spaces.Box(low=-100.0, high=100.0, shape=(N_SCALARS,), dtype=np.float32),
         })
+        if history_length:
+            self.observation_space.spaces.update({
+                "history": spaces.Box(0, 42, shape=(history_length, 5), dtype=np.int64),
+                "history_mask": spaces.Box(0, 1, shape=(history_length,), dtype=np.bool_),
+            })
         self.action_space = spaces.Discrete(N_ACTIONS)
         self.game: GameState | None = None
         self._quality: tuple[int, int] = (8, 0)
@@ -96,7 +106,11 @@ class MahjongEnv(gym.Env[dict[str, np.ndarray], int]):
     def _obs(self) -> dict[str, np.ndarray]:
         assert self.game is not None
         t, s = encode(self.game, self.seat)
-        return {"tiles": t, "scalars": s}
+        obs = {"tiles": t, "scalars": s}
+        if self.history_length:
+            obs["history"], obs["history_mask"] = encode_public_history(
+                self.game, self.seat, self.history_length)
+        return obs
 
     def _info(self) -> dict[str, Any]:
         g = self.game

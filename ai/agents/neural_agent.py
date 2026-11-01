@@ -9,6 +9,7 @@ from typing import Any
 import torch
 
 from ai.features import encode, mask_for
+from ai.history import encode_public_history
 from engine.actions import Action, decode_action, encode_action
 from engine.game import GameState
 
@@ -43,7 +44,13 @@ class PolicyAgent:
         tt = torch.from_numpy(t).unsqueeze(0)
         ss = torch.from_numpy(s).unsqueeze(0)
         if self.kind == "ppo":
-            out, _ = self.model(tt, ss, mask)
+            kwargs = {}
+            if getattr(self.model, "use_history", False):
+                history, history_mask = encode_public_history(
+                    state, seat, self.model.history_length)
+                kwargs = {"history": torch.from_numpy(history).unsqueeze(0),
+                          "history_mask": torch.from_numpy(history_mask).unsqueeze(0)}
+            out, _ = self.model(tt, ss, mask, **kwargs)
         else:
             out = self.model(tt, ss)
         return out[0], mask[0]

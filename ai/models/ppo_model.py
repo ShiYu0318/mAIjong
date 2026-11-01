@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from torch import nn
 
+from ai.history import HistoryEncoder
 from ai.models.backbone import LATENT, MahjongEncoder
 from engine.actions import (
     CHI_HIGH_ID,
@@ -41,10 +42,19 @@ NEG = -1e9
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, hierarchical: bool = True, use_transformer: bool = False) -> None:
+    def __init__(self, hierarchical: bool = True, use_transformer: bool = False,
+                 use_history: bool = False, history_length: int = 128) -> None:
         super().__init__()
+        if history_length < 1:
+            raise ValueError("history_length must be positive")
         self.hierarchical = hierarchical
+        self.use_history = use_history
+        self.history_length = history_length
         self.encoder = MahjongEncoder(use_transformer)
+        if use_history:
+            self.history_encoder = HistoryEncoder(LATENT)
+            self.history_fuse = nn.Linear(LATENT, LATENT, bias=False)
+            nn.init.zeros_(self.history_fuse.weight)
         if hierarchical:
             self.type_head = nn.Linear(LATENT, N_TYPES)
             self.type_emb = nn.Embedding(len(TILE_TYPES), LATENT)
@@ -73,7 +83,22 @@ class ActorCritic(nn.Module):
             flat[:, ids] = flat[:, ids] + tile_logp
         return flat.masked_fill(~mask, NEG)
 
-    def forward(self, tiles: torch.Tensor, scalars: torch.Tensor, mask: torch.Tensor
+    def load_warm_start(self, state: dict[str, torch.Tensor]) -> None:
+        """Allow legacy warm starts only when the entire history branch is absent."""
+        expected = set(self.state_dict())
+        supplied = set(state)
+        missing = expected - supplied
+        history_keys = {k for k in expected if k.startswith(("history_encoder.", "history_fuse."))}
+        if supplied - expected or (missing and missing != history_keys):
+            raise ValueError("Warm start requires all base weights and a complete history branch")
+        self.load_state_dict(state, strict=not missing)
+
+    def forward(self, tiles: torch.Tensor, scalars: torch.Tensor, mask: torch.Tensor,
+                history: torch.Tensor | None = None, history_mask: torch.Tensor | None = None
                 ) -> tuple[torch.Tensor, torch.Tensor]:
         h = self.encoder(tiles, scalars)
+        if self.use_history:
+            if history is None or history_mask is None:
+                raise ValueError("History-enabled policies require history and history_mask")
+            h = h + self.history_fuse(self.history_encoder(history, history_mask))
         return self.logits(h, mask), self.value(h).squeeze(-1)
